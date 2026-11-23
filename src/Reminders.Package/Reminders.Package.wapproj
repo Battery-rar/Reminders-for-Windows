@@ -14,7 +14,7 @@
     <ProjectGuid>{9502C684-992B-4A94-91A5-69133535C6C6}</ProjectGuid>
     <TargetPlatformVersion>10.0.26100.0</TargetPlatformVersion>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <AssetTargetFallback>net8.0-windows$(TargetPlatformVersion);$(AssetTargetFallback)</AssetTargetFallback>
+    <AssetTargetFallback>net10.0-windows$(TargetPlatformVersion);$(AssetTargetFallback)</AssetTargetFallback>
     <DefaultLanguage>en-US</DefaultLanguage>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <EntryPointProjectUniqueName>..\Reminders.WinUI\Reminders.WinUI.csproj</EntryPointProjectUniqueName>

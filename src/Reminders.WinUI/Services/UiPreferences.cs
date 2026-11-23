@@ -1,12 +1,12 @@
 using System.Text.Json;
+using Reminders.Core;
 
 namespace Reminders.Windows.Services;
 
 internal static class UiPreferences
 {
     private static readonly object Gate = new();
-    private static readonly string DirectoryPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RemindersForWindows");
+    private static readonly string DirectoryPath = AppStorage.RootDirectory;
 #if DEBUG
     static UiPreferences()
     {

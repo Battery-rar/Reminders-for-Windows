@@ -56,7 +56,8 @@ internal sealed class WindowsSecrets : ISecrets
         try
         {
             Marshal.Copy(bytes, 0, pointer, bytes.Length);
-            var c = new Credential { Type = 1, TargetName = Target(service, account), UserName = account, Persist = 3, CredentialBlobSize = (uint)bytes.Length, CredentialBlob = pointer };
+            const uint persistLocalMachine = 2;
+            var c = new Credential { Type = 1, TargetName = Target(service, account), UserName = account, Persist = persistLocalMachine, CredentialBlobSize = (uint)bytes.Length, CredentialBlob = pointer };
             if (!CredWrite(ref c, 0)) throw new Win32Exception();
         }
         finally { CryptographicOperations.ZeroMemory(bytes); Marshal.Copy(bytes, 0, pointer, bytes.Length); Marshal.FreeHGlobal(pointer); }
@@ -66,9 +67,10 @@ internal sealed class WindowsSecrets : ISecrets
 
 internal sealed class SecretStore(ISecrets vault)
 {
-    internal const string PasswordService = "com.paulsavvas.reminders-sync.password";
-    internal const string SessionService = "com.paulsavvas.reminders-sync.session";
-    private static string Chunk(char slot, int index) => $"com.paulsavvas.reminders-sync.session.chunk.{slot}.{index:00}";
+    private const string PasswordService = AppStorage.CredentialPrefix + ".password";
+    private const string SessionService = AppStorage.CredentialPrefix + ".session";
+    private static string RegionalTarget(string service, bool chinaMainland) => service + (chinaMainland ? ".china-mainland" : ".global");
+    private static string Chunk(string sessionTarget, char slot, int index) => $"{sessionTarget}.chunk.{slot}.{index:00}";
     internal static List<string> Chunks(string value)
     {
         var result = new List<string>(); var start = 0;
@@ -80,26 +82,29 @@ internal sealed class SecretStore(ISecrets vault)
         var parts = value?.Split(':');
         return parts is { Length: 4 } && parts[0] == "chunks" && parts[1] == "v1" && parts[2] is "a" or "b" && int.TryParse(parts[3], out var count) && count is > 0 and <= 64 ? (parts[2][0], count) : null;
     }
-    private static string PasswordTarget(bool chinaMainland) => chinaMainland ? PasswordService + ".china-mainland" : PasswordService;
-    public string? Password(string account, bool chinaMainland = false) => vault.Read(PasswordTarget(chinaMainland), account);
+    public string? Password(string account, bool chinaMainland = false) => vault.Read(RegionalTarget(PasswordService, chinaMainland), account);
     public bool HasPassword(string account, bool chinaMainland = false) { try { return Password(account, chinaMainland) is not null; } catch (Exception) { return false; } }
-    public void Password(string account, string value, bool chinaMainland = false) => vault.Write(PasswordTarget(chinaMainland), account, value);
-    public string? Session(string account)
+    public void Password(string account, string value, bool chinaMainland = false) => vault.Write(RegionalTarget(PasswordService, chinaMainland), account, value);
+    public string? Session(string account, bool chinaMainland = false)
     {
-        var value = vault.Read(SessionService, account); if (Manifest(value) is not { } manifest) return value;
-        return string.Concat(Enumerable.Range(0, manifest.Count).Select(i => vault.Read(Chunk(manifest.Slot, i), account) ?? throw new CoreException("ERROR", "Could not read the saved iCloud session").WithPresentation("ErrorSavedICloudSessionUnreadable")));
+        var target = RegionalTarget(SessionService, chinaMainland);
+        var value = vault.Read(target, account); if (Manifest(value) is not { } manifest) return value;
+        return string.Concat(Enumerable.Range(0, manifest.Count).Select(i => vault.Read(Chunk(target, manifest.Slot, i), account) ?? throw new CoreException("ERROR", "Could not read the saved iCloud session").WithPresentation("ErrorSavedICloudSessionUnreadable")));
     }
-    public void Session(string account, string value)
+    public void Session(string account, string value, bool chinaMainland = false)
     {
         var chunks = Chunks(value); if (chunks.Count > 64) throw new CoreException("ERROR", "The iCloud session is unexpectedly large").WithPresentation("ErrorICloudSessionTooLarge");
-        var previous = Manifest(vault.Read(SessionService, account)); var slot = previous?.Slot == 'a' ? 'b' : 'a';
-        for (var i = 0; i < chunks.Count; i++) vault.Write(Chunk(slot, i), account, chunks[i]);
-        vault.Write(SessionService, account, $"chunks:v1:{slot}:{chunks.Count}");
-        if (previous is { } old) for (var i = 0; i < old.Count; i++) vault.Delete(Chunk(old.Slot, i), account);
+        var target = RegionalTarget(SessionService, chinaMainland);
+        var previous = Manifest(vault.Read(target, account)); var slot = previous?.Slot == 'a' ? 'b' : 'a';
+        for (var i = 0; i < chunks.Count; i++) vault.Write(Chunk(target, slot, i), account, chunks[i]);
+        vault.Write(target, account, $"chunks:v1:{slot}:{chunks.Count}");
+        if (previous is { } old) for (var i = 0; i < old.Count; i++) vault.Delete(Chunk(target, old.Slot, i), account);
     }
-    public void Delete(string account)
+    public void Delete(string account, bool chinaMainland = false)
     {
-        vault.Delete(PasswordService, account); vault.Delete(PasswordTarget(true), account); vault.Delete(SessionService, account);
-        foreach (var slot in new[] { 'a', 'b' }) for (var i = 0; i < 64; i++) vault.Delete(Chunk(slot, i), account);
+        var target = RegionalTarget(SessionService, chinaMainland);
+        vault.Delete(RegionalTarget(PasswordService, chinaMainland), account);
+        vault.Delete(target, account);
+        foreach (var slot in new[] { 'a', 'b' }) for (var i = 0; i < 64; i++) vault.Delete(Chunk(target, slot, i), account);
     }
 }

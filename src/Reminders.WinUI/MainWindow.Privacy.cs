@@ -31,8 +31,8 @@ public sealed partial class MainWindow
         }
         panel.Children.Add(new HyperlinkButton
         {
-            Content = L10n.Get("ContactPaulSavvas"),
-            NavigateUri = new Uri("mailto:hello@paulsavvas.com"),
+            Content = L10n.Get("ViewSourceOnGitHub"),
+            NavigateUri = new Uri($"https://github.com/{AppUpdater.Repository}"),
             HorizontalAlignment = HorizontalAlignment.Left,
             Padding = new Thickness(0)
         });

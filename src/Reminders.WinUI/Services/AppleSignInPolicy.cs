@@ -10,11 +10,11 @@ internal static class AppleSignInPolicy
 {
     public static string StartUrl(bool chinaMainland) => ICloudEndpoints.Home(chinaMainland) + "/reminders/";
 
-    public static bool IsRemindersResponse(Uri uri, int status)
+    public static bool IsRemindersResponse(Uri uri, int status, bool chinaMainland = false)
     {
         var path = uri.AbsolutePath;
         return status == 200 && IsAppleUri(uri) &&
-            ICloudEndpoints.IsCloudKitWebServiceHost(uri.Host) &&
+            ICloudEndpoints.IsCloudKitWebServiceHost(uri.Host, chinaMainland) &&
             path.StartsWith("/database/1/com.apple.reminders/production/private/", StringComparison.Ordinal) &&
             (path.EndsWith("/records/query", StringComparison.Ordinal) || path.EndsWith("/changes/zone", StringComparison.Ordinal));
     }
@@ -29,7 +29,7 @@ internal static class AppleSignInPolicy
         return HasText(identity["appleId"]) || HasText(identity["primaryEmail"]);
     }
 
-    public static bool IsAppleUri(Uri uri) => uri.Scheme == "https" && uri.UserInfo.Length == 0 && ICloudEndpoints.IsAppleDomain(uri.Host);
+    public static bool IsAppleUri(Uri uri) => uri.Scheme == "https" && uri.IsDefaultPort && uri.UserInfo.Length == 0 && ICloudEndpoints.IsAppleDomain(uri.Host);
 
     // window.open() can create a blank child before navigating it. Keep that
     // child attached to its opener; all subsequent navigations are checked.

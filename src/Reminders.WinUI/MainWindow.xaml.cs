@@ -18,12 +18,15 @@ namespace Reminders.Windows;
 public sealed partial class MainWindow : Window
 {
     private SyncClient _sync = new();
-    private readonly ObservableCollection<ReminderItem> _reminders = [];
+    private List<ReminderItem> _reminders = [];
+    private readonly ObservableCollection<ReminderItem> _visibleReminders = [];
+    private readonly ObservableCollection<ReminderSection> _reminderSections = [];
     private readonly LatestRequest _reminderLoads = new();
     private readonly LatestRequest _navigationLoads = new();
     private long _accountEpoch;
     private readonly Microsoft.UI.Xaml.Data.CollectionViewSource _sectionView = new() { IsSourceGrouped = true };
-    private string _sectionSignature = "";
+    private (NavKind Kind, string Key, string Search, string Sort, bool Completed)? _renderedQuery;
+    private bool _usingGroupedReminderSource;
     private bool _regrouping;
     private DateTime _reminderDate = DateTime.Today;
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
@@ -51,6 +54,11 @@ public sealed partial class MainWindow : Window
     private bool _demo;
     private DateTimeOffset _lastSyncRequest = DateTimeOffset.MinValue;
     private bool _bootStarted;
+    private bool _bootInProgress;
+    private bool _authChangedWhileBooting;
+    private bool _needsSignIn;
+    private bool _syncRefreshPending;
+    private bool _syncRefreshInProgress;
     private bool _notificationsRegistered;
     private bool _panePinnedOpen;
     private bool _hoverExpanded;
@@ -78,7 +86,9 @@ public sealed partial class MainWindow : Window
         Navigation.AddHandler(UIElement.PointerExitedEvent, new PointerEventHandler(Navigation_PointerExited), true);
         Navigation.Loaded += Navigation_Loaded;
         foreach (var item in Navigation.MenuItems.Concat(Navigation.FooterMenuItems).OfType<NavigationViewItem>()) AttachPaneHover(item);
-        ReminderList.ItemsSource = _reminders;
+        _sectionView.Source = _reminderSections;
+        ReminderList.ItemsSource = _visibleReminders;
+        SyncLabel.Text = L10n.Get("Syncing");
         DetailPriority.SelectedIndex = 0;
         _searchTimer.Tick += async (_, _) => { _searchTimer.Stop(); await LoadRemindersAsync(); };
         _statusTimer.Tick += async (_, _) =>
@@ -188,7 +198,8 @@ public sealed partial class MainWindow : Window
 
     private async Task BootAsync()
     {
-        if (_accountBusy) return;
+        if (_accountBusy || _bootInProgress || _windowClosed) return;
+        _bootInProgress = true;
         SetGateState(L10n.Get("SyncServiceStarting"));
         try
         {
@@ -214,8 +225,8 @@ public sealed partial class MainWindow : Window
                 await RefreshAllAsync();
                 if (_accountBusy || AuthGate.Visibility != Visibility.Collapsed) return;
                 _statusTimer.Start(); _notificationTimer.Start(); _syncTimer.Start();
-                if (status.Flag("authenticated")) await RequestAutoSyncAsync();
-                if (!status.Flag("authenticated") && !status.Flag("restoring")) ShowInfo(L10n.Get("SignInToResumeSyncing"), L10n.Get("CachedRemindersAvailable"), InfoBarSeverity.Warning);
+                _needsSignIn = !status.Flag("authenticated") && !status.Flag("restoring") && !status.Flag("restore_retryable");
+                if (_needsSignIn) ShowCachedSignInNotice();
                 return;
             }
             if (status.Flag("restoring")) { SetGateState(L10n.Get("SigningYouBackIn")); return; }
@@ -225,6 +236,15 @@ public sealed partial class MainWindow : Window
         {
             SetGateState(L10n.Get("SyncServiceUnavailable"), false);
             GateError.Message = L10n.Error(error); GateError.IsOpen = true;
+        }
+        finally
+        {
+            _bootInProgress = false;
+            if (_authChangedWhileBooting)
+            {
+                _authChangedWhileBooting = false;
+                if (!_windowClosed && !_accountBusy && _sync.IsRunning) await RefreshAuthAsync();
+            }
         }
     }
 
@@ -242,10 +262,10 @@ public sealed partial class MainWindow : Window
         SetupHelpLink.IsEnabled = true;
     }
 
-    private async Task RefreshAllAsync()
+    private async Task RefreshAllAsync(bool fromSync = false)
     {
         await LoadNavigationAsync();
-        await LoadRemindersAsync();
+        await LoadRemindersAsync(fromSync);
         await RefreshStatusAsync();
     }
 
@@ -262,11 +282,18 @@ public sealed partial class MainWindow : Window
         }, data =>
         {
             if (_windowClosed || _accountBusy || AuthGate.Visibility != Visibility.Collapsed) return;
-            _lists = data.Lists; SetBadge("smart:today", data.Counts.Number("today"));
-            _tags = data.Tags.Select(tag => tag.Name).Distinct(StringComparer.CurrentCultureIgnoreCase).Order().ToList();
-            RebuildListNavigation();
+            var tags = data.Tags.Select(tag => tag.Name).Distinct(StringComparer.CurrentCultureIgnoreCase).Order().ToList();
+            var listsChanged = !_lists.Select(ListPresentation).SequenceEqual(data.Lists.Select(ListPresentation));
+            var tagsChanged = !_tags.SequenceEqual(tags);
+            _lists = data.Lists;
+            _tags = tags;
+            SetBadge("smart:today", data.Counts.Number("today"));
+            if (listsChanged || tagsChanged) RebuildListNavigation();
         });
     }
+
+    private static (string, string, string?, bool) ListPresentation(ReminderList list) =>
+        (list.Id, list.Title, list.ColorHex, list.IsGroup);
 
     private NavigationViewItem CreateNavigationItem(string label, string glyph, string tag)
     {
@@ -299,28 +326,42 @@ public sealed partial class MainWindow : Window
     private void SetBadge(string tag, long count)
     {
         var item = Navigation.MenuItems.OfType<NavigationViewItem>().FirstOrDefault(candidate => candidate.Tag?.ToString() == tag);
-        if (item is not null) item.InfoBadge = count > 0 ? new InfoBadge { Value = (int)Math.Min(count, 99) } : null;
+        var value = (int)Math.Min(count, 99);
+        if (item is not null && (item.InfoBadge?.Value ?? 0) != value)
+            item.InfoBadge = value > 0 ? new InfoBadge { Value = value } : null;
     }
 
-    private async Task LoadRemindersAsync()
+    private async Task LoadRemindersAsync(bool fromSync = false)
     {
         ShowCompleted.Visibility = _view.Kind == NavKind.Smart && _view.Key == "completed" ? Visibility.Collapsed : Visibility.Visible;
         if (_demo) { _reminderLoads.Invalidate(); LoadDemoRows(); return; }
         try
         {
+            var presentation = CurrentReminderQuery;
             var query = new Dictionary<string, object?> { ["include_completed"] = ShowCompleted.IsOn, ["include_parents"] = true, ["search"] = string.IsNullOrWhiteSpace(SearchBox.Text) ? null : SearchBox.Text.Trim(), ["sort"] = _sort };
             query[_view.Kind switch { NavKind.List => "list_id", NavKind.Tag => "tag", _ => "scope" }] = _view.Key;
-            await _reminderLoads.RunAsync(() => _sync.CallAsync<List<ReminderItem>>("reminders", query), rows =>
+            var selectedId = _selected?.Id;
+            await _reminderLoads.RunAsync(async () =>
             {
-                if (_windowClosed || _accountBusy || AuthGate.Visibility != Visibility.Collapsed || _completing.Count > 0) return;
-                SetReminderRows(rows);
+                var rows = await _sync.CallAsync<List<ReminderItem>>("reminders", query);
+                var resolvedId = selectedId;
+                if (selectedId?.StartsWith("local/", StringComparison.Ordinal) == true && rows.All(row => row.Id != selectedId))
+                    resolvedId = (await _sync.CallAsync("reminder", new { id = selectedId })).Text("id", selectedId);
+                return (Rows: rows, SelectedId: resolvedId);
+            }, data =>
+            {
+                if (_windowClosed || _accountBusy || AuthGate.Visibility != Visibility.Collapsed || _completing.Count > 0 ||
+                    CurrentReminderQuery != presentation) return;
+                SetReminderRows(data.Rows, fromSync, _selected?.Id == selectedId ? data.SelectedId : null);
             });
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntLoadReminders"), L10n.Error(error), InfoBarSeverity.Error); }
     }
+    private (NavKind Kind, string Key, string Search, string Sort, bool Completed) CurrentReminderQuery =>
+        (_view.Kind, _view.Key, SearchBox.Text, _sort, ShowCompleted.IsOn);
     private void UpdateRows()
     {
-        RebuildReminderSections(force: true);
+        RebuildReminderSections();
         EmptyState.Visibility = _reminders.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         var searching = !string.IsNullOrWhiteSpace(SearchBox.Text);
         EmptyStateTitle.Text = searching ? L10n.Get("NoMatchingReminders") : L10n.Get("NoRemindersHere");
@@ -335,13 +376,47 @@ public sealed partial class MainWindow : Window
             : (count == 1 ? "ReminderCountOne" : "ReminderCountMany");
         RowCount.Text = L10n.Format(countKey, count);
     }
-    private void SetReminderRows(IEnumerable<ReminderItem> rows)
+    private void SetReminderRows(IEnumerable<ReminderItem> rows, bool fromSync = false, string? resolvedSelectedId = null)
     {
-        var selectedId = _selected?.Id;
-        var preserveEditor = _detailDirty && _selected is not null;
-        _regrouping = true;
-        try { _reminders.Clear(); foreach (var row in rows) _reminders.Add(row); }
-        finally { _regrouping = false; }
+        var presentation = CurrentReminderQuery;
+        var sameQuery = _renderedQuery == presentation;
+        var selected = _selected;
+        var preserveEditor = selected is not null && (_detailDirty || fromSync && (_savingDetail || IsEditorFocused()));
+        var preserveRow = fromSync && sameQuery && preserveEditor;
+        var priorRows = _reminders.ToDictionary(row => row.Id);
+        var updatedRows = new List<ReminderItem>();
+        var changed = false;
+        var editorChanged = false;
+
+        foreach (var row in rows)
+        {
+            if (preserveRow && (row.Id == selected!.Id || row.Id == resolvedSelectedId)) continue;
+            var previous = priorRows.GetValueOrDefault(row.Id);
+            if (previous is null && selected is not null && row.Id == resolvedSelectedId && row.Id != selected.Id)
+            {
+                previous = selected;
+                if (_collapsedSubtasks.Remove(previous.Id)) _collapsedSubtasks.Add(row.Id);
+                previous.Id = row.Id;
+                changed = true;
+            }
+            if (previous is not null)
+            {
+                changed |= previous.ApplySnapshot(row, out var detailChanged);
+                if (ReferenceEquals(previous, selected)) editorChanged |= detailChanged;
+            }
+            updatedRows.Add(previous ?? row);
+        }
+
+        if (preserveRow)
+        {
+            var index = _reminders.IndexOf(selected!);
+            if (index >= 0) updatedRows.Insert(Math.Min(index, updatedRows.Count), selected!);
+        }
+        var dayChanged = _reminderDate != DateTime.Today;
+        _reminderDate = DateTime.Today;
+        if (!changed && !dayChanged && sameQuery && _reminders.SequenceEqual(updatedRows)) return;
+        _reminders = updatedRows;
+        _renderedQuery = presentation;
         if (!string.IsNullOrWhiteSpace(SearchBox.Text) || _view.Kind == NavKind.Tag)
         {
             var byId = _reminders.ToDictionary(row => row.Id);
@@ -355,42 +430,76 @@ public sealed partial class MainWindow : Window
                 }
             }
         }
-        _reminderDate = DateTime.Today;
         UpdateRows();
-        if (selectedId is not null)
+        if (selected is not null && !preserveEditor && (editorChanged || !_reminders.Contains(selected)))
+            ShowDetail(_reminders.Contains(selected) ? selected : null, animate: false);
+    }
+
+    private bool IsEditorFocused()
+    {
+        if (Root.XamlRoot is not { } root) return false;
+        for (var element = FocusManager.GetFocusedElement(root) as DependencyObject; element is not null;
+            element = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(element))
+            if (ReferenceEquals(element, DetailPane)) return true;
+        return false;
+    }
+
+    private static void Reconcile<T>(ObservableCollection<T> current, IReadOnlyList<T> incoming) where T : class
+    {
+        var retained = incoming.ToHashSet();
+        for (var index = current.Count - 1; index >= 0; index--)
+            if (!retained.Contains(current[index])) current.RemoveAt(index);
+        for (var index = 0; index < incoming.Count; index++)
         {
-            var selected = _reminders.FirstOrDefault(row => row.Id == selectedId);
-            _regrouping = true;
-            try { ReminderList.SelectedItem = selected; }
-            finally { _regrouping = false; }
-            if (!preserveEditor) ShowDetail(selected);
+            var item = incoming[index];
+            if (index < current.Count && ReferenceEquals(current[index], item)) continue;
+            var previousIndex = current.IndexOf(item);
+            if (previousIndex < 0) current.Insert(index, item);
+            else current.Move(previousIndex, index);
         }
     }
-    private void RebuildReminderSections(bool force = false)
+
+    private void RebuildReminderSections()
     {
         var families = ReminderHierarchy.Build(_reminders, _collapsedSubtasks);
-        List<ReminderItem> Visible(ReminderFamily<ReminderItem> family) => family.Rows.Where(row => !row.Hidden).Select(row =>
+        IEnumerable<ReminderItem> Visible(ReminderFamily<ReminderItem> family) => family.Rows.Where(row => !row.Hidden).Select(row =>
         {
             row.Item.ConfigureHierarchy(row.Depth, row.HasChildren, !_collapsedSubtasks.Contains(row.Item.Id)); return row.Item;
-        }).ToList();
-        if (_view.Kind != NavKind.Smart || _view.Key is not ("today" or "upcoming"))
-        {
-            _regrouping = true;
-            try { var visible = families.SelectMany(Visible).ToList(); ReminderList.ItemsSource = visible; ReminderList.SelectedItem = visible.FirstOrDefault(row => row.Id == _selected?.Id); }
-            finally { _regrouping = false; }
-            _sectionSignature = "";
-            return;
-        }
-        var groups = ReminderGrouping.Group(families, _view.Key, _sort, DateTimeOffset.Now);
-        var signature = JsonSerializer.Serialize(groups.Select(group => new { group.Section, Ids = group.Items.SelectMany(family => family.Rows).Select(row => new { row.Item.Id, row.Hidden, row.Depth }) }));
-        if (!force && signature == _sectionSignature) return;
+        });
         _regrouping = true;
         try
         {
-            _sectionView.Source = groups.Select(group => new ReminderSection(L10n.Get($"ReminderSection{group.Section}"), group.Items.SelectMany(Visible))).ToList();
-            ReminderList.ItemsSource = _sectionView.View;
-            ReminderList.SelectedItem = _reminders.FirstOrDefault(row => row.Id == _selected?.Id);
-            _sectionSignature = signature;
+            if (_view.Kind == NavKind.Smart && _view.Key is "today" or "upcoming")
+            {
+                var groups = ReminderGrouping.Group(families, _view.Key, _sort, DateTimeOffset.Now);
+                var existing = _reminderSections.ToDictionary(section => section.Title);
+                var sections = new List<ReminderSection>();
+                foreach (var group in groups)
+                {
+                    var title = L10n.Get($"ReminderSection{group.Section}");
+                    var rows = group.Items.SelectMany(Visible).ToList();
+                    if (existing.TryGetValue(title, out var section)) Reconcile(section, rows);
+                    else section = new ReminderSection(title, rows);
+                    sections.Add(section);
+                }
+                Reconcile(_reminderSections, sections);
+                if (!_usingGroupedReminderSource)
+                {
+                    ReminderList.ItemsSource = _sectionView.View;
+                    _usingGroupedReminderSource = true;
+                }
+            }
+            else
+            {
+                Reconcile(_visibleReminders, families.SelectMany(Visible).ToList());
+                if (_usingGroupedReminderSource)
+                {
+                    ReminderList.ItemsSource = _visibleReminders;
+                    _usingGroupedReminderSource = false;
+                }
+            }
+            if (!ReferenceEquals(ReminderList.SelectedItem, _selected))
+                ReminderList.SelectedItem = _reminders.Contains(_selected!) ? _selected : null;
         }
         finally { _regrouping = false; }
     }
@@ -451,11 +560,11 @@ public sealed partial class MainWindow : Window
         await RequestAutoSyncAsync();
     }
 
-    private async Task RequestAutoSyncAsync()
+    private async Task RequestAutoSyncAsync(bool manual = false)
     {
-        if (_demo || _accountBusy || AuthGate.Visibility != Visibility.Collapsed || !_sync.IsRunning) return;
+        if (_demo || _accountBusy || _needsSignIn || AuthGate.Visibility != Visibility.Collapsed || !_sync.IsRunning) return;
         _lastSyncRequest = DateTimeOffset.UtcNow;
-        try { await _sync.CallAsync("sync", new { }); }
+        try { await _sync.CallAsync("sync", new { automatic = !manual }); }
         catch (Exception error) { ShowInfo(L10n.Get("SyncFailed"), L10n.Error(error), InfoBarSeverity.Error); }
     }
 
@@ -789,7 +898,7 @@ public sealed partial class MainWindow : Window
         }
         ShowDetail(target);
     }
-    private void ShowDetail(ReminderItem? reminder)
+    private void ShowDetail(ReminderItem? reminder, bool animate = true)
     {
         _selected = reminder; _loadingDetail = true; NoSelection.Visibility = reminder is null ? Visibility.Visible : Visibility.Collapsed; DetailPane.Visibility = reminder is null ? Visibility.Collapsed : Visibility.Visible;
         if (reminder is not null)
@@ -800,7 +909,13 @@ public sealed partial class MainWindow : Window
             DetailList.SelectedValue = reminder.ListId;
             AddSubtaskButton.IsEnabled = !reminder.Completed && !reminder.Deleted;
             DetailPriority.SelectedItem = DetailPriority.Items.OfType<ComboBoxItem>().FirstOrDefault(item => item.Tag?.ToString() == reminder.Priority.ToString());
-            if (DateTimeOffset.TryParse(reminder.DueDate, out var due)) { DetailDate.Date = due; DetailTime.Time = due.LocalDateTime.TimeOfDay; } else DetailDate.Date = null;
+            if (DateTimeOffset.TryParse(reminder.DueDate, out var due))
+            {
+                var local = reminder.AllDay ? due : due.ToLocalTime();
+                DetailDate.Date = local;
+                DetailTime.Time = local.TimeOfDay;
+            }
+            else DetailDate.Date = null;
             DetailAllDay.IsOn = reminder.AllDay; DetailTime.IsEnabled = !reminder.AllDay; DetailFlagged.IsOn = reminder.Flagged;
             var customRepeat = reminder.Recurrence?.Supported == false;
             DetailRepeatChoice.IsEnabled = !customRepeat;
@@ -813,7 +928,7 @@ public sealed partial class MainWindow : Window
         _detailBaseline = reminder is null ? null : CaptureDetailValues();
         SaveButton.IsEnabled = false; _detailDirty = false; _loadingDetail = false;
         UpdatePaneLayout();
-        if (reminder is not null) AnimateDetailPane();
+        if (reminder is not null && animate) AnimateDetailPane();
     }
     private void AnimateDetailPane()
     {
@@ -1012,38 +1127,112 @@ public sealed partial class MainWindow : Window
         if (_windowClosed || _accountBusy || _syncDisposedForUpdate || _updateLifetime.IsCancellationRequested || !_sync.IsCurrentEvent(e)) return;
         switch (e.Name)
         {
-            case "ready": await BootAsync(); break;
-            // Not authenticated is not the same as "start over". A restore that
-            // stopped at the second factor needs the code box, not the password
-            // box; one still in flight needs neither; and someone already
-            // working in cached data should be told, not thrown out of the app.
             case "auth_changed":
-                if (e.Data.Flag("authenticated")) await BootAsync();
-                else if (e.Data.Flag("needs_2fa")) await ShowCodeEntryAsync(e.Data.Property("two_factor"));
-                else if (e.Data.Flag("restoring")) SetGateState(L10n.Get("SigningYouBackIn"));
-                else if (AuthGate.Visibility == Visibility.Collapsed)
-                    ShowInfo(L10n.Get("SignInToResumeSyncing"), L10n.Get("CachedRemindersAvailable"), InfoBarSeverity.Warning);
-                else ShowLogin();
+                if (_bootInProgress) _authChangedWhileBooting = true;
+                else await ApplyAuthStatusAsync(e.Data);
                 break;
-            case "sync_started": _lastSyncRequest = DateTimeOffset.UtcNow; ShowInfo(L10n.Get("Syncing"), L10n.Get("CheckingICloudForChanges"), InfoBarSeverity.Informational); break;
+            case "sync_started":
+                _lastSyncRequest = DateTimeOffset.UtcNow;
+                SetSyncIndicator(true);
+                break;
             case "sync_progress":
                 var progressFallback = e.Data.Text("stage") is { Length: > 0 } stage
                     ? L10n.Format("SyncProgressFallback", stage) : L10n.Get("SyncProgressFallbackReminders");
-                ShowInfo(L10n.Get("Syncing"), L10n.EventMessage(e.Data, progressFallback), InfoBarSeverity.Informational);
+                ToolTipService.SetToolTip(SyncIndicator, L10n.EventMessage(e.Data, progressFallback));
                 break;
-            case "sync_downloaded": await RefreshAllAsync(); break;
-            case "sync_finished": AppInfoBar.IsOpen = false; await RefreshAllAsync(); break;
+            case "sync_finished":
+                if (AppInfoBar.Title == L10n.Get("SyncFailed")) AppInfoBar.IsOpen = false;
+                await CompleteSyncRefreshAsync();
+                break;
             case "sync_warning":
                 ShowInfo(L10n.Get("SomeChangesHaventSynced"), e.Data.Text("code", "") == "CONFLICT" ? L10n.Get("SyncWarningConflictDescription") : L10n.Get("SyncWarningRejectedChangeDescription"), InfoBarSeverity.Warning);
                 var recovery = new Button { Content = L10n.Get("ReviewSyncSettings") };
                 recovery.Click += async (_, _) => await ShowSettingsAsync(1);
                 AppInfoBar.ActionButton = recovery;
+                await CompleteSyncRefreshAsync();
                 break;
-            case "sync_error": ShowInfo(L10n.Get("SyncFailed"), L10n.EventMessage(e.Data, L10n.Get("TryAgainShortly")), InfoBarSeverity.Error); break;
+            case "sync_error":
+                if (!_needsSignIn)
+                    ShowInfo(L10n.Get("SyncFailed"), L10n.EventMessage(e.Data, L10n.Get("TryAgainShortly")), InfoBarSeverity.Error);
+                await CompleteSyncRefreshAsync();
+                break;
+            case "sync_cancelled":
+                SetSyncIndicator(false);
+                break;
             case "push_failed": ShowInfo(L10n.Get("UploadFailed"), L10n.EventMessage(e.Data.Property("error"), L10n.Get("UploadRetryDescription")), InfoBarSeverity.Error); break;
-            case "conflict": ShowInfo(L10n.Get("SyncConflict"), L10n.Get("SyncConflictDescription"), InfoBarSeverity.Warning); await RefreshStatusAsync(); break;
         }
     });
+
+    private void SetSyncIndicator(bool active)
+    {
+        SyncRing.IsActive = active;
+        SyncIndicator.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        if (active) ToolTipService.SetToolTip(SyncIndicator, L10n.Get("CheckingICloudForChanges"));
+    }
+
+    private async Task CompleteSyncRefreshAsync()
+    {
+        SetSyncIndicator(false);
+        _lastSyncRequest = DateTimeOffset.UtcNow;
+        if (_windowClosed || _accountBusy || AuthGate.Visibility != Visibility.Collapsed) return;
+        _syncRefreshPending = true;
+        if (_syncRefreshInProgress) return;
+
+        _syncRefreshInProgress = true;
+        try
+        {
+            while (_syncRefreshPending && !_windowClosed && !_accountBusy && AuthGate.Visibility == Visibility.Collapsed)
+            {
+                _syncRefreshPending = false;
+                await RefreshAllAsync(fromSync: true);
+            }
+        }
+        catch (Exception error) { ShowInfo(L10n.Get("CouldntLoadReminders"), L10n.Error(error), InfoBarSeverity.Error); }
+        finally { _syncRefreshInProgress = false; }
+    }
+
+    private async Task RefreshAuthAsync()
+    {
+        try
+        {
+            var status = await _sync.CallAsync("auth_status", new { });
+            if (!_windowClosed && !_accountBusy) await ApplyAuthStatusAsync(status);
+        }
+        catch (Exception error) { ShowInfo(L10n.Get("SyncFailed"), L10n.Error(error), InfoBarSeverity.Error); }
+    }
+
+    private async Task ApplyAuthStatusAsync(JsonElement status)
+    {
+        if (status.Flag("authenticated"))
+        {
+            _needsSignIn = false;
+            if (AppInfoBar.Title == L10n.Get("SignInToResumeSyncing")) AppInfoBar.IsOpen = false;
+            if (AuthGate.Visibility != Visibility.Collapsed) await BootAsync();
+            return;
+        }
+        if (status.Flag("restoring")) return;
+        var needsCode = status.Flag("needs_2fa");
+        _needsSignIn = needsCode || !status.Flag("restore_retryable");
+        if (AuthGate.Visibility == Visibility.Collapsed)
+        {
+            if (_needsSignIn) ShowCachedSignInNotice(needsCode ? status.Property("two_factor") : default);
+        }
+        else if (needsCode) await ShowCodeEntryAsync(status.Property("two_factor"));
+        else ShowLogin();
+    }
+
+    private void ShowCachedSignInNotice(JsonElement twoFactor = default)
+    {
+        ShowInfo(L10n.Get("SignInToResumeSyncing"), L10n.Get("CachedRemindersAvailable"), InfoBarSeverity.Warning);
+        var action = new Button { Content = L10n.Get("SignIn") };
+        action.Click += async (_, _) =>
+        {
+            if (_accountBusy || _savingDetail || _detailDirty && !await ConfirmLeaveDetailAsync()) return;
+            if (twoFactor.ValueKind == JsonValueKind.Object) await ShowCodeEntryAsync(twoFactor);
+            else ShowLogin();
+        };
+        AppInfoBar.ActionButton = action;
+    }
     private async void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         _windowClosed = true; _accountEpoch++; _searchTimer.Stop(); _reminderLoads.Invalidate(); _navigationLoads.Invalidate();

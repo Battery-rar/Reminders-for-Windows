@@ -26,9 +26,10 @@ concurrency:
 jobs:
   submit:
     if: >-
-      (github.event_name == 'release' && !github.event.release.prerelease &&
+      github.repository == 'Psavvas/Reminders-for-Windows' &&
+      ((github.event_name == 'release' && !github.event.release.prerelease &&
       !github.event.release.draft && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: microsoft-store

@@ -10,7 +10,7 @@ public sealed partial class MainWindow
     {
         if (sender is not FrameworkElement { DataContext: ReminderItem reminder }) return;
         if (!_collapsedSubtasks.Add(reminder.Id)) _collapsedSubtasks.Remove(reminder.Id);
-        RebuildReminderSections(force: true);
+        RebuildReminderSections();
     }
 
     private async void AddSubtask_Click(object sender, RoutedEventArgs args)

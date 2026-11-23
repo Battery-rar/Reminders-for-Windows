@@ -19,7 +19,7 @@ work before disposing its cache and HTTP client.
 
 The SQLite schema and Windows Credential Manager target names remain compatible.
 There is no executable discovery, child process or JSON pipe. Unpackaged data is
-under %LOCALAPPDATA%\RemindersSync; Windows may virtualize it for an MSIX app.
+under %LOCALAPPDATA%\RemindersForWindowsGCBD. Windows may virtualize it for an MSIX app.
 
 ## Demo mode
 

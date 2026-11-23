@@ -19,7 +19,7 @@ public sealed class SyncClient : IAsyncDisposable
     {
         get
         {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RemindersSync");
+            var directory = AppStorage.RootDirectory;
 #if DEBUG
             if (Environment.GetEnvironmentVariable("REMINDERS_DATA_DIR") is { Length: > 0 } developmentData) directory = Path.GetFullPath(developmentData);
 #endif

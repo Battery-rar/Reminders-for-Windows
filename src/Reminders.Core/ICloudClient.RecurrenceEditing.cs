@@ -33,7 +33,7 @@ internal sealed partial class ICloudClient
             if (!Recurrence.Describe(rule).Flag("supported") || CloudKit.Int(rule, "Deleted") != 0)
                 throw CoreException.Bad("Edit this custom repeat on an Apple device to preserve its schedule.").WithPresentation("EditCustomRepeatOnAppleDevice");
         }
-        var fields = UpdateFields(original, patch);
+        var fields = UpdateFields(original, patch, setMissingTimeZone: true);
         var operations = new JsonArray();
         JsonNode? changedRule = null;
         if (repeat is not null)

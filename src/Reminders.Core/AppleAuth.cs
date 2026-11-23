@@ -37,7 +37,7 @@ internal sealed class AppleAuth : IDisposable
         foreach (var saved in State.Array("cookies").OfType<JsonObject>())
         {
             var domain = saved.Text("domain")?.TrimStart('.');
-            if (domain is null || !ICloudEndpoints.IsAppleDomain(domain)) continue;
+            if (domain is null || !ICloudEndpoints.IsSessionDomain(domain, ChinaMainland)) continue;
             try
             {
                 var cookie = new Cookie(saved.Required("name"), saved.Required("value", 16384), saved.Text("path") ?? "/", saved.Required("domain")) { Secure = true, HttpOnly = saved.Flag("http_only") };
@@ -49,7 +49,7 @@ internal sealed class AppleAuth : IDisposable
         this.handlerFactory = handlerFactory ?? (() => new SocketsHttpHandler { AllowAutoRedirect = false, UseProxy = false, UseCookies = true, CookieContainer = cookies, ConnectTimeout = TimeSpan.FromSeconds(15), AutomaticDecompression = DecompressionMethods.All });
         Http = CreateHttp();
     }
-    internal void SaveCookies() => State["cookies"] = new JsonArray(cookies.GetAllCookies().Cast<Cookie>().Where(c => !c.Expired && ICloudEndpoints.IsAppleDomain(c.Domain.TrimStart('.')))
+    internal void SaveCookies() => State["cookies"] = new JsonArray(cookies.GetAllCookies().Cast<Cookie>().Where(c => !c.Expired && ICloudEndpoints.IsSessionDomain(c.Domain.TrimStart('.'), ChinaMainland))
         .Select(c => J.Node(new { name = c.Name, value = c.Value, domain = c.Domain, path = c.Path, http_only = c.HttpOnly, expires = c.Expires == DateTime.MinValue ? 0 : new DateTimeOffset(c.Expires.ToUniversalTime()).ToUnixTimeSeconds() })).ToArray());
     private HttpClient CreateHttp()
     {

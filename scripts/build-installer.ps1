@@ -12,8 +12,12 @@
     with a certificate from the current user's store. No certificate is
     generated or committed by this repository.
 
-    Use -DisableUpstreamInstallerUpdates for a custom build that must not
-    install upstream releases through the in-app updater.
+    The app offers manual release checks by default. Use -EnableForkInstallerUpdates
+    only for a build that should install releases from the fork through the app.
+
+.EXAMPLE
+    .\scripts\build-installer.ps1 -Architecture Universal
+    Packages both payloads in a single offline installer that selects the native architecture.
 
 .EXAMPLE
     .\scripts\build-installer.ps1
@@ -25,28 +29,56 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('x64', 'ARM64')]
+    [ValidateSet('x64', 'ARM64', 'Universal')]
     [string]$Architecture = 'x64',
     [string]$CertificateThumbprint,
     [switch]$SkipBuild,
-    [switch]$DisableUpstreamInstallerUpdates
+    [switch]$EnableForkInstallerUpdates
 )
 
 $ErrorActionPreference = 'Stop'
 $repository = Split-Path -Parent $PSScriptRoot
-$portableOutput = if ($Architecture -eq 'ARM64') { Join-Path $repository 'dist-windows-arm64' } else { Join-Path $repository 'dist-windows' }
+$x64Output = Join-Path $repository 'dist-windows'
+$arm64Output = Join-Path $repository 'dist-windows-arm64'
+$portableOutput = if ($Architecture -eq 'ARM64') { $arm64Output } else { $x64Output }
 $installerOutput = Join-Path $repository 'dist-installer'
 $project = Join-Path $repository 'src\Reminders.WinUI\Reminders.WinUI.csproj'
 $script = Join-Path $PSScriptRoot 'installer\reminders.iss'
 $icon = Join-Path $repository 'src\Reminders.WinUI\Assets\icon-v2.ico'
 
-if (-not $SkipBuild) {
-    & (Join-Path $PSScriptRoot 'build-windows.ps1') -Architecture $Architecture
-    if ($LASTEXITCODE -ne 0) { throw "The $Architecture production build failed." }
+if ($Architecture -eq 'Universal' -and $EnableForkInstallerUpdates) {
+    throw 'The universal installer uses manual updates. Published in-app updates target architecture-specific installers.'
 }
-foreach ($required in @('Reminders.exe', 'Reminders.Core.dll')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $portableOutput $required))) {
-        throw "$required is missing from $portableOutput. Run .\scripts\build-windows.ps1 -Architecture $Architecture first."
+
+function Get-PeMachine([string]$Path) {
+    $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($Path))
+    try {
+        if ($reader.ReadUInt16() -ne 0x5a4d) { throw "Invalid executable header: $Path" }
+        $reader.BaseStream.Position = 0x3c
+        $reader.BaseStream.Position = $reader.ReadUInt32()
+        if ($reader.ReadUInt32() -ne 0x4550) { throw "Invalid PE signature: $Path" }
+        return $reader.ReadUInt16()
+    }
+    finally { $reader.Dispose() }
+}
+
+$payloads = if ($Architecture -eq 'Universal') { @('x64', 'ARM64') } else { @($Architecture) }
+foreach ($payload in $payloads) {
+    if (-not $SkipBuild) {
+        & (Join-Path $PSScriptRoot 'build-windows.ps1') -Architecture $payload
+        if ($LASTEXITCODE -ne 0) { throw "The $payload production build failed." }
+    }
+    $payloadPath = if ($payload -eq 'ARM64') { $arm64Output } else { $x64Output }
+    foreach ($required in @('Reminders.exe', 'Reminders.Core.dll', 'e_sqlite3.dll')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $payloadPath $required) -PathType Leaf)) {
+            throw "$required is missing from $payloadPath. Run .\scripts\build-windows.ps1 -Architecture $payload first."
+        }
+    }
+    $expectedMachine = if ($payload -eq 'ARM64') { 0xaa64 } else { 0x8664 }
+    foreach ($binary in @('Reminders.exe', 'e_sqlite3.dll')) {
+        if ((Get-PeMachine (Join-Path $payloadPath $binary)) -ne $expectedMachine) {
+            throw "$binary in $payloadPath does not match $payload."
+        }
     }
 }
 if (-not (Test-Path -LiteralPath $icon)) { throw "The application icon is missing: $icon" }
@@ -68,7 +100,7 @@ if (-not $iscc) {
 [xml]$projectXml = Get-Content -Raw $project
 $version = ($projectXml.Project.PropertyGroup.Version | Where-Object { $_ }).ToString().Trim()
 if (-not $version) { throw 'Could not read <Version> from the WinUI project.' }
-$arch = if ($Architecture -eq 'ARM64') { 'arm64' } else { 'x64' }
+$arch = $Architecture.ToLowerInvariant()
 
 New-Item -ItemType Directory -Force -Path $installerOutput | Out-Null
 
@@ -79,7 +111,8 @@ $compilerArguments = @(
     "/DOutputDir=$([IO.Path]::GetFullPath($installerOutput).TrimEnd('\'))"
     "/DIconFile=$([IO.Path]::GetFullPath($icon))"
 )
-if ($DisableUpstreamInstallerUpdates) { $compilerArguments += '/DDisableUpstreamInstallerUpdates=1' }
+if ($EnableForkInstallerUpdates) { $compilerArguments += '/DEnableForkInstallerUpdates=1' }
+if ($Architecture -eq 'Universal') { $compilerArguments += "/DArm64SourceDir=$arm64Output" }
 & $iscc @compilerArguments $script
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed to build the installer.' }
 

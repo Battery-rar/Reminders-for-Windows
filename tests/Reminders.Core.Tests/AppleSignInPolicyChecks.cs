@@ -21,7 +21,7 @@ internal static class AppleSignInPolicyChecks
         check(!AppleSignInPolicy.CanImportAccount(new JsonObject()), "missing account identity cannot trigger handoff");
         foreach (var host in new[] { "p01-ckdatabasews.icloud.com", "ckdatabasews.icloud.com.cn", "p01-ckdatabasews.icloud.com.cn" })
         foreach (var endpoint in new[] { "records/query", "changes/zone" })
-            check(AppleSignInPolicy.IsRemindersResponse(new Uri($"https://{host}/database/1/com.apple.reminders/production/private/{endpoint}"), 200), "loaded Reminders can trigger handoff without an observed account response: " + host + "/" + endpoint);
+            check(AppleSignInPolicy.IsRemindersResponse(new Uri($"https://{host}/database/1/com.apple.reminders/production/private/{endpoint}"), 200, host.EndsWith(".cn", StringComparison.Ordinal)), "loaded Reminders can trigger handoff without an observed account response: " + host + "/" + endpoint);
         foreach (var address in new[]
         {
             "https://example.com/database/1/com.apple.reminders/production/private/records/query",

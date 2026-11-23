@@ -36,6 +36,18 @@ var ny = TimeUtil.Zone("America/New_York");
 Equal(TimeUtil.Parse("2026-11-01T05:30:00Z"), TimeUtil.Anchor(new DateTime(2026, 11, 1, 1, 30, 0), ny), "DST overlap chooses first instant");
 Equal(TimeUtil.Parse("2026-03-08T07:00:00Z"), TimeUtil.Anchor(new DateTime(2026, 3, 8, 2, 30, 0), ny), "DST gap advances");
 var instant = TimeUtil.Parse("2026-07-10T00:00:00Z"); Equal(instant, TimeUtil.FromFloating(TimeUtil.ToFloating(instant, "America/New_York"), "America/New_York"), "floating date round trip");
+var allDayWire = DateTimeOffset.Parse("2026-03-08T00:00:00Z", CultureInfo.InvariantCulture).ToUnixTimeMilliseconds();
+var allDayRecord = new JsonObject { ["recordName"] = "Reminder/calendar-date", ["fields"] = new JsonObject
+{
+    ["DueDate"] = CloudKit.Timestamp(allDayWire), ["AllDay"] = CloudKit.Number(1), ["TimeZone"] = CloudKit.String("Asia/Shanghai")
+} };
+Equal("2026-03-08", ICloudClient.ToReminder(allDayRecord).Text("due_date"), "Shanghai all-day date survives UTC conversion");
+Equal("2026-03-08", TimeUtil.Normalize(JsonValue.Create("2026-03-08T00:00:00+08:00"), true), "all-day input keeps its calendar date");
+var allDayFields = ICloudClient.UpdateFields(allDayRecord, new() { ["due_date"] = "2026-03-08" });
+Equal(allDayWire, CloudKit.Field(new JsonObject { ["fields"] = allDayFields }, "DueDate")!.GetValue<long>(), "all-day edit preserves floating calendar date");
+Equal(TimeUtil.Parse("2026-03-08T13:00:00Z"), TimeUtil.NotifyAt("2026-03-08", true, ny), "all-day alert is 9 a.m. local after DST starts");
+var dailyRule = new JsonObject { ["fields"] = Recurrence.Fields("Reminder/calendar-date", J.Node(new { frequency = 1, interval = 1 })) };
+Equal("2026-03-09", Recurrence.Next(dailyRule, "2026-03-08", "America/New_York", TimeUtil.Parse("2026-03-08T13:00:00Z")), "all-day repeat retains a date through DST");
 var vault = new MemorySecrets(); var secrets = new SecretStore(vault); var session = new string('a', 999) + "🛫" + new string('b', 2300);
 secrets.Session("test", session); Equal(session, secrets.Session("test"), "chunked session");
 Check(SecretStore.Chunks(session).All(c => c.Length <= 1000 && !char.IsHighSurrogate(c[^1])), "chunks preserve surrogate pairs");
@@ -182,14 +194,16 @@ foreach (var chinaMainland in new[] { false, true })
         Check(!await client.Restore(default), "restore preserves outstanding challenge"); Equal(1, handshakeCount, "restore did not reissue challenge");
         var delivery = await client.RequestCode(true, default); Check(delivery.Flag("sent") && delivery.Text("method") == "sms", "409 delivery accepted");
         Check((await client.SubmitCode("123456", default)).Flag("authenticated"), "SMS trust/accountLogin completes");
-        Check(loginSecrets.Session("vector@example.com") is not null, "session persisted in vault");
+        Check(loginSecrets.Session("vector@example.com", chinaMainland) is not null, "session persisted in vault");
         Equal(chinaMainland, client.ChinaMainland, "verified native sign-in activates the selected region");
-        Equal(chinaMainland, J.Parse(loginSecrets.Session("vector@example.com")).Flag("china_mainland"), "verified native sign-in persists the selected region");
+        Equal(chinaMainland, J.Parse(loginSecrets.Session("vector@example.com", chinaMainland)).Flag("china_mainland"), "verified native sign-in persists the selected region");
         client.Invalidate(); Check(await client.Restore(default), "trusted token restore"); Equal(1, handshakeCount, "token restore skips SRP");
         Check(loginSecrets.Password("vector@example.com", chinaMainland) is not null, "native sign-in saves the password for its region");
         client.SignOut();
-        Check(loginSecrets.Password("vector@example.com") is null && loginSecrets.Password("vector@example.com", chinaMainland: true) is null,
-            "sign out removes both regional password entries for the account");
+        Check(loginSecrets.Password("vector@example.com", chinaMainland) is null && loginSecrets.Session("vector@example.com", chinaMainland) is null,
+            "sign out removes the selected region's password and session");
+        if (chinaMainland)
+            Equal("existing-global-session", J.Parse(loginSecrets.Session("vector@example.com")).Text("session_token"), "mainland sign-out preserves the global session");
     }
 }
 // A server that repeats its continuation token must fail instead of spinning.
@@ -213,7 +227,7 @@ try
     {
         var body = request.Content is null ? new JsonObject() : J.Parse(await request.Content.ReadAsStringAsync())!;
         var path = request.RequestUri!.AbsolutePath; JsonNode response;
-        if (path.EndsWith("accountLogin")) response = J.Node(new { dsInfo = new { dsid = "123", hsaVersion = 2 }, hsaChallengeRequired = false, hsaTrustedBrowser = true, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } });
+        if (path.EndsWith("accountLogin")) response = J.Node(new { dsInfo = new { dsid = "123", appleId = "test@example.com", hsaVersion = 2 }, hsaChallengeRequired = false, hsaTrustedBrowser = true, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } });
         else if (path.EndsWith("records/modify"))
         {
             var operation = body.Array("operations")[0]!; var record = operation["record"]!.AsObject();
@@ -287,6 +301,8 @@ try
 finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); Directory.Delete(shutdownRoot, true); }
 await AuthVerificationChecks.RunAsync(Check);
 await ChinaMainlandChecks.RunAsync(Check);
+await PhaseOneSecurityChecks.RunAsync(Check);
+await PhaseTwoSyncChecks.RunAsync(Check);
 await BrowserSessionTrustChecks.RunAsync(Check);
 await SignOutChecks.RunAsync(Check);
 await CacheRecoveryChecks.RunAsync(Check);

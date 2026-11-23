@@ -99,12 +99,12 @@ public sealed partial class MainWindow
                 if (closed || finished || !Uri.TryCreate(e.Request.Uri, UriKind.Absolute, out var uri) || !AppleSignInPolicy.IsAppleUri(uri)) return;
                 if (AppleSignInPolicy.HttpFailure(uri, e.Response.StatusCode) is { } failure) ShowFailure(failure);
                 else if (AppleSignInPolicy.Stage(uri) is { } stage) AppLog.Info($"apple sign-in: stage={stage} endpoint={AppleSignInPolicy.AccountEndpoint(uri)} HTTP {e.Response.StatusCode}");
-                if (AppleSignInPolicy.Stage(uri) == "authentication")
+                if (uri.Host == ICloudEndpoints.AuthHost(chinaMainland) && AppleSignInPolicy.Stage(uri) == "authentication")
                     foreach (var header in new[] { "X-Apple-TwoSV-Trust-Token", "X-Apple-Session-Token" })
                         if (e.Response.Headers.Contains(header)) authHeaders[header] = e.Response.Headers.GetHeader(header);
                 // A usable Reminders page may be restored without a fresh
                 // account-login response. Validate its cookies independently.
-                if (!remindersObserved && AppleSignInPolicy.IsRemindersResponse(uri, e.Response.StatusCode))
+                if (!remindersObserved && AppleSignInPolicy.IsRemindersResponse(uri, e.Response.StatusCode, chinaMainland))
                 {
                     remindersObserved = true;
                     AppLog.Info("apple sign-in: stage=reminders session_detected");
@@ -189,7 +189,7 @@ public sealed partial class MainWindow
                     ["account_country"] = request?["accountCountryCode"]?.DeepClone(),
                     ["china_mainland"] = chinaMainland, ["browser_cookie_session"] = true, ["user_agent"] = core.Settings.UserAgent,
                     ["client_id"] = clientId ?? Guid.NewGuid().ToString(),
-                    ["cookies"] = JsonSerializerNode(cookies)
+                    ["cookies"] = JsonSerializerNode(cookies, chinaMainland)
                 };
                 if (closed) return;
                 await _sync.CallAsync("browser_login", new { apple_id = account, state }, lifetime.Token);
@@ -217,7 +217,7 @@ public sealed partial class MainWindow
                 if (!AppleSignInPreview.Enabled)
 #endif
                 await _sync.StartAsync(lifetime.Token);
-                var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RemindersForWindows", "AppleSignIn");
+                var folder = Path.Combine(AppStorage.RootDirectory, "AppleSignIn");
 #if DEBUG
                 if (AppleSignInPreview.Enabled && Environment.GetEnvironmentVariable("REMINDERS_DATA_DIR") is { Length: > 0 } previewData)
                     folder = Path.Combine(previewData, "WebView2");
@@ -276,8 +276,8 @@ public sealed partial class MainWindow
         if (finished) { _lastSignInFailure = null; await BootAsync(); }
     }
 
-    private static JsonArray JsonSerializerNode(IEnumerable<CoreWebView2Cookie> cookies) => new(cookies
-        .Where(c => ICloudEndpoints.IsAppleDomain(c.Domain.TrimStart('.')))
+    private static JsonArray JsonSerializerNode(IEnumerable<CoreWebView2Cookie> cookies, bool chinaMainland) => new(cookies
+        .Where(c => ICloudEndpoints.IsSessionDomain(c.Domain.TrimStart('.'), chinaMainland))
         .Select(c => new JsonObject { ["name"] = c.Name, ["value"] = c.Value, ["domain"] = c.Domain, ["path"] = c.Path, ["http_only"] = c.IsHttpOnly,
             ["expires"] = c.IsSession ? 0 : (long)c.Expires }).Cast<JsonNode>().ToArray());
 

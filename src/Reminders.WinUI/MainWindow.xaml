@@ -45,6 +45,7 @@
        <Button x:Uid="SortButton" Grid.Column="1" Width="40" Height="40"><Button.Flyout><MenuFlyout><RadioMenuFlyoutItem x:Uid="ManualRadioMenuFlyoutItem" Tag="manual" GroupName="sort" IsChecked="True" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="DueDateRadioMenuFlyoutItem" Tag="due" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="PriorityRadioMenuFlyoutItem" Tag="priority" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="TitleRadioMenuFlyoutItem" Tag="title" GroupName="sort" Click="Sort_Click"/></MenuFlyout></Button.Flyout><FontIcon Glyph="&#xE8CB;" FontSize="18"/></Button>
       </Grid>
       <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0">
+       <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView"/></ItemsPanelTemplate></ListView.ItemsPanel>
        <ListView.GroupStyle><GroupStyle HidesIfEmpty="True">
         <GroupStyle.HeaderContainerStyle><Style TargetType="ListViewHeaderItem"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,2"/></Style></GroupStyle.HeaderContainerStyle>
         <GroupStyle.HeaderTemplate><DataTemplate x:DataType="local:ReminderSection"><TextBlock Text="{x:Bind Title}" Style="{ThemeResource BodyStrongTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="14,10,14,2"/></DataTemplate></GroupStyle.HeaderTemplate>
@@ -72,7 +73,16 @@
        </ListView.ItemTemplate>
       </ListView>
       <Grid x:Name="EmptyState" Grid.Row="2" Visibility="Collapsed" IsHitTestVisible="False"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="24" MaxWidth="320"><FontIcon Glyph="&#xE90C;" FontSize="32" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,0,0,4"/><TextBlock x:Uid="EmptyStateTitle" x:Name="EmptyStateTitle" TextWrapping="Wrap" TextAlignment="Center" Style="{ThemeResource SubtitleTextBlockStyle}"/><TextBlock x:Uid="EmptyStateMessage" x:Name="EmptyStateMessage" TextWrapping="Wrap" TextAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel></Grid>
-      <Grid Grid.Row="3" Padding="24,12,24,16" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ToggleSwitch x:Uid="ShowCompleted" x:Name="ShowCompleted" MinWidth="0" VerticalAlignment="Center" Toggled="ShowCompleted_Toggled"/><TextBlock x:Name="RowCount" Grid.Column="1" Style="{ThemeResource CaptionTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></Grid>
+      <Grid Grid.Row="3" Padding="24,12,24,16" ColumnSpacing="12">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <ToggleSwitch x:Uid="ShowCompleted" x:Name="ShowCompleted" MinWidth="0" VerticalAlignment="Center" Toggled="ShowCompleted_Toggled"/>
+       <Grid x:Name="SyncIndicator" Grid.Column="1" ColumnSpacing="6" VerticalAlignment="Center" HorizontalAlignment="Right" Visibility="Collapsed">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <ProgressRing x:Name="SyncRing" Width="14" Height="14" IsActive="False"/>
+        <TextBlock x:Name="SyncLabel" Grid.Column="1" TextTrimming="CharacterEllipsis" Style="{ThemeResource CaptionTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+       </Grid>
+       <TextBlock x:Name="RowCount" Grid.Column="2" Style="{ThemeResource CaptionTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+      </Grid>
      </Grid>
      <primitives:Thumb x:Uid="PaneDivider" x:Name="PaneDivider" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsTabStop="True" UseSystemFocusVisuals="True"
        DragStarted="PaneDivider_DragStarted" DragDelta="PaneDivider_DragDelta" DragCompleted="PaneDivider_DragCompleted"

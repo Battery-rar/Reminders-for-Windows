@@ -15,7 +15,7 @@ The account starts with Inbox, Work, and Personal lists, including reminders wit
 dates, priorities, a tag, completed items, and a deleted item. Create, edit,
 complete, delete, search, sort, and test due-date notifications using
 the normal app controls. Settings and reminders persist on this PC in
-`%LOCALAPPDATA%\RemindersSync\demo\cache.db` (Windows may virtualize this path
+`%LOCALAPPDATA%\RemindersForWindowsGCBD\demo\cache.db` (Windows may virtualize this path
 for packaged installations). They never enter the iCloud cache or upload queue.
 
 Use **Settings → Account → Leave local account** to return to sign-in. Local test data is

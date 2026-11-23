@@ -4,7 +4,7 @@ using Reminders.Core;
 
 internal static class WriteCompatibilityChecks
 {
-    private static JsonNode Account => J.Node(new { dsInfo = new { dsid = "1", hsaVersion = 2 }, hsaTrustedBrowser = true,
+    private static JsonNode Account => J.Node(new { dsInfo = new { dsid = "1", appleId = "test@example.com", hsaVersion = 2 }, hsaTrustedBrowser = true,
         webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } });
     private static HttpResponseMessage Reply(JsonNode body) => new(HttpStatusCode.OK) { Content = new StringContent(body.ToJsonString()) };
 

@@ -12,7 +12,7 @@ internal sealed record AppUpdate(Version Version, Uri DownloadUri, string Sha256
 
 internal sealed class AppUpdater
 {
-    internal const string Repository = "Psavvas/Reminders-for-Windows";
+    internal const string Repository = "Battery-rar/Reminders-for-Windows";
     private const long MaximumInstallerSize = 1024L * 1024 * 1024;
     private static readonly HttpClient Client = CreateClient();
     private readonly HttpClient _client;
@@ -20,12 +20,13 @@ internal sealed class AppUpdater
     public AppUpdater(HttpClient? client = null, string? downloadDirectory = null)
     {
         _client = client ?? Client;
-        _downloadDirectory = downloadDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RemindersForWindows", "Updates");
+        _downloadDirectory = downloadDirectory ?? Path.Combine(AppStorage.RootDirectory, "Updates");
     }
     public static Version CurrentVersion => typeof(AppUpdater).Assembly.GetName().Version ?? new Version(0, 0, 0);
     // Only the Inno installer writes this marker. Development, portable and MSIX
     // builds must not silently acquire an unrelated Inno installation.
-    public static bool CanInstall => File.Exists(Path.Combine(AppContext.BaseDirectory, "installer-installation.txt"))
+    public static bool CanInstall => File.Exists(Path.Combine(AppContext.BaseDirectory, "gcbd-installation.ini"))
+        && File.Exists(Path.Combine(AppContext.BaseDirectory, "gcbd-updates.ini"))
         && File.Exists(Path.Combine(AppContext.BaseDirectory, "unins000.exe"));
 
     private static HttpClient CreateClient()
@@ -59,7 +60,8 @@ internal sealed class AppUpdater
             if (asset.GetProperty("name").GetString() != name) continue;
             var uri = new Uri(asset.GetProperty("browser_download_url").GetString()!);
             var expectedPath = $"/{Repository}/releases/download/{Uri.EscapeDataString(tag)}/{name}";
-            if (uri.Scheme != "https" || uri.Host != "github.com" || uri.AbsolutePath != expectedPath || uri.Query.Length != 0 || uri.Fragment.Length != 0)
+            if (uri.Scheme != "https" || uri.Host != "github.com" || !uri.IsDefaultPort || uri.UserInfo.Length != 0 ||
+                uri.AbsolutePath != expectedPath || uri.Query.Length != 0 || uri.Fragment.Length != 0)
                 throw new InvalidDataException("The update download is not a release asset from this repository.").WithPresentation("ErrorUpdateAssetSource");
             var digest = asset.TryGetProperty("digest", out var value) ? value.GetString() : null;
             if (digest is null || !digest.StartsWith("sha256:", StringComparison.Ordinal) || digest.Length != 71 || !digest[7..].All(Uri.IsHexDigit))

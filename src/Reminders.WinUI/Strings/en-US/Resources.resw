@@ -255,9 +255,6 @@
   <data name="ConflictItem.Content" xml:space="preserve">
     <value>Sync conflicts</value>
   </data>
-  <data name="ContactPaulSavvas" xml:space="preserve">
-    <value>Contact Paul Savvas</value>
-  </data>
   <data name="ContinueInApp" xml:space="preserve">
     <value>Continue in app</value>
   </data>
@@ -1946,5 +1943,8 @@ Accept any updated terms, then check that your lists appear.</value>
   </data>
   <data name="ChinaMainlandSignIn.Content" xml:space="preserve">
     <value>iCloud China mainland (GCBD)</value>
+  </data>
+  <data name="ErrorCacheInUse" xml:space="preserve">
+    <value>Reminders is already open. Close the other instance and try again.</value>
   </data>
 </root>

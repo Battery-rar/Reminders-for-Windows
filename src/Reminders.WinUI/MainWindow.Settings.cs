@@ -184,7 +184,7 @@ public sealed partial class MainWindow
                     ((TextBlock)updates.Content).Text = L10n.Get("CheckForUpdates"); updates.IsEnabled = true;
                 }
             };
-            about.Children.Add(SettingsCard(L10n.Get("Links"), privacy, new HyperlinkButton { Content = new TextBlock { Text = L10n.Get("ViewSourceOnGitHub"), TextWrapping = TextWrapping.Wrap }, NavigateUri = new Uri("https://github.com/Psavvas/Reminders-for-Windows"), Padding = new Thickness(12, 8, 12, 8), HorizontalAlignment = HorizontalAlignment.Left }));
+            about.Children.Add(SettingsCard(L10n.Get("Links"), privacy, new HyperlinkButton { Content = new TextBlock { Text = L10n.Get("ViewSourceOnGitHub"), TextWrapping = TextWrapping.Wrap }, NavigateUri = new Uri($"https://github.com/{AppUpdater.Repository}"), Padding = new Thickness(12, 8, 12, 8), HorizontalAlignment = HorizontalAlignment.Left }));
             about.Children.Add(new Expander { Header = L10n.Get("AboutThisApp"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch,
                 Content = SettingsDescription(L10n.Get("AboutAppDisclaimer")) });
 

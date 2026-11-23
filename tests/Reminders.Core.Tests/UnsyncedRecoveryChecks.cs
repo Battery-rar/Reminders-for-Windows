@@ -62,7 +62,7 @@ internal static class UnsyncedRecoveryChecks
             {
                 var endpoint = request.RequestUri!.AbsolutePath;
                 var body = J.Parse(await request.Content!.ReadAsStringAsync(token))!;
-                if (endpoint.EndsWith("/accountLogin")) return Reply(J.Node(new { dsInfo = new { dsid = "1", hsaVersion = 2 }, hsaTrustedBrowser = true, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } }));
+                if (endpoint.EndsWith("/accountLogin")) return Reply(J.Node(new { dsInfo = new { dsid = "1", appleId = "test@example.com", hsaVersion = 2 }, hsaTrustedBrowser = true, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } }));
                 if (endpoint.EndsWith("/records/modify"))
                 {
                     cloudWrites++;

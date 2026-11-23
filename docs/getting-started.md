@@ -4,7 +4,7 @@
 
 - Windows 10 1809 or newer, x64 or ARM64.
 - Microsoft Edge WebView2 Runtime for Apple's hosted sign-in window.
-- .NET 8 SDK or newer.
+- .NET 10 SDK.
 - Visual Studio 2022 or newer with .NET desktop development and Windows Application
   Packaging Project tools for packaged debugging and the package designer.
 - Windows SDK with MakeAppx and SignTool for command-line MSIX packaging/signing.
@@ -123,6 +123,6 @@ Existing iCloud tags are visible and filterable; create and edit them in Apple
 Reminders. Daily, weekly, monthly and yearly repeats can be created and changed in
 the native reminder editor; unsupported custom schedules remain protected.
 
-Unpackaged logs are under `%LOCALAPPDATA%\RemindersSync\logs\app.log`; packaged
+Unpackaged logs are under `%LOCALAPPDATA%\RemindersForWindowsGCBD\logs\app.log`; packaged
 installations may have a virtualized location. Include the app version and relevant
 error when reporting issues. Review logs before sharing them.

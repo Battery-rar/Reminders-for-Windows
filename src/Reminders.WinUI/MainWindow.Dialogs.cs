@@ -37,7 +37,7 @@ public sealed partial class MainWindow
             {
                 RestoreNavigationSelection();
                 if (_demo) ShowInfo(L10n.Get("DemoMode"), L10n.Get("DemoSyncUnavailable"), InfoBarSeverity.Informational);
-                else await RequestAutoSyncAsync();
+                else await RequestAutoSyncAsync(manual: true);
             }
             else if (args.InvokedItemContainer?.Tag?.ToString() == "conflicts")
             {
@@ -188,7 +188,7 @@ public sealed partial class MainWindow
         if (_view.Kind == NavKind.List) rows = rows.Where(row => row.ListId == _view.Key);
         else if (_view.Kind == NavKind.Smart)
         {
-            if (_view.Key == "today") rows = rows.Where(row => !row.Completed && DateTimeOffset.TryParse(row.DueDate, out var due) && due.LocalDateTime.Date <= DateTime.Today);
+            if (_view.Key == "today") rows = rows.Where(row => !row.Completed && DateTimeOffset.TryParse(row.DueDate, out var due) && (row.AllDay ? due.Date : due.LocalDateTime.Date) <= DateTime.Today);
             else if (_view.Key == "upcoming") rows = rows.Where(row => !row.Completed && row.DueDate is not null);
             else if (_view.Key == "completed") rows = rows.Where(row => row.Completed);
             else if (_view.Key == "deleted") rows = _demoRows.Where(row => row.Deleted);
@@ -202,6 +202,6 @@ public sealed partial class MainWindow
             foreach (var row in rows) row.ContextOnly = false;
         rows = _sort switch { "title" => rows.OrderBy(row => row.Title), "priority" => rows.OrderBy(row => row.Priority == 0 ? 10 : row.Priority), _ => rows.OrderBy(row => row.DueDate is null).ThenBy(row => row.DueDate) };
         SetReminderRows(IncludeDemoFamily(rows.ToList()));
-        SetBadge("smart:today", _demoRows.Count(row => !row.Completed && !row.Deleted && DateTimeOffset.TryParse(row.DueDate, out var due) && due.LocalDateTime.Date <= DateTime.Today));
+        SetBadge("smart:today", _demoRows.Count(row => !row.Completed && !row.Deleted && DateTimeOffset.TryParse(row.DueDate, out var due) && (row.AllDay ? due.Date : due.LocalDateTime.Date) <= DateTime.Today));
     }
 }

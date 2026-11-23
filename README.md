@@ -21,15 +21,18 @@ is available offline from the sign-in screen and **Settings → About → Privac
 
 ## Develop in Visual Studio
 
-Open **Reminders.Windows.sln** in Visual Studio 2022 or newer with .NET desktop
+Open **Reminders.Windows.sln** in Visual Studio 2026 or newer with .NET desktop
 development and Windows Application Packaging Project tools installed. Select
 **x64** or **ARM64** and set **Reminders.Package** as the startup project to debug
 the MSIX application. Configure a local signing certificate in the packaging
 project before deploying; no signing key is committed to this repository.
 
 The solution contains the WinUI app, its C# backend library, the MSIX packaging
-project, and account-free backend/updater tests. Existing SQLite caches and Windows
-Credential Manager entries retain their formats and names.
+project, and account-free backend/updater tests. The fork has an independent
+installer identity, local data directory, and Credential Manager namespace.
+Install it in its default folder for side-by-side use. Sign in again to populate
+the new cache from iCloud. Sync any queued changes in the previous installation
+before switching if you want those changes on the new copy.
 
 ## Repository layout
 
@@ -48,7 +51,7 @@ To test the installed app without an iCloud account, use the
 Its sample reminders and edits are stored separately on this PC and never sync
 to iCloud. The credentials are documented on GitHub only.
 
-With the .NET 8 SDK or newer installed on Windows:
+With the .NET 10 SDK installed on Windows:
 
 ```powershell
 .\scripts\run-windows.ps1 -Demo
@@ -97,28 +100,21 @@ increase for upgrades. See [Getting started](docs/getting-started.md).
 
 Portable builds remain available through `scripts/build-windows.ps1`; the optional
 Inno Setup installer remains available through `scripts/build-installer.ps1` for
-existing users. MSIX installations use Windows/Store package deployment for
-upgrades. The app's GitHub updater executes installers only for Inno installations;
-MSIX and portable builds show a release link.
+existing users. The fork uses an independent development MSIX identity. Store
+distribution requires an identity assigned to this fork in Partner Center.
 
 ## App updates
 
-Installer builds check GitHub for updates on launch and every six hours while
-running. A banner offers **Install and restart** when a newer stable release is
-available. You can also use **Settings → About → Check for updates**. The app downloads
-the matching x64 or ARM64 installer, checks its size and GitHub SHA-256 digest,
-then upgrades the existing installation and reopens. Reminder data, queued
-changes, preferences and sign-in credentials are kept. Save unfinished edits
-before restarting. Failed checks never prevent normal app use.
-
-Install a build containing the updater once to enable it. Portable, development
-and MSIX builds offer a link to the release instead of running an installer.
+**Settings → About → Check for updates** checks the Battery-rar fork and offers
+a link to its release. Installer builds made with `-EnableForkInstallerUpdates`
+also check at launch and every six hours and offer to install a matching release
+from that fork after confirmation. A normal installer keeps updates manual.
 
 To ship an update, increase `<Version>` in the WinUI project and the MSIX version
 in `src/Reminders.Package/Package.appxmanifest` together, commit the changes,
 and push a matching tag (for
 example `v1.0.0`). The tagged commit must be on `main`. CI creates a draft with
-installers, portable ZIPs, and Store submission packages for both architectures. Review and publish
+installers, portable ZIPs, and development MSIX packages for both architectures. Review and publish
 that draft as a stable GitHub release; drafts and prereleases are ignored by
 the updater. Committing code alone does not distribute an update.
 
@@ -168,7 +164,7 @@ retaining cached tasks and queued edits for a later sign-in.
 ```text
 Reminders.WinUI (C# / WinUI 3)
         | direct asynchronous calls and events
-Reminders.Core (C# / .NET 8)
+Reminders.Core (C# / .NET 10)
         +-- Apple SRP authentication and Windows Credential Manager
         +-- CloudKit records, text documents and sync/conflict handling
         +-- SQLite cache, durable outbox and notification planning
@@ -181,7 +177,7 @@ upload acknowledgments preserve and rebase newer queued edits. Sync has bounded
 responses, pagination and a ten-minute deadline. Due dates preserve Apple's
 floating wall-clock representation and daylight-saving behavior.
 
-Unpackaged data is under `%LOCALAPPDATA%\RemindersSync`; Windows may virtualize
+Unpackaged data is under `%LOCALAPPDATA%\RemindersForWindowsGCBD`; Windows may virtualize
 LocalAppData for packaged installations. Passwords and session tokens remain in
 Windows Credential Manager, never SQLite. Review logs before sharing. See
 [the frontend notes](docs/native-windows-frontend.md).
@@ -200,7 +196,7 @@ interoperability requires a disposable account; see [SECURITY_AUDIT.md](SECURITY
 
 ## Credits
 
-Maintained by Paul Savvas. Package publisher: [paulsavvas.com](https://paulsavvas.com).
+Originally developed by [Paul Savvas](https://paulsavvas.com). This fork is published by Battery-rar.
 Apple and iCloud are trademarks of Apple Inc., registered in the U.S. and other
 countries and regions. Windows is a trademark of Microsoft Corporation.
 Product names describe compatibility only; this project is not affiliated with

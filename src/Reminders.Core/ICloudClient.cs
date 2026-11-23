@@ -10,6 +10,8 @@ internal sealed partial class ICloudClient : IDisposable
     private sealed record PendingSignIn(AppleAuth Auth, string Account, string? Password, Action<Action>? CommitAccount);
     private PendingSignIn? pendingSignIn;
     private bool pendingTwoFactor;
+    private string? verifiedDsid;
+    private string? verifiedAppleId;
     public string Account { get; private set; }
     public bool ChinaMainland => auth.ChinaMainland;
     internal event Action<string>? Diagnostic;
@@ -18,14 +20,15 @@ internal sealed partial class ICloudClient : IDisposable
     public bool Restoring { get; set; }
     public bool RestoreRetryable { get; private set; }
     public string RestoreDetail { get; private set; } = "";
-    public ICloudClient(string account, SecretStore secrets, Func<HttpMessageHandler>? handlerFactory = null, bool? cacheChinaMainland = null)
+    public ICloudClient(string account, SecretStore secrets, Func<HttpMessageHandler>? handlerFactory = null, bool cacheChinaMainland = false)
     {
         Account = account; this.secrets = secrets; this.handlerFactory = handlerFactory;
-        var saved = J.Parse(secrets.Session(account)) as JsonObject;
+        var saved = J.Parse(secrets.Session(account, cacheChinaMainland)) as JsonObject;
         // The credential write may finish before the cache transaction commits.
-        if (cacheChinaMainland is bool region && saved.Flag("china_mainland") != region) saved = null;
-        auth = new AppleAuth(saved, handlerFactory, cacheChinaMainland ?? false);
+        if (saved.Flag("china_mainland") != cacheChinaMainland) saved = null;
+        auth = new AppleAuth(saved, handlerFactory, cacheChinaMainland);
         auth.Diagnostic += message => Diagnostic?.Invoke(message);
+        RememberVerifiedIdentity();
     }
     public bool IsSwitchingAccount(string account, bool chinaMainland) =>
         Account.Length > 0 && (account != Account || chinaMainland != ChinaMainland);
@@ -37,7 +40,7 @@ internal sealed partial class ICloudClient : IDisposable
             var signingIn = pendingSignIn?.Auth ?? auth;
             var account = pendingSignIn?.Account ?? Account;
             return new() { ["authenticated"] = Connected && !PendingTwoFactor, ["apple_id"] = account, ["china_mainland"] = signingIn.ChinaMainland,
-                ["needs_2fa"] = PendingTwoFactor, ["trusted_session"] = signingIn.State.Flag("trusted_session"), ["restoring"] = Restoring,
+                ["needs_2fa"] = PendingTwoFactor, ["trusted_session"] = signingIn.State.Flag("trusted_session"), ["restoring"] = Restoring, ["restore_retryable"] = RestoreRetryable,
                 ["can_restore"] = secrets.HasPassword(account, signingIn.ChinaMainland), ["two_factor"] = signingIn.TwoFactorStatus };
         }
     }
@@ -49,15 +52,20 @@ internal sealed partial class ICloudClient : IDisposable
     {
         DiscardPendingSignIn();
         password ??= secrets.Password(account, chinaMainland) ?? throw new CoreException("AUTH_REQUIRED", "No saved iCloud credential is available").WithPresentation("ErrorMissingSavedICloudCredential");
-        var candidate = account == Account && chinaMainland == ChinaMainland ? auth : new AppleAuth(null, handlerFactory, chinaMainland);
-        if (candidate != auth) candidate.Diagnostic += message => Diagnostic?.Invoke(message);
+        var sameSignIn = account == Account && chinaMainland == ChinaMainland;
+        var candidate = new AppleAuth(sameSignIn ? (JsonObject)auth.State.DeepClone() : null, handlerFactory, chinaMainland);
+        candidate.Diagnostic += message => Diagnostic?.Invoke(message);
 
         void SaveSignIn(bool pendingTwoFactor)
         {
             var savedPassword = remember ? password : null;
-            if (pendingTwoFactor && IsSwitchingAccount(account, chinaMainland))
+            if (pendingTwoFactor && (IsSwitchingAccount(account, chinaMainland) || sameSignIn))
                 pendingSignIn = new(candidate, account, savedPassword, commitAccount);
-            else AdoptSession(candidate, account, pendingTwoFactor, commitAccount, savedPassword);
+            else
+            {
+                if (sameSignIn && !pendingTwoFactor) RequireVerifiedIdentity(candidate, allowUnbound: true);
+                AdoptSession(candidate, account, pendingTwoFactor, commitAccount, savedPassword);
+            }
         }
 
         try
@@ -76,7 +84,15 @@ internal sealed partial class ICloudClient : IDisposable
         Restoring = true;
         try
         {
-            if (await auth.Resume(token)) { await CheckBrowserAccess(auth, token); Connected = true; Persist(); }
+            if (await auth.Resume(token))
+            {
+                RequireVerifiedIdentity(auth, allowUnbound: false);
+                await CheckBrowserAccess(auth, token);
+                token.ThrowIfCancellationRequested();
+                Persist();
+                RememberVerifiedIdentity();
+                Connected = true;
+            }
             else await Connect(null, true, false, token);
             RestoreRetryable = false; RestoreDetail = ""; return true;
         }
@@ -89,11 +105,13 @@ internal sealed partial class ICloudClient : IDisposable
         if (pendingSignIn is { } staged)
         {
             await staged.Auth.SubmitCode(code, token);
+            if (staged.Account == Account && staged.Auth.ChinaMainland == ChinaMainland)
+                RequireVerifiedIdentity(staged.Auth, allowUnbound: true);
             AdoptSession(staged.Auth, staged.Account, pendingTwoFactor: false, staged.CommitAccount, staged.Password);
             pendingSignIn = null;
             return Status;
         }
-        try { await auth.SubmitCode(code, token); pendingTwoFactor = false; Connected = true; return Status; }
+        try { await auth.SubmitCode(code, token); pendingTwoFactor = false; Connected = true; RememberVerifiedIdentity(); return Status; }
         finally { Persist(); }
     }
     public async Task<JsonNode> ImportBrowserSession(string? expectedAccount, JsonObject state, CancellationToken token, Action<string>? validateAccount = null,
@@ -126,17 +144,32 @@ internal sealed partial class ICloudClient : IDisposable
         void SaveCredentials()
         {
             if (password is not null) secrets.Password(account, password, candidate.ChinaMainland);
-            secrets.Session(account, candidate.State.ToJsonString());
+            secrets.Session(account, candidate.State.ToJsonString(), candidate.ChinaMainland);
         }
         if (commitAccount is null) SaveCredentials();
         else commitAccount(SaveCredentials);
         if (candidate != auth) auth.Dispose();
         auth = candidate; Account = account; this.pendingTwoFactor = pendingTwoFactor; Connected = !pendingTwoFactor;
+        if (!pendingTwoFactor) RememberVerifiedIdentity();
+    }
+    private void RememberVerifiedIdentity()
+    {
+        verifiedDsid = auth.State.Text("dsid");
+        verifiedAppleId = auth.State.Text("apple_id");
+    }
+    private void RequireVerifiedIdentity(AppleAuth candidate, bool allowUnbound)
+    {
+        var sameAccount = verifiedDsid is { Length: > 0 }
+            ? candidate.State.Text("dsid") == verifiedDsid
+            : (allowUnbound && verifiedAppleId is null) ||
+                string.Equals(candidate.State.Text("apple_id"), verifiedAppleId ?? Account, StringComparison.OrdinalIgnoreCase);
+        if (!sameAccount)
+            throw new CoreException("AUTH_REQUIRED", "Apple returned a different account. Please sign in again.").WithPresentation("ErrorAppleAccountMismatch");
     }
     private static Task CheckBrowserAccess(AppleAuth session, CancellationToken token) =>
         session.State.Flag("browser_cookie_session") && !session.State.Flag("trusted_session")
             ? new CloudKit(session).CheckAccess(token) : Task.CompletedTask;
-    internal void Persist() { auth.SaveCookies(); secrets.Session(Account, auth.State.ToJsonString()); }
+    internal void Persist() { auth.SaveCookies(); secrets.Session(Account, auth.State.ToJsonString(), ChinaMainland); }
     public void Invalidate() { Connected = false; pendingTwoFactor = false; DiscardPendingSignIn(); }
 
     private void DiscardPendingSignIn()
@@ -146,9 +179,10 @@ internal sealed partial class ICloudClient : IDisposable
     }
     public void SignOut()
     {
-        secrets.Delete(Account); Invalidate();
         var chinaMainland = ChinaMainland;
+        secrets.Delete(Account, chinaMainland); Invalidate();
         auth.Dispose(); auth = new AppleAuth(null, handlerFactory, chinaMainland);
+        RememberVerifiedIdentity();
         auth.Diagnostic += message => Diagnostic?.Invoke(message);
     }
     private CloudKit Cloud => Connected && !PendingTwoFactor ? new(auth) : throw new CoreException("AUTH_REQUIRED", "Not signed in to iCloud").WithPresentation("ErrorNotSignedInToICloud");
@@ -193,15 +227,16 @@ internal sealed partial class ICloudClient : IDisposable
     {
         if (r.Text("recordName") is not { Length: > 0 } id) return null;
         var zone = CloudKit.Text(r, "TimeZone");
+        var allDay = CloudKit.Int(r, "AllDay") != 0;
         string? Timestamp(string name) => CloudKit.Field(r, name) is JsonValue v && v.TryGetValue<long>(out var ms) ? TimeUtil.Iso(DateTimeOffset.FromUnixTimeMilliseconds(ms)) : null;
         return new JsonObject
         {
             ["id"] = id, ["list_id"] = CloudKit.Field(r, "List").Text("recordName") ?? "", ["parent_id"] = CloudKit.Field(r, "ParentReminder").Text("recordName"), ["title"] = AppleDocument.Decode(CloudKit.Field(r, "TitleDocument")?.ToString()) ?? CloudKit.Text(r, "Title") ?? "", ["description"] = AppleDocument.Decode(CloudKit.Field(r, "NotesDocument")?.ToString()) ?? CloudKit.Text(r, "Description") ?? "",
-            ["due_date"] = CloudKit.Field(r, "DueDate") is JsonValue v && v.TryGetValue<long>(out var due) ? TimeUtil.Iso(TimeUtil.FromFloating(due, zone)) : null, ["time_zone"] = zone, ["recurrence_ids"] = CloudKit.Field(r, "RecurrenceRuleIDs")?.DeepClone() ?? new JsonArray(),
-            ["priority"] = CloudKit.Int(r, "Priority"), ["completed"] = CloudKit.Int(r, "Completed") != 0, ["completed_date"] = Timestamp("CompletionDate"), ["flagged"] = CloudKit.Int(r, "Flagged") != 0, ["all_day"] = CloudKit.Int(r, "AllDay") != 0, ["deleted"] = CloudKit.Int(r, "Deleted") != 0, ["created"] = Timestamp("CreationDate"), ["modified"] = Timestamp("LastModifiedDate"), ["change_tag"] = r.Text("recordChangeTag"), ["tags"] = new JsonArray(), ["hashtag_ids"] = new JsonArray(), ["dirty"] = 0, ["notified"] = 0
+            ["due_date"] = CloudKit.Field(r, "DueDate") is JsonValue v && v.TryGetValue<long>(out var due) ? TimeUtil.FromCloudDue(due, allDay, zone) : null, ["time_zone"] = zone, ["recurrence_ids"] = CloudKit.Field(r, "RecurrenceRuleIDs")?.DeepClone() ?? new JsonArray(),
+            ["priority"] = CloudKit.Int(r, "Priority"), ["completed"] = CloudKit.Int(r, "Completed") != 0, ["completed_date"] = Timestamp("CompletionDate"), ["flagged"] = CloudKit.Int(r, "Flagged") != 0, ["all_day"] = allDay, ["deleted"] = CloudKit.Int(r, "Deleted") != 0, ["created"] = Timestamp("CreationDate"), ["modified"] = Timestamp("LastModifiedDate"), ["change_tag"] = r.Text("recordChangeTag"), ["tags"] = new JsonArray(), ["hashtag_ids"] = new JsonArray(), ["dirty"] = 0, ["notified"] = 0
         };
     }
-    internal static JsonObject UpdateFields(JsonNode record, JsonObject patch)
+    internal static JsonObject UpdateFields(JsonNode record, JsonObject patch, bool setMissingTimeZone = false)
     {
         var fields = new JsonObject(); var tokens = new List<string>();
         if (patch.ContainsKey("list_id")) { fields["List"] = CloudKit.Reference(patch.Required("list_id")); tokens.Add("list"); }
@@ -220,7 +255,22 @@ internal sealed partial class ICloudClient : IDisposable
         }
         foreach (var (json, cloud) in new[] { ("priority", "Priority"), ("completed", "Completed"), ("flagged", "Flagged"), ("deleted", "Deleted"), ("all_day", "AllDay") }) if (patch.ContainsKey(json)) { fields[cloud] = CloudKit.Number(patch.Number(json, patch.Flag(json) ? 1 : 0)); tokens.Add(json == "all_day" ? "allDay" : json); }
         if (patch.ContainsKey("completed")) { fields["CompletionDate"] = CloudKit.Timestamp(patch.Flag("completed") ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() : null); tokens.Add("completionDate"); }
-        if (patch.ContainsKey("due_date")) { fields["DueDate"] = CloudKit.Timestamp(patch.Text("due_date") is { } due ? TimeUtil.ToFloating(TimeUtil.Parse(due), CloudKit.Text(record, "TimeZone")) : null); tokens.Add("dueDate"); }
+        if (patch.ContainsKey("due_date"))
+        {
+            var allDay = patch.ContainsKey("all_day") ? patch.Flag("all_day") : CloudKit.Int(record, "AllDay") != 0;
+            var zone = CloudKit.Text(record, "TimeZone");
+            if (zone is null && !allDay && patch.Text("due_date") is not null && setMissingTimeZone)
+            {
+                // New timed reminders must carry their origin zone so their
+                // floating wire value still represents the same instant elsewhere.
+                var local = TimeUtil.Zone();
+                zone = TimeZoneInfo.TryConvertWindowsIdToIanaId(local.Id, out var iana) ? iana : local.Id;
+                fields["TimeZone"] = CloudKit.String(zone);
+                tokens.Add("timeZone");
+            }
+            fields["DueDate"] = CloudKit.Timestamp(patch.Text("due_date") is { } due ? TimeUtil.ToCloudDue(due, allDay, zone) : null);
+            tokens.Add("dueDate");
+        }
         fields["LastModifiedDate"] = CloudKit.Timestamp(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()); tokens.Add("lastModifiedDate"); fields["ResolutionTokenMap"] = CloudKit.ResolutionTokens(tokens, record);
         // The earlier tag writer invented a token that Apple's Reminders model
         // does not define. Preserve all other field conflict-resolution tokens.
@@ -231,7 +281,7 @@ internal sealed partial class ICloudClient : IDisposable
     }
     public async Task<JsonObject> Create(JsonObject payload, CancellationToken token)
     {
-        var id = payload.Text("cloud_id") ?? "Reminder/" + Guid.NewGuid().ToString().ToUpperInvariant(); var fields = UpdateFields(new JsonObject(), payload);
+        var id = payload.Text("cloud_id") ?? "Reminder/" + Guid.NewGuid().ToString().ToUpperInvariant(); var fields = UpdateFields(new JsonObject(), payload, setMissingTimeZone: true);
         fields["List"] = CloudKit.Reference(payload.Required("list_id")); fields["Completed"] = CloudKit.Number(0); fields["CompletionDate"] = CloudKit.Timestamp(null); fields["Deleted"] = CloudKit.Number(0); fields["CreationDate"] = CloudKit.Timestamp(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         var operations = new JsonArray();
         if (payload["recurrence"] is JsonObject repeat)
@@ -262,7 +312,7 @@ internal sealed partial class ICloudClient : IDisposable
         if (patch.Flag("completed") && CloudKit.Field(original, "RecurrenceRuleIDs") is JsonArray { Count: > 0 })
             return await CompleteRecurring(original, patch, baseTag, token);
         if (baseTag is not null && baseTag != remoteTag) throw new CoreException("CONFLICT", "This reminder changed on another device while you were editing it.", ToReminder(original)?.ToJsonString() ?? "{}").WithPresentation("ErrorReminderEditConflict");
-        var fields = UpdateFields(original, patch); var result = await Cloud.Modify(CloudKit.Operation("update", id, remoteTag, (JsonObject)fields.DeepClone()), token);
+        var fields = UpdateFields(original, patch, setMissingTimeZone: true); var result = await Cloud.Modify(CloudKit.Operation("update", id, remoteTag, (JsonObject)fields.DeepClone()), token);
         var target = original["fields"] as JsonObject ?? new(); original["fields"] = null; original["fields"] = target;
         foreach (var p in fields) target[p.Key] = p.Value?.DeepClone();
         return MergeResult(original, result);
