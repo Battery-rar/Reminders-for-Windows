@@ -1,6 +1,6 @@
 # Documentation
 
-Current for Apple Reminders on Windows v1.1.3.
+Current for Apple Reminders on Windows v1.1.4.
 
 ## Using the app
 

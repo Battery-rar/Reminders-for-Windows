@@ -89,6 +89,7 @@ internal sealed partial class ICloudClient
         var operations = new JsonArray(
             CloudKit.Operation("update", id, original.Text("recordChangeTag"), active),
             CloudKit.Operation("create", historyId, null, past, parent: CloudKit.Field(original, "List").Text("recordName")));
+        await AddScheduleOperations(id, original, activePatch, active, operations, token);
         var remaining = CloudKit.Int(rule, "OccurrenceCount");
         if (remaining > 1)
             operations.Add(CloudKit.Operation("update", ruleId, rule.Text("recordChangeTag"), new() { ["OccurrenceCount"] = CloudKit.Number(remaining - consumed) }, "RecurrenceRule"));

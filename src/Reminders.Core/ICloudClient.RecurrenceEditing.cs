@@ -68,6 +68,7 @@ internal sealed partial class ICloudClient
         var tokens = J.Parse(fields["ResolutionTokenMap"].Text("value"))!;
         tokens["map"]!["recurrenceRuleIDs"]!["replicaID"] = identity;
         fields["ResolutionTokenMap"] = CloudKit.String(tokens.ToJsonString());
+        await AddScheduleOperations(id, original, patch, fields, operations, token);
         operations.Insert(0, CloudKit.Operation("update", id, original.Text("recordChangeTag"), fields));
         JsonArray result;
         try { result = await Cloud.Modify(operations, token); }
