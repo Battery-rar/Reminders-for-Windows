@@ -28,10 +28,11 @@ public static class ReminderGrouping
         return reminders.Select(item =>
         {
             var due = DateTimeOffset.TryParse(item.DueDate, out var parsed) ? parsed : (DateTimeOffset?)null;
+            var date = item.AllDay ? due?.Date : due?.LocalDateTime.Date;
             var section = due is null ? new Section(99, ReminderSectionId.NoDate)
-                : scope == "today" ? TimeSection(due.Value, item.AllDay) : DateSection(due.Value, now);
+                : scope == "today" ? TimeSection(due.Value, item.AllDay) : DateSection(date!.Value, now.LocalDateTime.Date);
             var overdue = !item.Completed && !item.Deleted && due is not null
-                && (item.AllDay ? due.Value.LocalDateTime.Date < now.LocalDateTime.Date : due.Value < now);
+                && (item.AllDay ? date < now.LocalDateTime.Date : due.Value < now);
             return new { Item = item, Due = due, Section = section, Overdue = overdue };
         }).GroupBy(row => row.Section).OrderBy(group => group.Key.Order).Select(group =>
         {
@@ -50,9 +51,8 @@ public static class ReminderGrouping
         : due.LocalDateTime.Hour < 12 ? new(1, ReminderSectionId.Morning)
         : due.LocalDateTime.Hour < 18 ? new(2, ReminderSectionId.Afternoon) : new(3, ReminderSectionId.Evening);
 
-    private static Section DateSection(DateTimeOffset due, DateTimeOffset now)
+    private static Section DateSection(DateTime date, DateTime today)
     {
-        var date = due.LocalDateTime.Date; var today = now.LocalDateTime.Date;
         if (date < today) return new(0, ReminderSectionId.Overdue);
         if (date == today) return new(1, ReminderSectionId.Today);
         if (date == today.AddDays(1)) return new(2, ReminderSectionId.Tomorrow);

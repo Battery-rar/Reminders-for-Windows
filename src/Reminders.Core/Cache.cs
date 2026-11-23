@@ -32,7 +32,65 @@ internal sealed partial class Cache : IDisposable
         if (Meta("schema_version") != "3" && Settings.Number("sync_minutes") == 10)
             SetSettings(new() { ["sync_minutes"] = 1 });
         SetMeta("schema_version", "3");
+        if (Meta("calendar_dates") != "1") MigrateCalendarDates();
         RetireTagWrites();
+    }
+
+    private void MigrateCalendarDates() => Transaction(() =>
+    {
+        var localDueEdits = new HashSet<string>();
+        var queuedDayModes = new Dictionary<string, bool>();
+        foreach (var queued in Query("""
+            SELECT o.seq, o.reminder_id, o.payload, r.all_day,
+                   json_extract(c.json, '$.fields.AllDay.value') AS cloud_all_day
+            FROM outbox o JOIN reminders r ON r.id=o.reminder_id LEFT JOIN related_records c ON c.id=r.id
+            ORDER BY o.seq
+            """).OfType<JsonObject>())
+        {
+            if (J.Parse(queued.Text("payload")) is not JsonObject patch) continue;
+            var id = queued.Required("reminder_id");
+            var allDay = patch.ContainsKey("all_day") ? patch.Flag("all_day") :
+                queuedDayModes.GetValueOrDefault(id, queued.Number("cloud_all_day", queued.Flag("all_day") ? 1 : 0) != 0);
+            queuedDayModes[id] = allDay;
+            if (!patch.ContainsKey("due_date")) continue;
+            localDueEdits.Add(id);
+            if (allDay && patch.Text("due_date") is { Length: > 10 } due && TryLegacyCalendarDate(due, TimeUtil.Zone()) is { } date)
+            {
+                patch["due_date"] = date;
+                Execute("UPDATE outbox SET payload=@p0 WHERE seq=@p1", patch.ToJsonString(), queued.Number("seq"));
+            }
+        }
+        var rows = Query("""
+            SELECT r.id, r.due_date, r.time_zone,
+                   json_extract(c.json, '$.fields.DueDate.value') AS cloud_due
+            FROM reminders r LEFT JOIN related_records c ON c.id=r.id
+            WHERE r.all_day=1 AND length(r.due_date)>10
+            """);
+        foreach (var row in rows.OfType<JsonObject>())
+        {
+            var id = row.Required("id");
+            var due = row.Required("due_date");
+            var locallyEdited = localDueEdits.Contains(id);
+            string? date;
+            if (!locallyEdited && row["cloud_due"] is JsonValue value && value.TryGetValue<long>(out var cloudDue))
+                date = TimeUtil.FromCloudDue(cloudDue, true, null);
+            else
+                date = TryLegacyCalendarDate(due, TimeUtil.Zone(locallyEdited ? null : row.Text("time_zone")));
+            if (date is not null) Execute("UPDATE reminders SET due_date=@p0 WHERE id=@p1", date, id);
+        }
+        SetMeta("calendar_dates", "1");
+        return true;
+    });
+
+    private static string? TryLegacyCalendarDate(string due, TimeZoneInfo zone) =>
+        DateTimeOffset.TryParse(due, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var oldDue)
+            ? TimeUtil.CalendarDate(TimeZoneInfo.ConvertTime(oldDue, zone).Date) : null;
+
+    private static (string Tomorrow, string Boundary) TodayCutoff()
+    {
+        var zone = TimeUtil.Zone();
+        var tomorrow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).Date.AddDays(1);
+        return (TimeUtil.CalendarDate(tomorrow), TimeUtil.Iso(TimeUtil.Anchor(tomorrow, zone)));
     }
     private SqliteCommand Command(string sql, object?[] args)
     {
@@ -117,12 +175,22 @@ internal sealed partial class Cache : IDisposable
             var sql = "SELECT DISTINCT r.* FROM reminders r ";
             if (p.Text("tag") is { } tag) sql += "JOIN tags t ON t.reminder_id=r.id AND t.name=" + Param(tag) + " ";
             sql += scope == "deleted" ? "WHERE r.deleted=1 " : "WHERE r.deleted=0 ";
-            sql += scope switch { "today" => "AND r.completed=0 AND r.due_date IS NOT NULL AND r.due_date<" + Param(TimeUtil.Tomorrow) + " ", "upcoming" => "AND r.completed=0 AND r.due_date IS NOT NULL ", "completed" => "AND r.completed=1 ", "deleted" => "", _ => p.Flag("include_completed") ? "" : "AND r.completed=0 " };
+            if (scope == "today")
+            {
+                var (tomorrow, boundary) = TodayCutoff();
+                sql += "AND r.completed=0 AND r.due_date < CASE WHEN r.all_day=1 THEN " + Param(tomorrow) + " ELSE " + Param(boundary) + " END ";
+            }
+            else sql += scope switch { "upcoming" => "AND r.completed=0 AND r.due_date IS NOT NULL ", "completed" => "AND r.completed=1 ", "deleted" => "", _ => p.Flag("include_completed") ? "" : "AND r.completed=0 " };
             if (p.Text("list_id") is { } list) sql += "AND r.list_id=" + Param(list) + " ";
             if (p.Optional("search", 4096) is { Length: > 0 } search) sql += "AND (r.title LIKE " + Param("%" + search + "%") + " OR r.description LIKE " + Param("%" + search + "%") + ") ";
+            const string dueOrder = "CASE WHEN r.all_day=1 THEN julianday(r.due_date,'utc') ELSE julianday(r.due_date) END";
             var order = p.Text("sort") switch
             {
-                "title" => "r.title COLLATE NOCASE,r.due_date", "title_desc" => "r.title COLLATE NOCASE DESC", "due" => "r.due_date IS NULL,r.due_date,r.title COLLATE NOCASE", "due_desc" => "r.due_date IS NULL,r.due_date DESC", "priority" => "CASE r.priority WHEN 1 THEN 0 WHEN 5 THEN 1 WHEN 9 THEN 2 ELSE 3 END,r.due_date IS NULL,r.due_date", "created" => "r.created DESC", "created_asc" => "r.created", _ => scope == "completed" ? "r.completed_date DESC NULLS LAST,r.modified DESC" : "r.completed,r.due_date IS NULL,r.due_date,r.title COLLATE NOCASE"
+                "title" => $"r.title COLLATE NOCASE,{dueOrder}", "title_desc" => "r.title COLLATE NOCASE DESC",
+                "due" => $"r.due_date IS NULL,{dueOrder},r.all_day DESC,r.title COLLATE NOCASE", "due_desc" => $"r.due_date IS NULL,{dueOrder} DESC",
+                "priority" => $"CASE r.priority WHEN 1 THEN 0 WHEN 5 THEN 1 WHEN 9 THEN 2 ELSE 3 END,r.due_date IS NULL,{dueOrder}",
+                "created" => "r.created DESC", "created_asc" => "r.created", _ => scope == "completed" ? "r.completed_date DESC NULLS LAST,r.modified DESC"
+                    : $"r.completed,r.due_date IS NULL,{dueOrder},r.all_day DESC,r.title COLLATE NOCASE"
             };
             var rows = Query(sql + "ORDER BY " + order + " LIMIT " + Param(Math.Clamp(p.Number("limit", 1000), 1, scope == "completed" ? 50 : 10000)), args.ToArray());
             foreach (var row in rows.OfType<JsonObject>()) AttachTags(row);
@@ -257,7 +325,7 @@ internal sealed partial class Cache : IDisposable
     });
     public JsonNode Counts
     {
-        get { lock (gate) { long Count(string where, params object?[] args) => Query("SELECT COUNT(*) AS n FROM reminders WHERE " + where, args)[0].Number("n"); return J.Node(new { today = Count("deleted=0 AND completed=0 AND due_date IS NOT NULL AND due_date<@p0", TimeUtil.Tomorrow), upcoming = Count("deleted=0 AND completed=0 AND due_date IS NOT NULL"), all = Count("deleted=0 AND completed=0"), completed = Count("deleted=0 AND completed=1"), deleted = Count("deleted=1") }); } }
+        get { lock (gate) { var (tomorrow, boundary) = TodayCutoff(); long Count(string where, params object?[] args) => Query("SELECT COUNT(*) AS n FROM reminders WHERE " + where, args)[0].Number("n"); return J.Node(new { today = Count("deleted=0 AND completed=0 AND due_date < CASE WHEN all_day=1 THEN @p0 ELSE @p1 END", tomorrow, boundary), upcoming = Count("deleted=0 AND completed=0 AND due_date IS NOT NULL"), all = Count("deleted=0 AND completed=0"), completed = Count("deleted=0 AND completed=1"), deleted = Count("deleted=1") }); } }
     }
     public JsonObject Settings
     {

@@ -49,7 +49,7 @@ internal static class NativeReminderWriteChecks
         using var client = new ICloudClient("test@example.com", secrets, () => new ScriptHandler(async request =>
         {
             var body = J.Parse(await request.Content!.ReadAsStringAsync())!; var path = request.RequestUri!.AbsolutePath;
-            if (path.EndsWith("/accountLogin")) return Reply(J.Node(new { dsInfo = new { dsid = "1", hsaVersion = 2 }, hsaTrustedBrowser = true, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } }));
+            if (path.EndsWith("/accountLogin")) return Reply(J.Node(new { dsInfo = new { dsid = "1", appleId = "test@example.com", hsaVersion = 2 }, hsaTrustedBrowser = true, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } }));
             if (path.EndsWith("/records/lookup")) return Reply(new JsonObject { ["records"] = new JsonArray(body.Array("records").Select(row => records.TryGetValue(row!.Required("recordName"), out var record) ? record.DeepClone() : J.Node(new { recordName = row.Text("recordName"), serverErrorCode = "NOT_FOUND" })).ToArray()) });
             if (!path.EndsWith("/records/modify")) throw new InvalidOperationException("Unexpected endpoint");
             var operations = body.Array("operations");

@@ -33,6 +33,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonPropertyName("deleted")] public bool Deleted { get; set; }
     [JsonPropertyName("tags")] public List<string> Tags { get; set; } = [];
     [JsonPropertyName("dirty")] public long Dirty { get; set; }
+    [JsonPropertyName("change_tag")] public string? ChangeTag { get; set; }
     [JsonPropertyName("recurrence")] public RepeatSchedule? Recurrence { get; set; }
 
     private int _depth;
@@ -46,6 +47,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonIgnore] public string SubtaskToggleLabel => L10n.Format(_expanded ? "CollapseSubtasksOf" : "ExpandSubtasksOf", DisplayTitle);
     public void ConfigureHierarchy(int depth, bool hasChildren, bool expanded)
     {
+        if (_depth == depth && _hasChildren == hasChildren && _expanded == expanded) return;
         _depth = depth; _hasChildren = hasChildren; _expanded = expanded;
         foreach (var name in new[] { nameof(HierarchyIndent), nameof(RowPadding), nameof(RowTitleWeight),
             nameof(SubtaskToggleVisibility), nameof(SubtaskGlyph), nameof(SubtaskToggleLabel), nameof(DescriptionVisibility) })
@@ -60,13 +62,13 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility DescriptionVisibility => _depth > 0 || string.IsNullOrWhiteSpace(Description)
         ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
     [JsonIgnore] public bool IsOverdue => !Completed && !Deleted && DateTimeOffset.TryParse(DueDate, out var due)
-        && (AllDay ? due.LocalDateTime.Date < DateTime.Today : due < DateTimeOffset.Now);
+        && (AllDay ? due.Date < DateTime.Today : due < DateTimeOffset.Now);
     [JsonIgnore] public string DueText
     {
         get
         {
             if (!DateTimeOffset.TryParse(DueDate, out var value)) return "";
-            var due = value.LocalDateTime;
+            var due = AllDay ? value.Date : value.LocalDateTime;
             if (AllDay) return due.Date == DateTime.Today ? L10n.Get("Today") : L10n.Format("DueDateAllDay", due);
             if (due.Date == DateTime.Today) return L10n.Format("DueTodayAt", due);
             if (due.Date == DateTime.Today.AddDays(1)) return L10n.Format("DueTomorrowAt", due);
@@ -93,11 +95,42 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
         PropertyChanged?.Invoke(this, new(nameof(MetadataVisibility)));
         PropertyChanged?.Invoke(this, new(nameof(OverdueMetadataVisibility)));
     }
+
+    internal bool ApplySnapshot(ReminderItem snapshot, out bool editorChanged)
+    {
+        var repeatChanged = Recurrence?.Frequency != snapshot.Recurrence?.Frequency ||
+            Recurrence?.Interval != snapshot.Recurrence?.Interval || Recurrence?.Supported != snapshot.Recurrence?.Supported;
+        editorChanged = Title != snapshot.Title || Description != snapshot.Description || ListId != snapshot.ListId ||
+            DueDate != snapshot.DueDate || AllDay != snapshot.AllDay || Priority != snapshot.Priority ||
+            Flagged != snapshot.Flagged || Completed != snapshot.Completed || Deleted != snapshot.Deleted ||
+            repeatChanged || !Tags.SequenceEqual(snapshot.Tags);
+        ChangeTag = snapshot.ChangeTag;
+        if (!editorChanged && ParentId == snapshot.ParentId && ContextOnly == snapshot.ContextOnly && Dirty == snapshot.Dirty)
+            return false;
+
+        Title = snapshot.Title;
+        Description = snapshot.Description;
+        ListId = snapshot.ListId;
+        DueDate = snapshot.DueDate;
+        AllDay = snapshot.AllDay;
+        Priority = snapshot.Priority;
+        Flagged = snapshot.Flagged;
+        Completed = snapshot.Completed;
+        Deleted = snapshot.Deleted;
+        Recurrence = snapshot.Recurrence;
+        Tags = snapshot.Tags;
+        ParentId = snapshot.ParentId;
+        ContextOnly = snapshot.ContextOnly;
+        Dirty = snapshot.Dirty;
+        RefreshTimeMetadata();
+        return true;
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value; PropertyChanged?.Invoke(this, new(name)); PropertyChanged?.Invoke(this, new(nameof(DisplayTitle)));
+        PropertyChanged?.Invoke(this, new(nameof(SubtaskToggleLabel)));
         PropertyChanged?.Invoke(this, new(nameof(Metadata))); PropertyChanged?.Invoke(this, new(nameof(OverdueMetadataVisibility)));
         PropertyChanged?.Invoke(this, new(nameof(MetadataVisibility))); PropertyChanged?.Invoke(this, new(nameof(DescriptionVisibility)));
     }

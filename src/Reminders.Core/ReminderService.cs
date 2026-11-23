@@ -22,6 +22,10 @@ public sealed partial class ReminderService : IAsyncDisposable
     private readonly object workGate = new();
     private long nextTask;
     private JsonObject authSnapshot;
+    private bool restoringAtStartup;
+    private bool syncWorkerScheduled;
+    private bool syncPending;
+    private bool fullSyncPending;
     private bool disposed;
     public event Action<string, JsonElement>? EventReceived;
     public event Action<string>? Diagnostic;
@@ -74,9 +78,55 @@ public sealed partial class ReminderService : IAsyncDisposable
             finally { cacheLease.Dispose(); }
         }
     }
-    private void QueueSync(bool full = false)
+    private bool QueueSync(bool full = false, bool automatic = false)
     {
-        if (sync is not null && cache.Meta("signed_out") != "1") Queue(ct => sync.Sync(full, ct));
+        lock (workGate)
+        {
+            if (sync is null || disposed || backgroundLifetime.IsCancellationRequested || cache.Meta("signed_out") == "1") return false;
+            if (automatic && (restoringAtStartup || syncWorkerScheduled)) return false;
+            syncPending = true;
+            fullSyncPending |= full;
+            ScheduleSyncWorker();
+            return true;
+        }
+    }
+
+    // Called under workGate. Incoming triggers share one worker, including
+    // changes saved while startup is still restoring the account.
+    private void ScheduleSyncWorker()
+    {
+        if (restoringAtStartup || syncWorkerScheduled || !syncPending || disposed || backgroundLifetime.IsCancellationRequested) return;
+        syncWorkerScheduled = true;
+        Queue(async token =>
+        {
+            try
+            {
+                while (true)
+                {
+                    bool full;
+                    lock (workGate)
+                    {
+                        if (!syncPending || token.IsCancellationRequested) break;
+                        full = fullSyncPending;
+                        syncPending = fullSyncPending = false;
+                    }
+                    await sync!.Sync(full, token);
+                }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                Emit("sync_cancelled", new JsonObject());
+                throw;
+            }
+            finally
+            {
+                lock (workGate)
+                {
+                    syncWorkerScheduled = false;
+                    ScheduleSyncWorker();
+                }
+            }
+        });
     }
     private void Emit(string name, JsonNode data)
     {
@@ -109,7 +159,12 @@ public sealed partial class ReminderService : IAsyncDisposable
     {
         Task[] work;
         Task cancellation;
-        lock (workGate) { cancellation = backgroundLifetime.CancelAsync(); work = queuedWork.Values.ToArray(); }
+        lock (workGate)
+        {
+            cancellation = backgroundLifetime.CancelAsync();
+            syncPending = fullSyncPending = false;
+            work = queuedWork.Values.ToArray();
+        }
         await cancellation;
         await Task.WhenAll(work);
     }
@@ -125,22 +180,39 @@ public sealed partial class ReminderService : IAsyncDisposable
     {
         token.ThrowIfCancellationRequested(); ObjectDisposedException.ThrowIf(disposed, this);
         if (IsLocalDemo) { Emit("ready", J.Node(new { apple_id = "demo", local_only = true })); return Task.CompletedTask; }
-        if (client.Account.Length > 0 && cache.Meta("signed_out") != "1")
+        lock (workGate)
         {
-            client.Restoring = true; authSnapshot = client.Status;
-            Queue(async ct =>
+            if (!restoringAtStartup && !backgroundLifetime.IsCancellationRequested && client.Account.Length > 0 && cache.Meta("signed_out") != "1")
             {
-                bool restored = false;
-                foreach (var delay in new[] { 0, 5, 15, 45, 120, 300 })
+                restoringAtStartup = true;
+                client.Restoring = true; Volatile.Write(ref authSnapshot, client.Status);
+                Queue(async ct =>
                 {
-                    if (delay > 0) await Task.Delay(TimeSpan.FromSeconds(delay), ct);
-                    restored = await WithClient(() => client.Restore(ct), ct);
-                    if (restored || !client.RestoreRetryable) break;
-                    client.Restoring = true; Volatile.Write(ref authSnapshot, client.Status);
-                }
-                client.Restoring = false; Emit("auth_changed", client.Status);
-                if (restored) await sync!.Sync(cache.Lists.Count == 0, ct);
-            });
+                    try
+                    {
+                        bool restored = false;
+                        foreach (var delay in new[] { 0, 5, 15, 45, 120, 300 })
+                        {
+                            if (delay > 0) await Task.Delay(TimeSpan.FromSeconds(delay), ct);
+                            restored = await WithClient(() => client.Restore(ct), ct);
+                            if (restored || !client.RestoreRetryable) break;
+                            client.Restoring = true; Volatile.Write(ref authSnapshot, client.Status);
+                        }
+                        ct.ThrowIfCancellationRequested();
+                        client.Restoring = false; Emit("auth_changed", client.Status);
+                        if (restored) QueueSync(cache.Lists.Count == 0);
+                    }
+                    finally
+                    {
+                        client.Restoring = false;
+                        lock (workGate)
+                        {
+                            restoringAtStartup = false;
+                            ScheduleSyncWorker();
+                        }
+                    }
+                });
+            }
         }
         Emit("ready", J.Node(new { apple_id = client.Account })); return Task.CompletedTask;
     }
@@ -293,7 +365,7 @@ public sealed partial class ReminderService : IAsyncDisposable
             case "update_reminder": return LocalChange(p, "update");
             case "delete_reminder": return LocalChange(p, "delete");
             case "restore_reminder": return LocalChange(p, "restore");
-            case "sync": QueueSync(p.Flag("full")); return J.Node(new { queued = !IsLocalDemo && cache.Meta("signed_out") != "1", local_only = IsLocalDemo });
+            case "sync": return J.Node(new { queued = QueueSync(p.Flag("full"), p.Flag("automatic")), local_only = IsLocalDemo });
             case "sync_status": return J.Node(new { running = sync?.Running ?? false, local_only = IsLocalDemo, last_sync = cache.Meta("last_sync"), has_cursor = cache.Meta("sync_cursor") is not null, pending_pushes = cache.PendingCount, conflicts = cache.Conflicts.Count, sync_minutes = cache.Settings.Number("sync_minutes", 1) });
             case "conflicts": return cache.Conflicts;
             case "resolve_conflict":
@@ -302,9 +374,12 @@ public sealed partial class ReminderService : IAsyncDisposable
                 if (p.Text("keep") == "local" && conflict?["local"] is JsonObject local)
                 {
                     var patch = new JsonObject { ["id"] = conflict.Required("reminder_id") };
+                    var savedPatch = local["conflicting_patch"] as JsonObject;
+                    var changes = savedPatch ?? local;
                     foreach (var f in Cache.EditFields)
-                        if (local.ContainsKey(f) && (f != "recurrence" || local.Flag("recurrence_edit"))) patch[f] = local[f]?.DeepClone();
-                    LocalChange(patch, "update");
+                        if (changes.ContainsKey(f) && (savedPatch is not null || f != "recurrence" || local.Flag("recurrence_edit"))) patch[f] = changes[f]?.DeepClone();
+                    var operation = savedPatch?.ContainsKey("deleted") == true ? savedPatch.Flag("deleted") ? "delete" : "restore" : "update";
+                    LocalChange(patch, operation);
                 }
                 cache.Execute("UPDATE conflicts SET resolved=1 WHERE id=@p0", conflictId); return J.Node(new { resolved = conflictId });
             case "due_notifications": return Notifications(p);
@@ -352,7 +427,11 @@ public sealed partial class ReminderService : IAsyncDisposable
                 foreach (var key in new[] { "priority", "completed", "flagged", "all_day" }) if (p.ContainsKey(key)) fields[key] = p[key]?.DeepClone();
                 var allDay = fields.ContainsKey("all_day") ? fields.Flag("all_day") : current.Flag("all_day");
                 if (p.ContainsKey("due_date")) fields["due_date"] = TimeUtil.Normalize(p["due_date"], allDay);
-                else if (p.ContainsKey("all_day") && allDay && current.Text("due_date") is { } raw) fields["due_date"] = TimeUtil.Normalize(JsonValue.Create(raw), true);
+                else if (allDay != current.Flag("all_day") && current.Text("due_date") is { } raw)
+                {
+                    var zone = TimeUtil.Zone();
+                    fields["due_date"] = allDay ? TimeUtil.CalendarDate(TimeUtil.AllDayDate(raw, zone)) : TimeUtil.Iso(TimeUtil.Parse(raw));
+                }
                 var due = fields.ContainsKey("due_date") ? fields.Text("due_date") : current.Text("due_date");
                 if (p.ContainsKey("recurrence"))
                 {
@@ -388,7 +467,11 @@ public sealed partial class ReminderService : IAsyncDisposable
             }
             cache.Edit(id, fields, dirty: !IsLocalDemo);
             if (IsLocalDemo && fields.ContainsKey("completed")) cache.Execute("UPDATE reminders SET completed_date=@p0 WHERE id=@p1", fields.Flag("completed") ? TimeUtil.Now : null, id);
-            if (!IsLocalDemo && fields.Count > 0) cache.Enqueue(id, operation == "delete" ? "delete" : "update", operation == "delete" ? new JsonObject() : fields, current.Text("change_tag"));
+            if (!IsLocalDemo && fields.Count > 0)
+            {
+                var baseTag = p.Optional("edit_base_tag", 2048) ?? current.Text("change_tag");
+                cache.Enqueue(id, operation == "delete" ? "delete" : "update", operation == "delete" ? new JsonObject() : fields, baseTag);
+            }
             result = cache.Reminder(id);
         }
         return operation == "delete" ? J.Node(new { deleted = id }) : result!;
@@ -399,7 +482,10 @@ public sealed partial class ReminderService : IAsyncDisposable
         if (cache.Meta("signed_out") == "1" || !settings.Flag("notifications_enabled")) return new JsonObject { ["toasts"] = toasts, ["notified_ids"] = ids };
         var now = p.Text("now") is { } raw ? TimeUtil.Parse(raw) : DateTimeOffset.UtcNow;
         var cutoff = now.AddMinutes(-Math.Clamp(p.Number("stale_after_minutes", settings.Number("stale_after_minutes", 60)), 1, 1440));
-        var due = cache.Query("SELECT * FROM reminders WHERE deleted=0 AND completed=0 AND notified=0 AND due_date IS NOT NULL AND due_date<=@p0 ORDER BY due_date", TimeUtil.Iso(now)); var missed = new List<JsonNode>(); var fresh = new List<JsonNode>();
+        var localNow = TimeZoneInfo.ConvertTime(now, TimeUtil.Zone());
+        var due = cache.Query("SELECT * FROM reminders WHERE deleted=0 AND completed=0 AND notified=0 AND due_date <= CASE WHEN all_day=1 THEN @p0 ELSE @p1 END ORDER BY due_date",
+            TimeUtil.CalendarDate(localNow.Date), TimeUtil.Iso(now));
+        var missed = new List<JsonNode>(); var fresh = new List<JsonNode>();
         foreach (var r in due.OfType<JsonObject>()) { var alert = TimeUtil.NotifyAt(r.Required("due_date"), r.Flag("all_day")); if (alert > now) continue; (alert < cutoff ? missed : fresh).Add(r); }
         static JsonNode Summary(List<JsonNode> reminders, bool missed)
         {

@@ -49,7 +49,8 @@ internal static class Recurrence
         var interval = description.Number("interval");
         if (interval is < 1 or > 999) throw CoreException.Bad("This reminder's repeat interval is not supported.").WithPresentation("ErrorUnsupportedRepeatInterval");
         var zone = TimeUtil.Zone(zoneName);
-        var start = TimeZoneInfo.ConvertTime(TimeUtil.Parse(due), zone).DateTime;
+        var allDay = TimeUtil.TryCalendarDate(due, out var date);
+        var start = allDay ? date : TimeZoneInfo.ConvertTime(TimeUtil.Parse(due), zone).DateTime;
         var count = CloudKit.Int(rule, "OccurrenceCount");
         consumed = 0;
         for (var step = 1; step <= 10000; step++)
@@ -65,7 +66,11 @@ internal static class Recurrence
             if (count > 0 && consumed >= count) return null;
             var next = TimeUtil.Anchor(wall, zone);
             if (CloudKit.Field(rule, "EndDate") is JsonValue end && end.TryGetValue<long>(out var endMs) && next > TimeUtil.FromFloating(endMs, zoneName)) return null;
-            if (next > completedAt) return TimeUtil.Iso(next);
+            if (allDay)
+            {
+                if (wall.Date > TimeZoneInfo.ConvertTime(completedAt, zone).Date) return TimeUtil.CalendarDate(wall);
+            }
+            else if (next > completedAt) return TimeUtil.Iso(next);
         }
         throw CoreException.Bad("The next repeat is outside the supported date range.").WithPresentation("ErrorRepeatOutsideDateRange");
     }

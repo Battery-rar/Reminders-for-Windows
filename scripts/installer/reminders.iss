@@ -65,7 +65,13 @@ WizardStyle=modern
 ; The WinUI runtime ships inside the publish output, so the payload is large;
 ; solid LZMA2 keeps the download reasonable.
 
-#if Arch == "arm64"
+#if Arch == "universal"
+  #ifndef Arm64SourceDir
+    #error Arm64SourceDir must be supplied for the universal installer
+  #endif
+ArchitecturesAllowed=x64compatible or arm64
+ArchitecturesInstallIn64BitMode=x64compatible or arm64
+#elif Arch == "arm64"
 ArchitecturesAllowed=arm64
 ArchitecturesInstallIn64BitMode=arm64
 #else
@@ -85,7 +91,12 @@ Name: "startup"; Description: "Start Reminders for Windows GCBD when I sign in";
 
 [Files]
 ; Install the complete self-contained app, including the C# backend library.
+#if Arch == "universal"
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: UseX64Payload
+Source: "{#Arm64SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsArm64
+#else
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs
+#endif
 
 [InstallDelete]
 ; A normal installation turns off a prior opt-in for in-app installation.
@@ -108,6 +119,13 @@ Filename: "{app}\gcbd-updates.ini"; Section: "Installation"; Key: "Updates"; Str
 #endif
 
 [Code]
+#if Arch == "universal"
+function UseX64Payload: Boolean;
+begin
+  Result := not IsArm64;
+end;
+#endif
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';

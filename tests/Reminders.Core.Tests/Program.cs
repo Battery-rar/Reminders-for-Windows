@@ -36,6 +36,18 @@ var ny = TimeUtil.Zone("America/New_York");
 Equal(TimeUtil.Parse("2026-11-01T05:30:00Z"), TimeUtil.Anchor(new DateTime(2026, 11, 1, 1, 30, 0), ny), "DST overlap chooses first instant");
 Equal(TimeUtil.Parse("2026-03-08T07:00:00Z"), TimeUtil.Anchor(new DateTime(2026, 3, 8, 2, 30, 0), ny), "DST gap advances");
 var instant = TimeUtil.Parse("2026-07-10T00:00:00Z"); Equal(instant, TimeUtil.FromFloating(TimeUtil.ToFloating(instant, "America/New_York"), "America/New_York"), "floating date round trip");
+var allDayWire = DateTimeOffset.Parse("2026-03-08T00:00:00Z", CultureInfo.InvariantCulture).ToUnixTimeMilliseconds();
+var allDayRecord = new JsonObject { ["recordName"] = "Reminder/calendar-date", ["fields"] = new JsonObject
+{
+    ["DueDate"] = CloudKit.Timestamp(allDayWire), ["AllDay"] = CloudKit.Number(1), ["TimeZone"] = CloudKit.String("Asia/Shanghai")
+} };
+Equal("2026-03-08", ICloudClient.ToReminder(allDayRecord).Text("due_date"), "Shanghai all-day date survives UTC conversion");
+Equal("2026-03-08", TimeUtil.Normalize(JsonValue.Create("2026-03-08T00:00:00+08:00"), true), "all-day input keeps its calendar date");
+var allDayFields = ICloudClient.UpdateFields(allDayRecord, new() { ["due_date"] = "2026-03-08" });
+Equal(allDayWire, CloudKit.Field(new JsonObject { ["fields"] = allDayFields }, "DueDate")!.GetValue<long>(), "all-day edit preserves floating calendar date");
+Equal(TimeUtil.Parse("2026-03-08T13:00:00Z"), TimeUtil.NotifyAt("2026-03-08", true, ny), "all-day alert is 9 a.m. local after DST starts");
+var dailyRule = new JsonObject { ["fields"] = Recurrence.Fields("Reminder/calendar-date", J.Node(new { frequency = 1, interval = 1 })) };
+Equal("2026-03-09", Recurrence.Next(dailyRule, "2026-03-08", "America/New_York", TimeUtil.Parse("2026-03-08T13:00:00Z")), "all-day repeat retains a date through DST");
 var vault = new MemorySecrets(); var secrets = new SecretStore(vault); var session = new string('a', 999) + "🛫" + new string('b', 2300);
 secrets.Session("test", session); Equal(session, secrets.Session("test"), "chunked session");
 Check(SecretStore.Chunks(session).All(c => c.Length <= 1000 && !char.IsHighSurrogate(c[^1])), "chunks preserve surrogate pairs");
@@ -215,7 +227,7 @@ try
     {
         var body = request.Content is null ? new JsonObject() : J.Parse(await request.Content.ReadAsStringAsync())!;
         var path = request.RequestUri!.AbsolutePath; JsonNode response;
-        if (path.EndsWith("accountLogin")) response = J.Node(new { dsInfo = new { dsid = "123", hsaVersion = 2 }, hsaChallengeRequired = false, hsaTrustedBrowser = true, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } });
+        if (path.EndsWith("accountLogin")) response = J.Node(new { dsInfo = new { dsid = "123", appleId = "test@example.com", hsaVersion = 2 }, hsaChallengeRequired = false, hsaTrustedBrowser = true, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } });
         else if (path.EndsWith("records/modify"))
         {
             var operation = body.Array("operations")[0]!; var record = operation["record"]!.AsObject();
@@ -290,6 +302,7 @@ finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); Directory.Dele
 await AuthVerificationChecks.RunAsync(Check);
 await ChinaMainlandChecks.RunAsync(Check);
 await PhaseOneSecurityChecks.RunAsync(Check);
+await PhaseTwoSyncChecks.RunAsync(Check);
 await BrowserSessionTrustChecks.RunAsync(Check);
 await SignOutChecks.RunAsync(Check);
 await CacheRecoveryChecks.RunAsync(Check);

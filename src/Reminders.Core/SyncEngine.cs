@@ -22,6 +22,7 @@ internal sealed class SyncEngine(Cache cache, ICloudClient client, SemaphoreSlim
         {
             if (Interlocked.Read(ref completed) >= ticket) return J.Node(new { coalesced = true });
             Running = true;
+            emit("sync_started", J.Node(new { determinate = false }));
             cache.RetireTagWrites();
             while (true)
             {
@@ -74,7 +75,6 @@ internal sealed class SyncEngine(Cache cache, ICloudClient client, SemaphoreSlim
     }
     private async Task<JsonNode> Full(CancellationToken token)
     {
-        emit("sync_started", J.Node(new { mode = "full", determinate = false }));
         Progress("SyncProgressDownloadingAll", "Downloading reminders, lists, tags and repeat schedules...");
         // One paginated zone stream replaces N list queries and separate tag
         // history reads. Its cursor describes exactly the snapshot we apply.
@@ -87,7 +87,6 @@ internal sealed class SyncEngine(Cache cache, ICloudClient client, SemaphoreSlim
     }
     private async Task<JsonNode> Delta(CancellationToken token)
     {
-        emit("sync_started", J.Node(new { mode = "delta", determinate = false }));
         Progress("SyncProgressDownloadingChanges", "Downloading changed reminders...");
         var (records, cursor) = await WithClient(() => client.Changes(cache.Meta("sync_cursor"), token), token);
         cache.ApplyRecords(records);
@@ -130,14 +129,21 @@ internal sealed class SyncEngine(Cache cache, ICloudClient client, SemaphoreSlim
             }
             catch (CoreException ex) when (ex.Code == "CONFLICT")
             {
-                var local = cache.Reminder(id) ?? new(); var remote = J.Parse(ex.Detail) ?? new JsonObject();
-                local["recurrence_edit"] = payload.ContainsKey("recurrence");
-                if (remote["recordName"] is not null) remote = ICloudClient.ToReminder(remote) ?? remote;
+                var remote = J.Parse(ex.Detail) as JsonObject ?? new JsonObject();
+                var serverRecord = remote["serverRecord"] as JsonObject ?? remote;
+                if (serverRecord["recordName"] is not null && serverRecord["fields"] is JsonObject)
+                    remote = ICloudClient.ToReminder(serverRecord) ?? remote;
                 cache.Transaction(() =>
                 {
+                    var local = cache.Reminder(id) ?? new();
+                    local["conflicting_patch"] = item.Text("op") == "delete" ? new JsonObject { ["deleted"] = true } : payload.DeepClone();
                     cache.Execute("INSERT INTO conflicts(reminder_id,local_json,remote_json,detected_at) VALUES(@p0,@p1,@p2,@p3)", id, local.ToJsonString(), remote.ToJsonString(), TimeUtil.Now);
                     cache.Execute("DELETE FROM outbox WHERE seq=@p0", seq);
-                    if (remote.Text("id") is not null && cache.Pending(10000).All(p => p.Text("reminder_id") != id)) { cache.Execute("UPDATE reminders SET dirty=0 WHERE id=@p0", id); cache.Upsert(remote); }
+                    if (cache.Query("SELECT seq FROM outbox WHERE reminder_id=@p0 LIMIT 1", id).Count == 0)
+                    {
+                        cache.Execute("UPDATE reminders SET dirty=0 WHERE id=@p0", id);
+                        if (remote.Text("id") == id) cache.Upsert(remote);
+                    }
                     return true;
                 }); conflicts++; emit("conflict", J.Node(new { reminder_id = id }));
             }

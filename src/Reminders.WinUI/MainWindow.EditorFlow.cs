@@ -63,6 +63,7 @@ public sealed partial class MainWindow
         try
         {
             var patch = ReminderEditPatch.Build(selected.Id, _detailBaseline!, draft, values);
+            if (selected.ChangeTag is not null) patch["edit_base_tag"] = selected.ChangeTag;
             if (_demo)
             {
                 if (patch.ContainsKey("title")) selected.Title = title;
@@ -72,13 +73,18 @@ public sealed partial class MainWindow
                 if (patch.ContainsKey("flagged")) selected.Flagged = flagged;
                 if (patch.ContainsKey("priority")) selected.Priority = priority;
                 if (patch.ContainsKey("recurrence")) selected.Recurrence = recurrence;
+                selected.RefreshTimeMetadata();
             }
             else
             {
                 await _sync.CallAsync("update_reminder", patch);
             }
             saved = true;
-            if (ReferenceEquals(_selected, selected) && CaptureDetailValues() == draft) _detailDirty = false;
+            if (ReferenceEquals(_selected, selected) && CaptureDetailValues() == draft)
+            {
+                _detailBaseline = draft;
+                _detailDirty = false;
+            }
             await RefreshAllAsync(); return true;
         }
         catch (Exception error)

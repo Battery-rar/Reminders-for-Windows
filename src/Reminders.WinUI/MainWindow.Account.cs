@@ -59,6 +59,7 @@ public sealed partial class MainWindow
         _searchTimer.Stop();
         AppleIdBox.Text = ""; PasswordBox.Password = ""; CodeBox.Text = "";
         _lastSignInFailure = null; _lastSyncRequest = DateTimeOffset.MinValue;
+        _needsSignIn = false; _syncRefreshPending = false; SetSyncIndicator(false);
         ConflictItem.Visibility = Visibility.Collapsed; AppInfoBar.IsOpen = false; GateError.IsOpen = false;
         _uiPreferences = Services.UiPreferences.Load();
         SetPanePinned(_uiPreferences.NavigationPaneOpen, persist: false);
