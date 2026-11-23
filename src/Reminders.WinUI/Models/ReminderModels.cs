@@ -10,6 +10,7 @@ public sealed class ReminderList
     [JsonPropertyName("id")] public string Id { get; set; } = "";
     [JsonPropertyName("title")] public string Title { get; set; } = "";
     [JsonPropertyName("color_hex")] public string? ColorHex { get; set; }
+    [JsonPropertyName("badge_emblem")] public string? BadgeEmblem { get; set; }
     [JsonPropertyName("count")] public long Count { get; set; }
     [JsonPropertyName("is_group")] public bool IsGroup { get; set; }
 }

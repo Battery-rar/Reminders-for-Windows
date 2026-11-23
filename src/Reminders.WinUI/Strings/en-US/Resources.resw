@@ -16,7 +16,7 @@
     <value>About</value>
   </data>
   <data name="AboutAppDisclaimer" xml:space="preserve">
-    <value>Reminders for Windows is an independent app and is not affiliated with, endorsed by, or sponsored by Apple Inc. or Microsoft Corporation. iCloud is a trademark of Apple Inc. Windows is a trademark of Microsoft Corporation. Sync uses unofficial iCloud interfaces that may change or stop working without notice.</value>
+    <value>Apple Reminders on Windows is an independent app and is not affiliated with, endorsed by, or sponsored by Apple Inc. or Microsoft Corporation. iCloud is a trademark of Apple Inc. Windows is a trademark of Microsoft Corporation. Sync uses unofficial iCloud interfaces that may change or stop working without notice.</value>
   </data>
   <data name="AboutSettingsDescription" xml:space="preserve">
     <value>App information and support.</value>
@@ -136,7 +136,7 @@
     <value>Apple's sign-in service returned HTTP {0}. Reload Apple sign-in to try again, or cancel and use text verification.</value>
   </data>
   <data name="AppTitle" xml:space="preserve">
-    <value>Reminders for Windows</value>
+    <value>Apple Reminders on Windows</value>
   </data>
   <data name="Automatic" xml:space="preserve">
     <value>Automatic</value>
@@ -262,7 +262,7 @@
     <value>Continue on Apple's sign-in page.</value>
   </data>
   <data name="CopiedSignInError" xml:space="preserve">
-    <value>Reminders for Windows {0}
+    <value>Apple Reminders on Windows {0}
 {1}
 {2}
 {3}</value>
@@ -504,7 +504,7 @@ Any subtasks will also be deleted.</value>
     <value>Edit this custom repeat on an Apple device to preserve its schedule.</value>
   </data>
   <data name="EditorPreviewWindowTitle" xml:space="preserve">
-    <value>Reminders for Windows · Editor preview</value>
+    <value>Apple Reminders on Windows · Editor preview</value>
   </data>
   <data name="EditorUnsavedChangesWarning" xml:space="preserve">
     <value>The changes to this task haven't been saved.</value>
@@ -1079,7 +1079,7 @@ Any subtasks will also be deleted.</value>
     <value>My lists</value>
   </data>
   <data name="Navigation.PaneTitle" xml:space="preserve">
-    <value>Reminders for Windows</value>
+    <value>Apple Reminders on Windows</value>
   </data>
   <data name="Never" xml:space="preserve">
     <value>Never</value>
@@ -1227,7 +1227,7 @@ Any subtasks will also be deleted.</value>
     <value>{0} queued changes or conflicts. Review the affected tasks before discarding anything.</value>
   </data>
   <data name="RecoveryPreviewWindowTitle" xml:space="preserve">
-    <value>Reminders for Windows · Recovery preview</value>
+    <value>Apple Reminders on Windows · Recovery preview</value>
   </data>
   <data name="Red" xml:space="preserve">
     <value>Red</value>
@@ -1311,10 +1311,10 @@ Any subtasks will also be deleted.</value>
     <value>Tomorrow</value>
   </data>
   <data name="RemindersForWindowsIconImage.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Reminders for Windows icon</value>
+    <value>Apple Reminders on Windows icon</value>
   </data>
   <data name="RemindersForWindowsTextBlock.Text" xml:space="preserve">
-    <value>Reminders for Windows</value>
+    <value>Apple Reminders on Windows</value>
   </data>
   <data name="RemindersStayOnThisPC" xml:space="preserve">
     <value>Reminders stay on this PC.</value>
@@ -1672,7 +1672,7 @@ Accept any updated terms, then check that your lists appear.</value>
     <value>Updated iCloud terms need attention</value>
   </data>
   <data name="SignInTestWindowTitle" xml:space="preserve">
-    <value>Reminders for Windows · Sign-in test</value>
+    <value>Apple Reminders on Windows · Sign-in test</value>
   </data>
   <data name="SignInToICloud" xml:space="preserve">
     <value>Sign in to iCloud</value>
@@ -1861,7 +1861,7 @@ Accept any updated terms, then check that your lists appear.</value>
     <value>Upcoming</value>
   </data>
   <data name="UpdateAvailableTitle" xml:space="preserve">
-    <value>Reminders for Windows {0} is available</value>
+    <value>Apple Reminders on Windows {0} is available</value>
   </data>
   <data name="UpdateButton.Content" xml:space="preserve">
     <value>Install and restart</value>
@@ -1879,7 +1879,7 @@ Accept any updated terms, then check that your lists appear.</value>
     <value>{0:F0}% downloaded</value>
   </data>
   <data name="UpdateInstallConfirmation" xml:space="preserve">
-    <value>Reminders for Windows will close while the update installs, then reopen. Save any unfinished reminder edits first.</value>
+    <value>Apple Reminders on Windows will close while the update installs, then reopen. Save any unfinished reminder edits first.</value>
   </data>
   <data name="UpdateInstallDescription" xml:space="preserve">
     <value>Install the update and restart when you're ready. Your reminders and sign-in will be kept.</value>
@@ -1967,5 +1967,47 @@ Accept any updated terms, then check that your lists appear.</value>
   </data>
   <data name="QuickAddFiveDays.Text" xml:space="preserve">
     <value>In 5 days</value>
+  </data>
+  <data name="SidebarSettingsItem.Content" xml:space="preserve">
+    <value>Sidebar settings</value>
+  </data>
+  <data name="ListOrder" xml:space="preserve">
+    <value>List order</value>
+  </data>
+  <data name="SidebarSortManual" xml:space="preserve">
+    <value>Manual</value>
+  </data>
+  <data name="SidebarSortAscending" xml:space="preserve">
+    <value>Name (A to Z)</value>
+  </data>
+  <data name="SidebarSortDescending" xml:space="preserve">
+    <value>Name (Z to A)</value>
+  </data>
+  <data name="SidebarManualOrderHint" xml:space="preserve">
+    <value>Use a list’s context menu to move it up or down.</value>
+  </data>
+  <data name="UseICloudListIcon" xml:space="preserve">
+    <value>Use iCloud list icon</value>
+  </data>
+  <data name="CustomListSymbol" xml:space="preserve">
+    <value>SF Symbol or emoji</value>
+  </data>
+  <data name="ListSymbolPlaceholder" xml:space="preserve">
+    <value>cart.fill or 🛒</value>
+  </data>
+  <data name="ListSymbolFallback" xml:space="preserve">
+    <value>This symbol uses the default list icon on Windows.</value>
+  </data>
+  <data name="MoveReminderToList" xml:space="preserve">
+    <value>Move to {0}</value>
+  </data>
+  <data name="CouldntMoveReminder" xml:space="preserve">
+    <value>Couldn’t move reminder</value>
+  </data>
+  <data name="ReminderAlreadyMoved" xml:space="preserve">
+    <value>The reminder changed lists during the drag.</value>
+  </data>
+  <data name="ErrorMoveReminderChanged" xml:space="preserve">
+    <value>The reminder changed lists or was deleted before the move.</value>
   </data>
 </root>

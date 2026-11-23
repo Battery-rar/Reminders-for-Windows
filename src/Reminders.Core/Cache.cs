@@ -139,7 +139,17 @@ internal sealed partial class Cache : IDisposable
         get
         {
             var order = Settings.Array("list_order").Select(v => v?.ToString()).ToList();
-            var rows = Query("SELECT l.*, (SELECT COUNT(*) FROM reminders r WHERE r.list_id=l.id AND r.completed=0 AND r.deleted=0) AS open_count FROM lists l ORDER BY l.position");
+            var rows = Query("""
+                SELECT l.*, (SELECT COUNT(*) FROM reminders r WHERE r.list_id=l.id AND r.completed=0 AND r.deleted=0) AS open_count,
+                       json_extract(c.json, '$.fields.BadgeEmblem') AS badge_field
+                FROM lists l LEFT JOIN related_records c ON c.id=l.id ORDER BY l.position
+                """);
+            foreach (var list in rows.OfType<JsonObject>())
+            {
+                var badge = CloudKit.TextField(J.Parse(list.Text("badge_field")));
+                list.Remove("badge_field");
+                if (badge is not null) list["badge_emblem"] = badge;
+            }
             return new JsonArray(rows.OrderBy(l => { var index = order.IndexOf(l.Text("id")); return index < 0 ? int.MaxValue : index; }).Select(l => l?.DeepClone()).ToArray());
         }
     }

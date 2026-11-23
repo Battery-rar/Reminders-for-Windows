@@ -195,7 +195,7 @@ internal sealed partial class ICloudClient : IDisposable
         {
             if (r.Text("recordType") != "List" || r.Flag("deleted") || r.Text("reason") == "deleted" || CloudKit.Int(r, "Deleted") != 0 || r["fields"] is not JsonObject || string.IsNullOrEmpty(r.Text("recordName"))) continue;
             var rawColor = CloudKit.Text(r, "Color"); var color = rawColor?.StartsWith('#') == true ? rawColor : J.Parse(rawColor).Text("daHexString");
-            lists.Add(J.Node(new { id = r.Text("recordName"), title = CloudKit.Text(r, "Name") ?? "Untitled", color_hex = color, count = CloudKit.Int(r, "Count"), is_group = CloudKit.Int(r, "IsGroup") != 0, position = lists.Count }));
+            lists.Add(J.Node(new { id = r.Text("recordName"), title = CloudKit.Text(r, "Name") ?? "Untitled", color_hex = color, badge_emblem = CloudKit.Text(r, "BadgeEmblem"), count = CloudKit.Int(r, "Count"), is_group = CloudKit.Int(r, "IsGroup") != 0, position = lists.Count }));
         }
         return lists;
     }

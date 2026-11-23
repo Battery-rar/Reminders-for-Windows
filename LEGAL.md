@@ -1,7 +1,7 @@
 # Legal and service notice
 
-Reminders for Windows is an independent community project maintained by
-Paul Savvas and published under the `paulsavvas.com` identity.
+Apple Reminders on Windows is an independent community project published by
+Battery-rar, based on Reminders for Windows by Paul Savvas.
 It is not authorized, sponsored, endorsed, or otherwise approved by Apple Inc.
 or Microsoft Corporation.
 
