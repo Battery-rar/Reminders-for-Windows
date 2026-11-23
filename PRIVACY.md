@@ -34,7 +34,9 @@ If you contact the developer, the information you choose to send, such as your e
 
 ## Local storage and security
 
-For unpackaged installations, reminder data and the account identifier are normally stored in %LOCALAPPDATA%\RemindersForWindowsGCBD\cache.db. Logs, preferences, downloaded updates and the sign-in browser profile are under the same folder. Windows may redirect these locations into package-specific storage for an MSIX installation. The fork starts with its own cache and credentials. Sign in again to download your synced reminders.
+For unpackaged installations, reminder data and the account identifier are normally stored in %LOCALAPPDATA%\Apple Reminders on Windows\cache.db. Logs, preferences, downloaded updates and the sign-in browser profile are under the same folder. Windows may redirect these locations into package-specific storage for an MSIX installation. Upgrades from earlier versions of this fork reuse its existing cache and saved sign-in.
+
+When you print, Windows receives the displayed list and the reminder details included in the preview. The destination you choose in the Windows print dialog may retain or transmit the job according to its own settings.
 
 The reminder database is not encrypted by the app. Its protection depends on your Windows account, device security, and any disk encryption you enable. Passwords and session tokens are stored separately in Windows Credential Manager, not in the SQLite database. Network communication with Apple and GitHub uses HTTPS. No storage or transmission method can guarantee complete security.
 
@@ -48,13 +50,13 @@ You can disable due-date notifications in Settings and adjust lock-screen notifi
 
 Settings → Account → Sign out removes the selected region's saved password, session cookies, and trust tokens while retaining cached reminders and queued edits. Settings → Sync & storage → Discard unsynced changes lets you select tasks with queued uploads or conflicts: new local-only tasks are removed locally, and existing tasks are restored from fresh iCloud copies. Settings → Sync & storage → Clear app cache removes the complete local reminder cache, including pending uploads and conflicts, while retaining saved sign-in and app preferences. These recovery actions require confirmation, do not delete records in iCloud, and do not erase logs, downloaded installers, or device backups.
 
-To remove the fork's local app data, fully close the app and sync any edits you want to keep. Remove its RemindersForWindowsGCBD data folder, or the corresponding package-specific data. Its Windows Credential Manager entries include Battery-rar.RemindersForWindowsGCBD and the region. They include password, session and session chunk entries. Removing the cache discards unsynced edits. Synced reminders stay in iCloud.
+To remove the fork's local app data, sync any edits you want to keep, sign out, and close the app. Then remove the Apple Reminders on Windows data folder or the corresponding package-specific data. The app's Windows Credential Manager entries begin with Battery-rar and include the account and region. Entries cover the password, session and session chunks. Removing the cache discards unsynced edits. Synced reminders stay in iCloud.
 
 ## Privacy requests and children
 
 Depending on the law that applies to you, you may have rights to access, correct, or delete personal information, or object to certain processing. Direct requests about data held by Apple, GitHub, or Microsoft to the relevant provider. The fork's maintainers cannot retrieve your device's private cache or change your iCloud records remotely.
 
-The app is not directed at children under 13. If you believe a child has provided personal information to the developer through a support request, contact the address above so it can be addressed.
+The app is not directed at children under 13. If you believe a child has provided personal information through a support request, contact the maintainer through the repository above without posting the child's information publicly.
 
 ## Changes to this policy
 

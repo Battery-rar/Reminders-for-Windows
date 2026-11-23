@@ -26,6 +26,7 @@ public sealed partial class MainWindow : Window
     private long _accountEpoch;
     private readonly Microsoft.UI.Xaml.Data.CollectionViewSource _sectionView = new() { IsSourceGrouped = true };
     private (NavKind Kind, string Key, string Search, string Sort, bool Completed)? _renderedQuery;
+    private string? _renderedReminderTitle;
     private bool _usingGroupedReminderSource;
     private bool _regrouping;
     private DateTime _reminderDate = DateTime.Today;
@@ -182,7 +183,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 #endif
-        if (Environment.GetCommandLineArgs().Contains("--demo", StringComparer.OrdinalIgnoreCase) || Environment.GetEnvironmentVariable("REMINDERS_DEMO") == "1")
+        if (App.IsDemoLaunch)
         {
             LoadDemo();
             return;
@@ -387,6 +388,7 @@ public sealed partial class MainWindow : Window
     {
         var presentation = CurrentReminderQuery;
         var sameQuery = _renderedQuery == presentation;
+        _renderedReminderTitle = _view.Label;
         var selected = _selected;
         var projectSavedDetail = selected is not null && ReferenceEquals(_savedDetailPendingProjection, selected);
         var preserveEditor = selected is not null && (projectSavedDetail || preserveDetail || _detailDirty || fromSync && (_savingDetail || IsEditorFocused()));
@@ -1266,6 +1268,8 @@ public sealed partial class MainWindow : Window
     private async void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         _windowClosed = true; _accountEpoch++; _searchTimer.Stop(); _reminderLoads.Invalidate(); _navigationLoads.Invalidate();
+        _printJob?.Dispose();
+        _printJob = null;
         _statusTimer.Stop(); _notificationTimer.Stop(); _syncTimer.Stop(); _paneHoverOpenTimer.Stop(); _paneHoverCloseTimer.Stop();
         _updateTimer.Stop(); _updateLifetime.Cancel();
         if (_notificationsRegistered) { try { AppNotificationManager.Default.Unregister(); } catch { } }

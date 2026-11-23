@@ -7,11 +7,10 @@ namespace Reminders.Windows;
 
 public sealed partial class MainWindow
 {
-    // The same checked-in policy is embedded in every build, including offline
-    // sign-in. Its format is deliberately limited to headings and paragraphs.
+    // Checked-in policies are available offline and use only headings and paragraphs.
     private static ScrollViewer CreatePrivacyPolicyContent()
     {
-        using var stream = typeof(MainWindow).Assembly.GetManifestResourceStream("Reminders.Windows.Privacy.md")
+        using var stream = typeof(MainWindow).Assembly.GetManifestResourceStream(L10n.Get("PrivacyPolicyResource"))
             ?? throw new InvalidOperationException(L10n.Get("PrivacyPolicyMissing"));
         using var reader = new StreamReader(stream);
         var panel = new StackPanel { Spacing = 14 };

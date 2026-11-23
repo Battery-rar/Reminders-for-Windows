@@ -1939,7 +1939,7 @@ Accept any updated terms, then check that your lists appear.</value>
     <value>Your iCloud reminders, at home on Windows.</value>
   </data>
   <data name="ChinaMainlandSignIn.Content" xml:space="preserve">
-    <value>iCloud China mainland (GCBD)</value>
+    <value>iCloud China mainland (云上贵州)</value>
   </data>
   <data name="ErrorCacheInUse" xml:space="preserve">
     <value>Reminders is already open. Close the other instance and try again.</value>
@@ -2003,5 +2003,29 @@ Accept any updated terms, then check that your lists appear.</value>
   </data>
   <data name="ErrorMoveReminderChanged" xml:space="preserve">
     <value>The reminder changed lists or was deleted before the move.</value>
+  </data>
+  <data name="PrintListButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Print reminder list</value>
+  </data>
+  <data name="PrintListButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Print reminder list</value>
+  </data>
+  <data name="PrintListFailed" xml:space="preserve">
+    <value>Couldn't print reminders</value>
+  </data>
+  <data name="PrintListUnavailable" xml:space="preserve">
+    <value>Windows printing is unavailable right now.</value>
+  </data>
+  <data name="PrintListJobFailed" xml:space="preserve">
+    <value>Windows couldn't complete the print job.</value>
+  </data>
+  <data name="PrintListSearch" xml:space="preserve">
+    <value>Search: {0}</value>
+  </data>
+  <data name="PrintListDue" xml:space="preserve">
+    <value>Due: {0}</value>
+  </data>
+  <data name="PrivacyPolicyResource" xml:space="preserve">
+    <value>Reminders.Windows.Privacy.md</value>
   </data>
 </root>

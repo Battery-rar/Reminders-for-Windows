@@ -1,14 +1,20 @@
 using Microsoft.UI.Xaml;
+using Reminders.Core;
 
 namespace Reminders.Windows;
 
 public partial class App : Application
 {
     private Window? _window;
+    internal static bool IsDemoLaunch =>
+        Environment.GetCommandLineArgs().Contains("--demo", StringComparer.OrdinalIgnoreCase)
+        || Environment.GetEnvironmentVariable("REMINDERS_DEMO") == "1";
+
     public App()
     {
+        if (!IsDemoLaunch) AppStorage.MigrateLegacyData();
         UnhandledException += (_, args) => Services.AppLog.Error("Unhandled UI exception", args.Exception);
-        Services.AppLog.Info("Starting Reminders " + typeof(App).Assembly.GetName().Version + " build=" +
+        Services.AppLog.Info("Starting Apple Reminders on Windows " + typeof(App).Assembly.GetName().Version + " build=" +
             System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(App).Assembly)?.InformationalVersion);
         try { InitializeComponent(); }
         catch (Exception error)

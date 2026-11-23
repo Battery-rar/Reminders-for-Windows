@@ -118,7 +118,7 @@ step and does not provide public trust. See Microsoft's
 
 ## Product display name
 
-The application and package display name is **Reminders for Windows**. The
+The application and package display name is **Apple Reminders on Windows**. The
 manifest uses the exact product identity supplied from Partner Center for this
 product, including the casing of `PaulSavvas.RemindersforWindows`. Upload its
 packages to that product's submission and select the reserved display name for

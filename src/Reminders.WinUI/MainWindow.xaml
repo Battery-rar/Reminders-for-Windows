@@ -8,7 +8,9 @@
   <Grid.KeyboardAccelerators>
    <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewAccelerator_Invoked"/>
    <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="SearchAccelerator_Invoked"/>
+   <KeyboardAccelerator Key="P" Modifiers="Control" Invoked="PrintListAccelerator_Invoked"/>
   </Grid.KeyboardAccelerators>
+  <Canvas x:Name="PrintCanvas" Grid.Row="1" Opacity="0" IsHitTestVisible="False"/>
   <TitleBar x:Name="WindowTitleBar" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" IsPaneToggleButtonVisible="True" PaneToggleRequested="TitleBar_PaneToggleRequested">
    <TitleBar.IconSource><ImageIconSource ImageSource="ms-appx:///Assets/icon-v2.png"/></TitleBar.IconSource>
   </TitleBar>
@@ -41,9 +43,10 @@
      <Grid.ColumnDefinitions><ColumnDefinition x:Name="ReminderColumn"/><ColumnDefinition x:Name="SplitterColumn" Width="8"/><ColumnDefinition x:Name="DetailsColumn"/></Grid.ColumnDefinitions>
      <Grid x:Name="ReminderHost" Background="{ThemeResource LayerFillColorDefaultBrush}">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <Grid Margin="24,0,24,12" MinHeight="64" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <Grid Margin="24,0,24,12" MinHeight="64" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <StackPanel VerticalAlignment="Center"><TextBlock x:Uid="ViewTitle" x:Name="ViewTitle" TextTrimming="CharacterEllipsis" Style="{ThemeResource TitleTextBlockStyle}"/><TextBlock x:Name="ViewSubtitle" Visibility="Collapsed" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,2,0,0"/></StackPanel>
-       <Button x:Uid="AddButton" x:Name="AddButton" Grid.Column="1" Height="36" MinWidth="36" VerticalAlignment="Center" Style="{ThemeResource AccentButtonStyle}" Click="Add_Click" ToolTipService.Placement="Bottom"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14"/><TextBlock x:Uid="AddLabel" x:Name="AddLabel"/></StackPanel></Button>
+       <Button x:Uid="PrintListButton" x:Name="PrintListButton" Grid.Column="1" Height="36" Width="36" VerticalAlignment="Center" Style="{ThemeResource SubtleButtonStyle}" Click="PrintList_Click" ToolTipService.Placement="Bottom"><FontIcon Glyph="&#xE749;" FontSize="16"/></Button>
+       <Button x:Uid="AddButton" x:Name="AddButton" Grid.Column="2" Height="36" MinWidth="36" VerticalAlignment="Center" Style="{ThemeResource AccentButtonStyle}" Click="Add_Click" ToolTipService.Placement="Bottom"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14"/><TextBlock x:Uid="AddLabel" x:Name="AddLabel"/></StackPanel></Button>
       </Grid>
       <Grid Grid.Row="1" Padding="24,0,24,12" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <AutoSuggestBox x:Uid="SearchBox" x:Name="SearchBox" QueryIcon="Find" TextChanged="SearchBox_TextChanged" MinHeight="40" VerticalAlignment="Center"/>
