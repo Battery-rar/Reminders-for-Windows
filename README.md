@@ -1,7 +1,7 @@
 <div align="center">
 <img src="src/Reminders.WinUI/Assets/icon-v2.png" width="112" alt="Reminders app icon">
 
-# Reminders for Windows GCBD
+# Reminders for Windows
 
 **A native WinUI 3 client for iCloud Reminders, written in C#/.NET.**
 </div>

@@ -1,8 +1,8 @@
-# Privacy Policy for Reminders for Windows GCBD
+# Privacy Policy for Reminders for Windows
 
 Effective date: October 5, 2026. Last updated: November 23, 2026.
 
-Reminders for Windows GCBD is the Battery-rar fork of the independent Windows app originally developed by Paul Savvas. This policy covers the fork's handling of personal information. The app is independent of Apple and Microsoft. For privacy questions about the fork, use the Battery-rar repository. Keep account information and logs out of public issues.
+This policy covers the Battery-rar fork of Reminders for Windows, the independent app originally developed by Paul Savvas. The app is independent of Apple and Microsoft. For privacy questions about the fork, use the Battery-rar repository. Keep account information and logs out of public issues.
 
 ## Information the app accesses
 
