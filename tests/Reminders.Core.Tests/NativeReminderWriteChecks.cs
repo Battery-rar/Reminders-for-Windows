@@ -18,8 +18,8 @@ internal static class NativeReminderWriteChecks
                     ["NotesDocument"] = CloudKit.String(AppleDocumentEditingChecks.NativeDocument),
                     ["TitleDocumentAsset"] = J.Node(new { type = "ASSETID", value = new { downloadURL = "https://example.invalid/native-document" } }),
                     ["List"] = CloudKit.Reference("List/test"), ["TimeZone"] = CloudKit.String("UTC"),
-                    ["DueDate"] = CloudKit.Timestamp(TimeUtil.ToFloating(due, "UTC")),
-                    ["StartDate"] = CloudKit.Timestamp(TimeUtil.ToFloating(due.AddHours(-1), "UTC")),
+                    ["DueDate"] = CloudKit.Timestamp(due.ToUnixTimeMilliseconds()),
+                    ["StartDate"] = CloudKit.Timestamp(due.AddHours(-1).ToUnixTimeMilliseconds()),
                     ["Completed"] = CloudKit.Number(0), ["Priority"] = CloudKit.Number(5), ["Flagged"] = CloudKit.Number(1), ["AllDay"] = CloudKit.Number(0),
                     ["RecurrenceRuleIDs"] = J.Node(new { type = "STRING_LIST", value = new[] { "phone-rule" } }),
                     ["AlarmIDs"] = J.Node(new { type = "STRING_LIST", value = new[] { "phone-alarm" } }),
@@ -98,7 +98,7 @@ internal static class NativeReminderWriteChecks
         check(history.Flag("completed") && history.Text("title") == "New_Name" && history.Text("description") == "New notes", "native history retains the renamed title and notes");
         check(history.Number("priority") == 5 && history.Flag("flagged") && history.Text("list_id") == "List/test", "native history retains priority, flag and list");
         check(history.Text("parent_id") == "Reminder/parent" && records["Reminder/phone-history"]["fields"]!["ParentReminder"].Text("type") == "REFERENCE", "completed subtask history retains a writable parent reference");
-        check(CloudKit.Field(records["Reminder/phone-history"], "DueDate")!.GetValue<long>() == TimeUtil.ToFloating(due, "UTC"), "history retains the completed occurrence's due date");
+        check(CloudKit.Field(records["Reminder/phone-history"], "DueDate")!.GetValue<long>() == due.ToUnixTimeMilliseconds(), "history retains the completed occurrence's due date");
         check(CloudKit.Field(records["Reminder/phone"], "HashtagIDs")!.AsArray().Count == 1 && CloudKit.Field(records["Reminder/phone"], "AttachmentIDs")!.AsArray().Count == 1, "completion preserves native relationships on the active reminder");
         check(history.Array("recurrence_ids").Count == 0 && records["Reminder/phone-history"]["parent"].Text("recordName") == "List/test", "completed history has a list parent and no recurrence");
         var historyTokens = J.Parse(CloudKit.Text(records["Reminder/phone-history"], "ResolutionTokenMap"))!["map"]!.AsObject();

@@ -2,14 +2,14 @@
 
 Select an unfinished task and choose **Add subtask** in its details pane. The
 new task inherits its parent's list and has its own title, notes, due date,
-priority, flag and completion state. Save unfinished changes to the parent
-before opening the subtask dialog. Subtasks can themselves have subtasks.
+priority, flag and completion state. Valid parent edits save automatically
+before the subtask dialog opens. Subtasks can themselves have subtasks.
 
 The borderless arrow at the right of a task expands or collapses its children
 for the current session. Children use compact, indented checklist rows with
 regular-weight titles and no repeated "Subtask" label or vertical guide line.
-Child notes are available in the details pane; meaningful dates and priority
-remain visible in the list. Indentation is capped to keep deep trees readable.
+The list shows a preview of child notes alongside dates and priority. Open a
+child's details to read the full notes. Indentation is capped to keep deep trees readable.
 Existing iCloud subtasks use the same display. Sorting keeps families
 together; search, tags, Today and Upcoming include related tasks as context.
 Only matching tasks contribute to the result count. A missing parent or a

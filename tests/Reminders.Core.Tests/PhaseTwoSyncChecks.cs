@@ -15,6 +15,7 @@ internal static class PhaseTwoSyncChecks
             await RestoreAndSync(Path.Combine(root, "mainland"), true, check);
             await PreserveDraftBase(Path.Combine(root, "editor"), check);
             CheckCalendarMigration(Path.Combine(root, "calendar.db"), check);
+            CheckUtcScheduleMigration(Path.Combine(root, "utc.db"), check);
         }
         finally
         {
@@ -137,7 +138,7 @@ internal static class PhaseTwoSyncChecks
     {
         const string cloudDate = "2026-03-08";
         var raw = TimeUtil.Parse(cloudDate + "T00:00:00Z").ToUnixTimeMilliseconds();
-        var oldDate = TimeUtil.Iso(TimeUtil.FromFloating(raw, "Asia/Shanghai"));
+        var oldDate = TimeUtil.Iso(TimeUtil.Anchor(DateTimeOffset.FromUnixTimeMilliseconds(raw).UtcDateTime, TimeUtil.Zone("Asia/Shanghai")));
         using (var cache = new Cache(path))
         {
             cache.ApplyRecords(new JsonArray(J.Node(new
@@ -164,6 +165,56 @@ internal static class PhaseTwoSyncChecks
 
     private static async Task<JsonNode> Call(ReminderService service, string method, object parameters) =>
         J.Parse((await service.CallAsync(method, JsonSerializer.SerializeToElement(parameters))).GetRawText())!;
+
+    private static void CheckUtcScheduleMigration(string path, Action<bool, string> check)
+    {
+        const string oldShifted = "2026-07-01T08:30:00.000000Z";
+        const string pendingDate = "2026-07-03T12:00:00.000000Z";
+        var original = TimeUtil.Parse("2026-07-01T16:30:00Z");
+        JsonNode NativeRecord(string id) => J.Node(new
+        {
+            recordName = id, recordType = "Reminder", recordChangeTag = "same-cloud-version",
+            fields = new { DueDate = CloudKit.Timestamp(original.ToUnixTimeMilliseconds()), TimeZone = CloudKit.String("Asia/Shanghai") }
+        });
+
+        using (var cache = new Cache(path))
+        {
+            cache.ApplyRecords(new JsonArray(NativeRecord("title-edit"), NativeRecord("date-edit"), NativeRecord("clean-conflict"), NativeRecord("newer-wire")));
+            cache.Execute("UPDATE reminders SET due_date=@p0, dirty=1, notified=1 WHERE id='title-edit'", oldShifted);
+            cache.Enqueue("title-edit", "update", J.Node(new { title = "An offline title" }), "base");
+            cache.Execute("UPDATE reminders SET due_date=@p0, dirty=1 WHERE id='date-edit'", pendingDate);
+            cache.Enqueue("date-edit", "update", J.Node(new { due_date = pendingDate }), "base");
+            cache.Execute("UPDATE reminders SET due_date=@p0 WHERE id='clean-conflict'", oldShifted);
+            cache.Execute("INSERT INTO conflicts(reminder_id,local_json,remote_json,detected_at) VALUES('clean-conflict','{}','{}','now')");
+            cache.Execute("UPDATE reminders SET due_date=@p0, dirty=1 WHERE id='newer-wire'", oldShifted);
+            var newerWire = NativeRecord("newer-wire");
+            newerWire["recordChangeTag"] = "updated-cloud-version";
+            newerWire["fields"]!["AllDay"] = CloudKit.Number(1);
+            cache.ApplyRecords(new JsonArray(newerWire));
+            cache.SetMeta("cloudkit_read_protocol", "4");
+            cache.SetMeta("cloud_due_utc", null);
+        }
+        using var restored = new Cache(path);
+        check(restored.Reminder("title-edit").Text("due_date") == TimeUtil.Iso(original) &&
+            restored.Reminder("title-edit").Number("notified") == 1 && restored.PendingCount == 2,
+            "cache repair corrects double conversion without duplicating already delivered notifications");
+        check(restored.Reminder("date-edit").Text("due_date") == pendingDate, "cache repair preserves a queued date change");
+        check(restored.Reminder("clean-conflict").Text("due_date") == TimeUtil.Iso(original) && restored.Conflicts.Count == 1,
+            "cache repair also corrects a known cloud version without resolving the conflict");
+        check(restored.Reminder("newer-wire").Text("due_date") == oldShifted && restored.Meta("cloudkit_read_protocol") is null,
+            "cache repair waits for a fresh snapshot before decoding data from a newer wire revision");
+
+        var localToday = TimeUtil.CalendarDate(DateTime.Today);
+        restored.Upsert(J.Node(new { id = "done-today", list_id = "", completed = true, due_date = localToday, all_day = true }));
+        restored.Upsert(J.Node(new { id = "done-undated", list_id = "", completed = true }));
+        foreach (var scope in new[] { "today", "upcoming" })
+        {
+            check(!restored.Reminders(J.Node(new { scope })).Any(row => row.Text("id") == "done-today"), $"{scope} defaults to hiding completed");
+            var shown = restored.Reminders(J.Node(new { scope, include_completed = true }));
+            check(shown.Any(row => row.Text("id") == "done-today") && !shown.Any(row => row.Text("id") == "done-undated"),
+                $"{scope} shows completed reminders matching its date filter");
+        }
+    }
 
     private static HttpResponseMessage Reply(object body, HttpStatusCode status = HttpStatusCode.OK) =>
         new(status) { Content = new StringContent(JsonSerializer.Serialize(body)) };

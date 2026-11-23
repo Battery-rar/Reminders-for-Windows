@@ -6,8 +6,9 @@ details of private Apple interfaces, not a supported Apple service contract.
 ## Records and synchronization
 
 - Reminders use the private `com.apple.reminders` CloudKit container. Titles and
-  notes use Apple's document encoding; dates preserve floating wall-clock values
-  and the reminder's time zone.
+  notes use Apple's document encoding. Timed reminders use absolute UTC
+  timestamps, and the named time zone preserves their repeat schedule.
+  All-day reminders retain the calendar date in the reminder's zone.
 - Sync requests Reminder, List, Hashtag and RecurrenceRule records in one paginated
   zone-change stream. Batch application and cursor updates are transactional.
 - Mutations use current revision tags and preserve fields outside the requested

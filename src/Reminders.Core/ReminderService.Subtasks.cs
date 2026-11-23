@@ -10,6 +10,9 @@ public sealed partial class ReminderService
         {
             var id = cache.ResolveId(patch.Required("id"));
             var current = cache.Reminder(id) ?? throw CoreException.Bad("This task is no longer available.").WithPresentation("ErrorReminderUnavailable");
+            if (patch.Optional("expected_list_id", 2048) is { } expectedList &&
+                (current.Flag("deleted") || current.Text("list_id") != expectedList))
+                throw CoreException.Bad("The reminder changed lists or was deleted before the move.").WithPresentation("ErrorMoveReminderChanged");
             var descendants = cache.Descendants(id, sameFamilyOnly: true);
             if (patch.Flag("completed") && descendants.Count > 0 && current["recurrence"] is not null)
                 throw CoreException.Bad("Complete a repeating task with subtasks on an Apple device to preserve its schedule.").WithPresentation("ErrorRepeatWithSubtasksCompletion");

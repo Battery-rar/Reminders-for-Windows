@@ -195,7 +195,7 @@ internal sealed partial class ICloudClient : IDisposable
         {
             if (r.Text("recordType") != "List" || r.Flag("deleted") || r.Text("reason") == "deleted" || CloudKit.Int(r, "Deleted") != 0 || r["fields"] is not JsonObject || string.IsNullOrEmpty(r.Text("recordName"))) continue;
             var rawColor = CloudKit.Text(r, "Color"); var color = rawColor?.StartsWith('#') == true ? rawColor : J.Parse(rawColor).Text("daHexString");
-            lists.Add(J.Node(new { id = r.Text("recordName"), title = CloudKit.Text(r, "Name") ?? "Untitled", color_hex = color, count = CloudKit.Int(r, "Count"), is_group = CloudKit.Int(r, "IsGroup") != 0, position = lists.Count }));
+            lists.Add(J.Node(new { id = r.Text("recordName"), title = CloudKit.Text(r, "Name") ?? "Untitled", color_hex = color, badge_emblem = CloudKit.Text(r, "BadgeEmblem"), count = CloudKit.Int(r, "Count"), is_group = CloudKit.Int(r, "IsGroup") != 0, position = lists.Count }));
         }
         return lists;
     }
@@ -259,11 +259,11 @@ internal sealed partial class ICloudClient : IDisposable
         {
             var allDay = patch.ContainsKey("all_day") ? patch.Flag("all_day") : CloudKit.Int(record, "AllDay") != 0;
             var zone = CloudKit.Text(record, "TimeZone");
-            if (zone is null && !allDay && patch.Text("due_date") is not null && setMissingTimeZone)
+            if (string.IsNullOrWhiteSpace(zone) && patch.Text("due_date") is not null && setMissingTimeZone)
             {
-                // New timed reminders must carry their origin zone so their
-                // floating wire value still represents the same instant elsewhere.
                 var local = TimeUtil.Zone();
+                // The absolute timestamp preserves the instant. The named zone
+                // preserves the wall-clock schedule when a reminder repeats.
                 zone = TimeZoneInfo.TryConvertWindowsIdToIanaId(local.Id, out var iana) ? iana : local.Id;
                 fields["TimeZone"] = CloudKit.String(zone);
                 tokens.Add("timeZone");

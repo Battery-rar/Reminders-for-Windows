@@ -33,10 +33,23 @@ Equal<string?>(null, AppleDocument.Decode("not base64!"), "malformed document");
 Equal("Hello", AppleDocument.Decode("EgkaBxIFSGVsbG8="), "uncompressed protobuf fixture");
 AppleDocumentEditingChecks.Run(Check);
 var ny = TimeUtil.Zone("America/New_York");
+var nearMidnight = TimeUtil.Parse("2026-03-07T23:30:00-05:00");
+var quickTomorrow = Reminders.Windows.Services.ReminderSchedule.FromToday(nearMidnight, ny, 1);
+Equal(new DateTime(2026, 3, 8), quickTomorrow.Date, "quick tomorrow uses the local calendar across the DST change");
+Equal(new DateTime(2026, 3, 12), Reminders.Windows.Services.ReminderSchedule.FromToday(nearMidnight, ny, 5).Date, "quick five days adds five local calendar dates");
+var shanghaiToday = Reminders.Windows.Services.ReminderSchedule.FromToday(TimeUtil.Parse("2026-07-01T17:00:00Z"), TimeUtil.Zone("Asia/Shanghai"), 0);
+Equal("2026-07-02", Reminders.Windows.Services.ReminderSchedule.Format(shanghaiToday, true, TimeSpan.Zero), "quick today uses the date in Shanghai after local midnight");
+Equal<string?>(null, Reminders.Windows.Services.ReminderSchedule.Format(null, false, TimeSpan.FromHours(9)), "cleared due date has no scheduled instant");
 Equal(TimeUtil.Parse("2026-11-01T05:30:00Z"), TimeUtil.Anchor(new DateTime(2026, 11, 1, 1, 30, 0), ny), "DST overlap chooses first instant");
 Equal(TimeUtil.Parse("2026-03-08T07:00:00Z"), TimeUtil.Anchor(new DateTime(2026, 3, 8, 2, 30, 0), ny), "DST gap advances");
-var instant = TimeUtil.Parse("2026-07-10T00:00:00Z"); Equal(instant, TimeUtil.FromFloating(TimeUtil.ToFloating(instant, "America/New_York"), "America/New_York"), "floating date round trip");
-var allDayWire = DateTimeOffset.Parse("2026-03-08T00:00:00Z", CultureInfo.InvariantCulture).ToUnixTimeMilliseconds();
+var shanghaiTimed = TimeUtil.Parse("2026-07-02T00:30:00+08:00");
+Equal(shanghaiTimed, TimeUtil.Parse(TimeUtil.FromCloudDue(shanghaiTimed.ToUnixTimeMilliseconds(), false, "Asia/Shanghai")), "iCloud timed timestamps already represent UTC instants");
+Equal(shanghaiTimed.ToUnixTimeMilliseconds(), TimeUtil.ToCloudDue(TimeUtil.Iso(shanghaiTimed), false, "Asia/Shanghai"), "timed writes do not shift the UTC instant");
+Equal("2026-07-02", TimeUtil.FromCloudDue(TimeUtil.Parse("2026-07-01T16:00:00Z").ToUnixTimeMilliseconds(), true, "Asia/Shanghai"), "iCloud all-day midnight retains its local calendar date east of UTC");
+Equal("2026-07-02", TimeUtil.FromCloudDue(TimeUtil.Parse("2026-07-02T04:00:00Z").ToUnixTimeMilliseconds(), true, "America/New_York"), "iCloud all-day midnight retains its local calendar date west of UTC");
+Equal("2026-07-02", TimeUtil.FromCloudDue(TimeUtil.Parse("2026-07-02T00:00:00Z").ToUnixTimeMilliseconds(), true, "America/New_York"), "earlier Windows all-day date-only records remain readable");
+Equal(TimeUtil.Parse("2026-07-01T16:00:00Z").ToUnixTimeMilliseconds(), TimeUtil.ToCloudDue("2026-07-02", true, "Asia/Shanghai"), "zoned all-day writes use midnight in the calendar zone");
+var allDayWire = DateTimeOffset.Parse("2026-03-07T16:00:00Z", CultureInfo.InvariantCulture).ToUnixTimeMilliseconds();
 var allDayRecord = new JsonObject { ["recordName"] = "Reminder/calendar-date", ["fields"] = new JsonObject
 {
     ["DueDate"] = CloudKit.Timestamp(allDayWire), ["AllDay"] = CloudKit.Number(1), ["TimeZone"] = CloudKit.String("Asia/Shanghai")
@@ -44,7 +57,11 @@ var allDayRecord = new JsonObject { ["recordName"] = "Reminder/calendar-date", [
 Equal("2026-03-08", ICloudClient.ToReminder(allDayRecord).Text("due_date"), "Shanghai all-day date survives UTC conversion");
 Equal("2026-03-08", TimeUtil.Normalize(JsonValue.Create("2026-03-08T00:00:00+08:00"), true), "all-day input keeps its calendar date");
 var allDayFields = ICloudClient.UpdateFields(allDayRecord, new() { ["due_date"] = "2026-03-08" });
-Equal(allDayWire, CloudKit.Field(new JsonObject { ["fields"] = allDayFields }, "DueDate")!.GetValue<long>(), "all-day edit preserves floating calendar date");
+Equal(allDayWire, CloudKit.Field(new JsonObject { ["fields"] = allDayFields }, "DueDate")!.GetValue<long>(), "all-day edit preserves the zoned calendar date");
+var newAllDay = new JsonObject { ["fields"] = ICloudClient.UpdateFields(new JsonObject(), new() { ["due_date"] = "2026-03-08", ["all_day"] = true }, setMissingTimeZone: true) };
+var localZone = TimeUtil.Zone();
+var expectedZone = TimeZoneInfo.TryConvertWindowsIdToIanaId(localZone.Id, out var localIana) ? localIana : localZone.Id;
+Equal(expectedZone, CloudKit.Text(newAllDay, "TimeZone"), "new all-day repeats preserve the local calendar zone");
 Equal(TimeUtil.Parse("2026-03-08T13:00:00Z"), TimeUtil.NotifyAt("2026-03-08", true, ny), "all-day alert is 9 a.m. local after DST starts");
 var dailyRule = new JsonObject { ["fields"] = Recurrence.Fields("Reminder/calendar-date", J.Node(new { frequency = 1, interval = 1 })) };
 Equal("2026-03-09", Recurrence.Next(dailyRule, "2026-03-08", "America/New_York", TimeUtil.Parse("2026-03-08T13:00:00Z")), "all-day repeat retains a date through DST");
@@ -303,6 +320,7 @@ await AuthVerificationChecks.RunAsync(Check);
 await ChinaMainlandChecks.RunAsync(Check);
 await PhaseOneSecurityChecks.RunAsync(Check);
 await PhaseTwoSyncChecks.RunAsync(Check);
+SidebarChecks.Run(Check);
 await BrowserSessionTrustChecks.RunAsync(Check);
 await SignOutChecks.RunAsync(Check);
 await CacheRecoveryChecks.RunAsync(Check);

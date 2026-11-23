@@ -96,10 +96,13 @@ public sealed partial class MainWindow
             var defaultList = new ComboBox { Style = choiceStyle, DisplayMemberPath = "Title", SelectedValuePath = "Id" };
             defaultList.ItemsSource = new[] { new ReminderList { Id = "", Title = L10n.Get("FirstListInSidebar") } }.Concat(OrderedLists()).ToList();
             defaultList.SelectedValue = _settings.Text("default_list_id", ""); if (defaultList.SelectedIndex < 0) defaultList.SelectedIndex = 0;
+            var sidebarSort = CreateSidebarSortPicker();
+            sidebarSort.Style = choiceStyle;
 
             var general = SettingsPage(L10n.Get("General"), L10n.Get("GeneralSettingsDescription"));
             general.Children.Add(SettingsCard(L10n.Get("Appearance"), SettingsRow(L10n.Get("Theme"), null, theme), SettingsRow(L10n.Get("CompletionAnimation"), L10n.Get("AnimateRemindersWhenCompleted"), animation, 60)));
             general.Children.Add(SettingsCard(L10n.Get("Layout"), SettingsRow(L10n.Get("DetailsPane"), null, paneSizing), customLayout));
+            general.Children.Add(SettingsCard(L10n.Get("SidebarSettings"), SettingsRow(L10n.Get("ListOrder"), L10n.Get("SidebarManualOrderHint"), sidebarSort)));
             general.Children.Add(SettingsCard(L10n.Get("Reminders"), SettingsRow(L10n.Get("DefaultList"), null, defaultList), SettingsRow(L10n.Get("DueDateNotifications"), null, notifications, 60)));
 
             var syncPage = SettingsPage(L10n.Get("SyncStorage"), L10n.Get("SyncSettingsDescription"));
@@ -380,7 +383,11 @@ public sealed partial class MainWindow
             var values = new { theme = themeValue, sync_minutes = (int)Math.Clamp(sync.Value, 1, 60), notifications_enabled = notifications.IsOn, default_list_id = defaultList.SelectedValue as string };
             _settings = _demo ? JsonSerializer.SerializeToElement(values) : await _sync.CallAsync("set_settings", values);
             _uiPreferences.CompletionAnimation = animation.IsOn; _uiPreferences.DetailPaneFraction = paneSizing.SelectedIndex == 0 ? null : detailWidth.Value / 100;
+            var newSidebarSort = (sidebarSort.SelectedItem as ComboBoxItem)?.Tag as string ?? SidebarSort;
+            var sidebarChanged = newSidebarSort != SidebarSort;
+            _uiPreferences.ListSort = newSidebarSort;
             SaveUiPreferences(); UpdatePaneLayout(); ApplyTheme(themeValue);
+            if (sidebarChanged) RebuildListNavigation();
         }
         catch (Exception error)
         {

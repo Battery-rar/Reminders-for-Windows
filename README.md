@@ -1,9 +1,9 @@
 <div align="center">
 <img src="src/Reminders.WinUI/Assets/icon-v2.png" width="112" alt="Reminders app icon">
 
-# Reminders for Windows
+# Apple Reminders on Windows
 
-**A native WinUI 3 client for iCloud Reminders, written in C#/.NET.**
+**An independent WinUI 3 client for iCloud Reminders, maintained by Battery-rar.**
 </div>
 
 Apple does not ship Reminders for Windows. This project provides an offline-capable

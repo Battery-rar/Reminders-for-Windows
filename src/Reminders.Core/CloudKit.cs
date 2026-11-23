@@ -7,10 +7,11 @@ internal sealed class CloudKit(AppleAuth auth)
 {
     internal static JsonNode Zone => J.Node(new { zoneName = "Reminders", ownerRecordName = "_defaultOwner", zoneType = "REGULAR_CUSTOM_ZONE" });
     internal static JsonNode? Field(JsonNode r, string name) => r["fields"]?[name]?["value"];
-    internal static string? Text(JsonNode r, string name)
+    internal static string? Text(JsonNode r, string name) => TextField(r["fields"]?[name]);
+    internal static string? TextField(JsonNode? field)
     {
-        var value = Field(r, name); if (value is not JsonValue v || !v.TryGetValue<string>(out var s)) return null;
-        if (r["fields"]?[name].Text("type") != "ENCRYPTED_BYTES") return s;
+        if (field is not JsonObject obj || obj["value"] is not JsonValue v || !v.TryGetValue<string>(out var s)) return null;
+        if (field.Text("type") != "ENCRYPTED_BYTES") return s;
         try { return new UTF8Encoding(false, true).GetString(Convert.FromBase64String(s)); } catch (Exception e) when (e is FormatException or DecoderFallbackException) { return null; }
     }
     internal static long Int(JsonNode r, string name) => r["fields"]?[name].Number("value") ?? 0;

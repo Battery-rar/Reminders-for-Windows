@@ -21,11 +21,14 @@ internal static class SubtaskChecks
             string parentId, childId, grandchildId;
             await using (var service = new ReminderService(root, new MemorySecrets()))
             {
-                Task<JsonNode> Create(string title, string? parent = null, string list = "List/a") => Call(service, "create_reminder", new { title, parent_id = parent, list_id = list });
+                Task<JsonNode> Create(string title, string? parent = null, string list = "List/a", string description = "") =>
+                    Call(service, "create_reminder", new { title, parent_id = parent, list_id = list, description });
                 parentId = (await Create("Parent")).Required("id");
-                childId = (await Create("Child", parentId)).Required("id");
+                childId = (await Create("Child", parentId, description: "First note\nSecond note")).Required("id");
                 grandchildId = (await Create("Grandchild", childId)).Required("id");
                 check((await Call(service, "reminder", new { id = childId })).Text("parent_id") == parentId, "created subtask retains its parent offline");
+                var child = (await Call(service, "reminders", new { list_id = "List/a" })).AsArray().Single(row => row.Text("id") == childId);
+                check(child.Text("description") == "First note\nSecond note", "list results supply a child's multiline notes independently of its parent");
                 await Bad(() => Create("Invalid", "missing"), "missing parent cannot create an orphan");
                 await Bad(() => Create("Invalid", parentId, "List/b"), "subtask cannot be created in a different list");
                 await Bad(() => Call(service, "create_reminder", new { list_id = "List/a", parent_id = 42 }), "malformed parent rejected");
@@ -48,11 +51,16 @@ internal static class SubtaskChecks
                 await Call(service, "update_reminder", new { id = parentId, list_id = "List/b" });
                 check((await Call(service, "reminders", new { list_id = "List/b" })).AsArray().Count == 3
                     && (await Call(service, "reminder", new { id = grandchildId })).Text("parent_id") == childId, "moving a family keeps descendants and parent links together");
+                await Bad(() => Call(service, "update_reminder", new { id = parentId, list_id = "List/a", expected_list_id = "List/a" }),
+                    "a sidebar move cannot overwrite a newer move from the same source");
+                check((await Call(service, "reminder", new { id = grandchildId })).Text("list_id") == "List/b", "a stale drop leaves the descendants together");
                 await Call(service, "update_reminder", new { id = childId, list_id = "List/a" });
                 check((await Call(service, "reminder", new { id = childId }))["parent_id"] is null
                     && (await Call(service, "reminder", new { id = grandchildId })).Text("parent_id") == childId, "moving a child to another list detaches only that subtree");
                 await Call(service, "delete_reminder", new { id = childId });
                 check((await Call(service, "reminders", new { scope = "deleted" })).AsArray().Count == 2, "deleting a parent deletes all its descendants");
+                await Bad(() => Call(service, "update_reminder", new { id = childId, list_id = "List/b", expected_list_id = "List/a" }),
+                    "a sidebar move cannot relocate a soft-deleted reminder");
                 await Bad(() => Create("Invalid", childId), "deleted parent cannot gain new subtasks");
                 await Call(service, "restore_reminder", new { id = childId });
                 check((await Call(service, "reminder", new { id = grandchildId })).Flag("deleted"), "restoring a parent never silently restores deleted children");

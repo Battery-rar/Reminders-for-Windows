@@ -81,7 +81,7 @@ jobs:
 
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          name: Reminders for Windows ${{ github.ref_name }}
+          name: Apple Reminders on Windows ${{ github.ref_name }}
           draft: true
           generate_release_notes: true
           files: |

@@ -15,12 +15,28 @@ public sealed partial class MainWindow
 
     private async void AddSubtask_Click(object sender, RoutedEventArgs args)
     {
-        if (_selected is not { Completed: false, Deleted: false } parent) return;
+        if (_dialogOpen || _savingDetail || _selected is not { Completed: false, Deleted: false } parent) return;
         if (_detailDirty)
         {
-            ShowInfo(L10n.Get("SaveYourChangesFirst"), L10n.Get("AddSubtaskUnsavedChangesWarning"), InfoBarSeverity.Informational); return;
+            if (!SaveButton.IsEnabled)
+            {
+                ShowInfo(L10n.Get("SaveYourChangesFirst"), L10n.Get("AddSubtaskUnsavedChangesWarning"), InfoBarSeverity.Informational);
+                return;
+            }
+            if (!await SaveDetailAsync(preserveEditor: true) || _detailDirty ||
+                !ReferenceEquals(_selected, parent) || parent.Completed || parent.Deleted) return;
         }
         await ShowNewReminderAsync(parent);
+        if (ReferenceEquals(_selected, parent) && AddSubtaskButton.IsEnabled)
+            AddSubtaskButton.Focus(FocusState.Programmatic);
+    }
+
+    private void SubtaskChevron_Loaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FontIcon icon) return;
+        icon.CenterPoint = new(8, 8, 0);
+        if (new global::Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+            icon.RotationTransition ??= new ScalarTransition { Duration = TimeSpan.FromMilliseconds(140) };
     }
 
     private List<ReminderItem> DemoDescendants(string id)
@@ -70,7 +86,8 @@ public sealed partial class MainWindow
             foreach (var child in DemoDescendants(match.Id))
             {
                 if (child.Deleted != match.Deleted || child.ListId != match.ListId || !included.Add(child.Id)) continue;
-                if (_view.Key == "completed" ? !child.Completed : _view.Key != "deleted" && !ShowCompleted.IsOn && child.Completed) continue;
+                if (_view.Kind == NavKind.Smart && _view.Key == "completed" ? !child.Completed :
+                    !(_view.Kind == NavKind.Smart && _view.Key == "deleted") && !IncludesCompleted && child.Completed) continue;
                 child.ContextOnly = true; rows.Add(child);
             }
         var pending = new Queue<ReminderItem>(rows);

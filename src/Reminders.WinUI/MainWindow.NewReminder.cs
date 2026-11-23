@@ -37,15 +37,29 @@ public sealed partial class MainWindow
             if (parent is not null) { list.SelectedValue = parent.ListId; list.IsEnabled = false; }
             if (list.SelectedIndex < 0) list.SelectedIndex = 0;
 
-            var date = new CalendarDatePicker { Header = L10n.Get("DueDate"), HorizontalAlignment = HorizontalAlignment.Stretch };
-            if (_view.Kind == NavKind.Smart && _view.Key == "today") date.Date = DateTimeOffset.Now;
+            var date = new CalendarDatePicker { Header = L10n.Get("DueDate"), MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+            if (_view.Kind == NavKind.Smart && _view.Key == "today") date.Date = LocalScheduleDate();
+            var quickDates = new DropDownButton { Content = L10n.Get("ScheduleQuickDates"), VerticalAlignment = VerticalAlignment.Bottom };
+            var quickDateMenu = new MenuFlyout();
+            foreach (var (label, offset) in new[] { ("ReminderSectionTomorrow", 1), ("ScheduleDayAfterTomorrow", 2), ("ScheduleInFiveDays", 5) })
+            {
+                var item = new MenuFlyoutItem { Text = L10n.Get(label) };
+                item.Click += (_, _) => date.Date = LocalScheduleDate(offset);
+                quickDateMenu.Items.Add(item);
+            }
+            quickDates.Flyout = quickDateMenu;
+            var dateRow = new Grid { ColumnSpacing = 8 };
+            dateRow.ColumnDefinitions.Add(new());
+            dateRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+            Grid.SetColumn(quickDates, 1);
+            dateRow.Children.Add(date);
+            dateRow.Children.Add(quickDates);
             var scheduled = new ToggleSwitch { IsOn = date.Date is not null, OnContent = "", OffContent = "", MinWidth = 0 };
             AutomationProperties.SetName(scheduled, L10n.Get("SetDueDate"));
             ToolTipService.SetToolTip(scheduled, L10n.Get("SetADueDate"));
             var allDay = new ToggleSwitch { IsOn = true, OnContent = "", OffContent = "", MinWidth = 0 };
             AutomationProperties.SetName(allDay, L10n.Get("AllDay"));
             var time = new TimePicker { Header = L10n.Get("Time"), Time = new TimeSpan(9, 0, 0), HorizontalAlignment = HorizontalAlignment.Stretch };
-            var dateTimePair = EditorPair(date, time);
             var allDayRow = new Grid();
             allDayRow.ColumnDefinitions.Add(new()); allDayRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
             allDayRow.Children.Add(new TextBlock { Text = L10n.Get("AllDay"), VerticalAlignment = VerticalAlignment.Center });
@@ -62,8 +76,8 @@ public sealed partial class MainWindow
                 VerticalAlignment = VerticalAlignment.Center });
             Grid.SetColumn(scheduled, 1); scheduleHeader.Children.Add(scheduled);
             var schedule = new StackPanel { Spacing = 10 };
-            schedule.Children.Add(scheduleHeader); schedule.Children.Add(dateTimePair);
-            schedule.Children.Add(allDayRow); schedule.Children.Add(repeatPair);
+            schedule.Children.Add(scheduleHeader); schedule.Children.Add(dateRow);
+            schedule.Children.Add(allDayRow); schedule.Children.Add(time); schedule.Children.Add(repeatPair);
 
             var priority = new ComboBox { Header = L10n.Get("Priority"), ItemsSource = new[] { L10n.Get("None"), L10n.Get("Low"), L10n.Get("Medium"), L10n.Get("High") },
                 SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -80,7 +94,7 @@ public sealed partial class MainWindow
                 Padding = new Thickness(0, 0, 8, 0) };
             var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.RequestedTheme,
                 Title = parent is null ? L10n.Get("NewReminder") : L10n.Get("NewSubtask"), Content = scroll, PrimaryButtonText = parent is null ? L10n.Get("AddReminder") : L10n.Get("AddSubtask"), CloseButtonText = L10n.Get("Cancel"),
-                DefaultButton = ContentDialogButton.Primary, IsPrimaryButtonEnabled = false };
+                IsPrimaryButtonEnabled = false };
             dialog.Resources["ContentDialogMinWidth"] = 0d;
             dialog.Resources["ContentDialogMaxWidth"] = 680d;
             void Resize()
@@ -95,17 +109,17 @@ public sealed partial class MainWindow
                 && (repeat.SelectedIndex == 0 || double.IsFinite(interval.Value) && interval.Value is >= 1 and <= 999 && interval.Value == Math.Truncate(interval.Value));
             void UpdateSchedule()
             {
-                dateTimePair.Visibility = scheduled.IsOn ? Visibility.Visible : Visibility.Collapsed;
+                dateRow.Visibility = scheduled.IsOn ? Visibility.Visible : Visibility.Collapsed;
                 allDayRow.Visibility = scheduled.IsOn ? Visibility.Visible : Visibility.Collapsed;
                 time.Visibility = scheduled.IsOn && date.Date is not null && !allDay.IsOn ? Visibility.Visible : Visibility.Collapsed;
                 interval.Visibility = repeat.SelectedIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
                 interval.Header = repeat.SelectedIndex switch { 1 => L10n.Get("EveryDays"), 2 => L10n.Get("EveryWeeks"), 3 => L10n.Get("EveryMonths"), 4 => L10n.Get("EveryYears"), _ => L10n.Get("Every") };
-                ArrangeDetailPair(dateTimePair, time); ArrangeDetailPair(repeatPair, interval);
+                ArrangeDetailPair(repeatPair, interval);
                 Validate();
             }
             scheduled.Toggled += (_, _) =>
             {
-                if (scheduled.IsOn && date.Date is null) date.Date = DateTimeOffset.Now;
+                if (scheduled.IsOn && date.Date is null) date.Date = LocalScheduleDate();
                 if (!scheduled.IsOn) repeat.SelectedIndex = 0;
                 UpdateSchedule();
             };
@@ -118,9 +132,17 @@ public sealed partial class MainWindow
             title.TextChanged += (_, _) => Validate(); list.SelectionChanged += (_, _) => Validate();
             interval.ValueChanged += (_, _) => Validate();
             dialog.Opened += (_, _) => title.Focus(FocusState.Programmatic);
+            var submittedFromTitle = false;
+            SubmitTitleOnEnter(title, () =>
+            {
+                if (!dialog.IsPrimaryButtonEnabled || submittedFromTitle) return;
+                submittedFromTitle = true;
+                dialog.Hide();
+            });
             UpdateSchedule();
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary || list.SelectedValue is not string listId) return;
-            var due = FormatDueDate(scheduled.IsOn ? date.Date : null, allDay.IsOn, time.Time);
+            var result = await dialog.ShowAsync();
+            if ((!submittedFromTitle && result != ContentDialogResult.Primary) || list.SelectedValue is not string listId) return;
+            var due = ReminderSchedule.Format(scheduled.IsOn ? date.Date : null, allDay.IsOn, time.Time);
             var priorityValue = priority.SelectedIndex switch { 1 => 9, 2 => 5, 3 => 1, _ => 0 };
             var recurrence = repeat.SelectedIndex == 0 ? null : new RepeatSchedule { Frequency = repeat.SelectedIndex, Interval = (long)interval.Value };
             if (_demo)
@@ -131,10 +153,13 @@ public sealed partial class MainWindow
             }
             else await _sync.CallAsync("create_reminder", new { list_id = listId, parent_id = parent?.Id, title = title.Text.Trim(), description = notes.Text,
                 due_date = due, all_day = allDay.IsOn, priority = priorityValue, flagged = flagged.IsOn, recurrence });
-            if (parent is not null) _collapsedSubtasks.Remove(parent.Id);
-            await RefreshAllAsync();
+            if (parent is not null && _collapsedSubtasks.Remove(parent.Id)) RebuildReminderSections();
+            await RefreshAllAsync(preserveDetail: parent is not null);
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntAddReminder"), L10n.Error(error), InfoBarSeverity.Error); }
         finally { if (resize is not null) Root.SizeChanged -= resize; _dialogOpen = false; }
     }
+
+    private static DateTimeOffset LocalScheduleDate(int days = 0) =>
+        ReminderSchedule.FromToday(DateTimeOffset.UtcNow, TimeZoneInfo.Local, days);
 }
