@@ -115,8 +115,10 @@ internal sealed partial class ICloudClient : IDisposable
         finally { Persist(); }
     }
     public async Task<JsonNode> ImportBrowserSession(string? expectedAccount, JsonObject state, CancellationToken token, Action<string>? validateAccount = null,
-        Action<string, Action>? commitAccount = null)
+        Action<string, Action>? commitAccount = null, bool renewSession = false)
     {
+        if (renewSession && (Account.Length == 0 || state.Flag("china_mainland") != ChinaMainland))
+            throw AppleAccountMismatch();
         if (!state.Flag("browser_cookie_session") || state.Array("cookies").Count == 0) state.Required("session_token", 16384);
         var candidate = new AppleAuth((JsonObject)state.DeepClone(), handlerFactory);
         candidate.Diagnostic += message => Diagnostic?.Invoke(message);
@@ -124,8 +126,15 @@ internal sealed partial class ICloudClient : IDisposable
         {
             if (!await candidate.Resume(token)) throw new CoreException("2FA_REQUIRED", "Finish verification in Apple's sign-in window.").WithPresentation("ErrorFinishVerificationInAppleWindow");
             var account = candidate.State.Required("apple_id", 320).Trim().ToLowerInvariant();
-            if (expectedAccount is not null && !string.Equals(expectedAccount, account, StringComparison.OrdinalIgnoreCase))
-                throw new CoreException("AUTH_REQUIRED", "Apple returned a different account. Please sign in again.").WithPresentation("ErrorAppleAccountMismatch");
+            if (renewSession)
+            {
+                RequireVerifiedIdentity(candidate, allowUnbound: false);
+                // Apple's canonical email can differ from the stored sign-in
+                // alias. Keep the cache and credential key bound to this account.
+                account = Account;
+            }
+            else if (expectedAccount is not null && !string.Equals(expectedAccount, account, StringComparison.OrdinalIgnoreCase))
+                throw AppleAccountMismatch();
             // Cookie-only handoff learns the identity from iCloud's validation,
             // never from page text. Check queued edits before saving or switching.
             validateAccount?.Invoke(account);
@@ -164,8 +173,10 @@ internal sealed partial class ICloudClient : IDisposable
             : (allowUnbound && verifiedAppleId is null) ||
                 string.Equals(candidate.State.Text("apple_id"), verifiedAppleId ?? Account, StringComparison.OrdinalIgnoreCase);
         if (!sameAccount)
-            throw new CoreException("AUTH_REQUIRED", "Apple returned a different account. Please sign in again.").WithPresentation("ErrorAppleAccountMismatch");
+            throw AppleAccountMismatch();
     }
+    private static CoreException AppleAccountMismatch() =>
+        new CoreException("AUTH_REQUIRED", "Apple returned a different account. Please sign in again.").WithPresentation("ErrorAppleAccountMismatch");
     private static Task CheckBrowserAccess(AppleAuth session, CancellationToken token) =>
         session.State.Flag("browser_cookie_session") && !session.State.Flag("trusted_session")
             ? new CloudKit(session).CheckAccess(token) : Task.CompletedTask;

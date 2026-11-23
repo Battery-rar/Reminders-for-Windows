@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Reminders.Core;
@@ -28,13 +29,30 @@ internal sealed record ListCreation(string Id, string Title, string Color, strin
     {
         var title = request.Text("title")?.Trim();
         var color = request["color_hex"] is null ? "#007AFF" : request.Text("color_hex")?.ToUpperInvariant();
-        var badge = request["badge_emblem"] is null ? "default" : request.Text("badge_emblem");
+        var badge = NormalizeBadge(request["badge_emblem"] is null ? "default" : request.Text("badge_emblem"));
         if (string.IsNullOrEmpty(title) || Encoding.UTF8.GetByteCount(title) > 255 || title.Any(char.IsControl) ||
-            color is not { Length: 7 } || color[0] != '#' || !color.Skip(1).All(Uri.IsHexDigit) || badge is null || !Badges.Contains(badge))
+            color is not { Length: 7 } || color[0] != '#' || !color.Skip(1).All(Uri.IsHexDigit) || badge is null)
             throw Invalid();
         var id = Guid.NewGuid();
         if (request["request_id"] is not null && (!Guid.TryParse(request.Text("request_id"), out id) || id == Guid.Empty)) throw Invalid();
         return new ListCreation("List/" + id.ToString("D").ToUpperInvariant(), title, color, badge);
+    }
+
+    private static string? NormalizeBadge(string? value)
+    {
+        if (value is null || value.Length is 0 or > 1024) return null;
+        if (Badges.Contains(value)) return value;
+        try
+        {
+            using var document = JsonDocument.Parse(value);
+            var root = document.RootElement;
+            if (root.ValueKind == JsonValueKind.Object && root.GetPropertyCount() == 1 &&
+                root.TryGetProperty("Emoji", out var field) && field.ValueKind == JsonValueKind.String &&
+                field.GetString() is { } glyph && EmojiGlyph.IsValid(glyph))
+                return JsonSerializer.Serialize(new { Emoji = glyph });
+        }
+        catch (Exception error) when (error is JsonException or InvalidOperationException) { }
+        return null;
     }
 
     internal JsonObject Fields()
@@ -59,5 +77,5 @@ internal sealed record ListCreation(string Id, string Title, string Color, strin
     internal bool Matches(JsonNode list) => list.Text("recordName") == Id && list.Text("recordType") == "List" &&
         !list.Flag("deleted") && list.Text("reason") != "deleted" && CloudKit.Int(list, "Deleted") == 0 && CloudKit.Int(list, "IsGroup") == 0 &&
         CloudKit.Text(list, "Name") == Title && J.Parse(CloudKit.Text(list, "Color")).Text("daHexString")?.ToUpperInvariant() == Color &&
-        (CloudKit.Text(list, "BadgeEmblem") ?? "default") == Badge;
+        NormalizeBadge(CloudKit.Text(list, "BadgeEmblem") ?? "default") == Badge;
 }

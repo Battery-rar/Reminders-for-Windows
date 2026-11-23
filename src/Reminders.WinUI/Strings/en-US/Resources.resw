@@ -2094,4 +2094,28 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="NewListRose" xml:space="preserve">
     <value>Rose</value>
   </data>
+  <data name="AppLanguage" xml:space="preserve">
+    <value>App language</value>
+  </data>
+  <data name="AppLanguageDescription" xml:space="preserve">
+    <value>Restart the app after saving to apply the language.</value>
+  </data>
+  <data name="ICloudSession" xml:space="preserve">
+    <value>iCloud session</value>
+  </data>
+  <data name="Relogin" xml:space="preserve">
+    <value>Sign in again</value>
+  </data>
+  <data name="ReloginDescription" xml:space="preserve">
+    <value>Renew the iCloud session for this account. Reminders on this PC and unsynced changes are kept.</value>
+  </data>
+  <data name="CouldntRelogin" xml:space="preserve">
+    <value>Couldn't reopen iCloud sign-in</value>
+  </data>
+  <data name="NewListWindowsSymbols" xml:space="preserve">
+    <value>Windows symbols</value>
+  </data>
+  <data name="NewListEmoji" xml:space="preserve">
+    <value>Emoji</value>
+  </data>
 </root>

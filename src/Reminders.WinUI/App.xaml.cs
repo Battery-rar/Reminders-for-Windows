@@ -16,7 +16,11 @@ public partial class App : Application
         UnhandledException += (_, args) => Services.AppLog.Error("Unhandled UI exception", args.Exception);
         Services.AppLog.Info("Starting Apple Reminders on Windows " + typeof(App).Assembly.GetName().Version + " build=" +
             System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(App).Assembly)?.InformationalVersion);
-        try { InitializeComponent(); }
+        try
+        {
+            Services.L10n.InitializeLanguage(Services.UiPreferences.Load().Language);
+            InitializeComponent();
+        }
         catch (Exception error)
         {
             Services.AppLog.Error("Application resources could not be initialized", error);
