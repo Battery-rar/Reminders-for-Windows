@@ -5,7 +5,7 @@
          IgnorableNamespaces="uap rescap">
   <Identity Name="Battery-rar.RemindersForWindowsGCBD" Publisher="CN=Battery-rar" Version="1.1.1.0" />
   <Properties>
-    <DisplayName>Reminders for Windows GCBD</DisplayName>
+    <DisplayName>Reminders for Windows</DisplayName>
     <PublisherDisplayName>Battery-rar</PublisherDisplayName>
     <Description>A native Windows client for iCloud Reminders.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
@@ -16,7 +16,7 @@
   </Dependencies>
   <Applications>
     <Application Id="Reminders" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
-      <uap:VisualElements DisplayName="Reminders for Windows GCBD" Description="A native Windows client for iCloud Reminders."
+      <uap:VisualElements DisplayName="Reminders for Windows" Description="A native Windows client for iCloud Reminders."
                           BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png"
                           Square44x44Logo="Assets\Square44x44Logo.png" />
     </Application>

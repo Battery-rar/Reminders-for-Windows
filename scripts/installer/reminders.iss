@@ -23,13 +23,14 @@
 #ifndef IconFile
   #error IconFile must be supplied by build-installer.ps1
 #endif
+#define ProductName "Reminders for Windows"
 
 [Setup]
 ; This fork has its own stable upgrade identity and installation directory.
 AppId={{6E246184-A393-43C8-ADA2-118254DBD91E}
-AppName=Reminders for Windows GCBD
+AppName={#ProductName}
 AppVersion={#AppVersion}
-AppVerName=Reminders for Windows GCBD {#AppVersion}
+AppVerName={#ProductName} {#AppVersion}
 AppPublisher=Battery-rar
 AppPublisherURL=https://github.com/Battery-rar/Reminders-for-Windows
 AppSupportURL=https://github.com/Battery-rar/Reminders-for-Windows/issues
@@ -42,7 +43,8 @@ VersionInfoVersion={#AppVersion}
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 DefaultDirName={autopf}\Reminders for Windows GCBD
-DefaultGroupName=Reminders for Windows GCBD
+DefaultGroupName=Battery-rar\{#ProductName}
+UsePreviousGroup=no
 DisableProgramGroupPage=yes
 AllowNoIcons=yes
 
@@ -50,7 +52,7 @@ OutputDir={#OutputDir}
 OutputBaseFilename=Reminders-for-Windows-{#Arch}-Setup
 SetupIconFile={#IconFile}
 UninstallDisplayIcon={app}\Reminders.exe
-UninstallDisplayName=Reminders for Windows GCBD
+UninstallDisplayName={#ProductName}
 
 ; The app holds the SQLite cache open, so an upgrade over a running install
 ; would otherwise fail on locked binaries. Restart Manager asks the running
@@ -87,7 +89,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "startup"; Description: "Start Reminders for Windows GCBD when I sign in"; GroupDescription: "Startup"; Flags: unchecked
+Name: "startup"; Description: "Start {#ProductName} when I sign in"; GroupDescription: "Startup"; Flags: unchecked
 
 [Files]
 ; Install the complete self-contained app, including the C# backend library.
@@ -101,15 +103,21 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.t
 [InstallDelete]
 ; A normal installation turns off a prior opt-in for in-app installation.
 Type: files; Name: "{app}\gcbd-updates.ini"
+; Retire the shortcuts created by the trial builds of this same installation.
+Type: files; Name: "{autoprograms}\Reminders for Windows GCBD\Reminders for Windows GCBD.lnk"; Check: IsForkUpgrade
+Type: files; Name: "{autoprograms}\Reminders for Windows GCBD\{cm:UninstallProgram,Reminders for Windows GCBD}.lnk"; Check: IsForkUpgrade
+Type: dirifempty; Name: "{autoprograms}\Reminders for Windows GCBD"; Check: IsForkUpgrade
+Type: files; Name: "{autodesktop}\Reminders for Windows GCBD.lnk"; Check: IsForkUpgrade
+Type: files; Name: "{userstartup}\Reminders for Windows GCBD.lnk"; Check: IsForkUpgrade
 
 [Icons]
-Name: "{group}\Reminders for Windows GCBD"; Filename: "{app}\Reminders.exe"
-Name: "{group}\{cm:UninstallProgram,Reminders for Windows GCBD}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Reminders for Windows GCBD"; Filename: "{app}\Reminders.exe"; Tasks: desktopicon
-Name: "{userstartup}\Reminders for Windows GCBD"; Filename: "{app}\Reminders.exe"; Tasks: startup
+Name: "{group}\{#ProductName}"; Filename: "{app}\Reminders.exe"
+Name: "{group}\{cm:UninstallProgram,{#ProductName}}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\{#ProductName}"; Filename: "{app}\Reminders.exe"; Tasks: desktopicon; Check: ShortcutAvailable('{autodesktop}')
+Name: "{userstartup}\{#ProductName}"; Filename: "{app}\Reminders.exe"; Tasks: startup; Check: ShortcutAvailable('{userstartup}')
 
 [Run]
-Filename: "{app}\Reminders.exe"; Description: "{cm:LaunchProgram,Reminders for Windows GCBD}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Reminders.exe"; Description: "{cm:LaunchProgram,{#ProductName}}"; Flags: nowait postinstall skipifsilent
 Filename: "{app}\Reminders.exe"; Flags: nowait; Check: IsAppUpdate
 
 [INI]
@@ -126,14 +134,24 @@ begin
 end;
 #endif
 
+function IsForkUpgrade: Boolean;
+begin
+  Result := GetIniString('Installation', 'Product', '', ExpandConstant('{app}\gcbd-installation.ini')) = 'Battery-rar.RemindersForWindowsGCBD';
+end;
+
+function ShortcutAvailable(Directory: String): Boolean;
+begin
+  Result := not FileExists(ExpandConstant(Directory) + '\{#ProductName}.lnk');
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
-  if (GetIniString('Installation', 'Product', '', ExpandConstant('{app}\gcbd-installation.ini')) <> 'Battery-rar.RemindersForWindowsGCBD') and
+  if (not IsForkUpgrade) and
      (FileExists(ExpandConstant('{app}\Reminders.exe')) or
       FileExists(ExpandConstant('{app}\installer-installation.txt')) or
       FileExists(ExpandConstant('{app}\unins000.exe'))) then
-    Result := 'Choose a separate folder for Reminders for Windows GCBD to preserve the existing installation.';
+    Result := 'Choose a separate folder for {#ProductName} to preserve the existing installation.';
 end;
 
 function IsAppUpdate: Boolean;

@@ -136,7 +136,7 @@
     <value>Apple's sign-in service returned HTTP {0}. Reload Apple sign-in to try again, or cancel and use text verification.</value>
   </data>
   <data name="AppTitle" xml:space="preserve">
-    <value>Reminders for Windows GCBD</value>
+    <value>Reminders for Windows</value>
   </data>
   <data name="Automatic" xml:space="preserve">
     <value>Automatic</value>
@@ -1314,7 +1314,7 @@ Any subtasks will also be deleted.</value>
     <value>Reminders for Windows icon</value>
   </data>
   <data name="RemindersForWindowsTextBlock.Text" xml:space="preserve">
-    <value>Reminders for Windows GCBD</value>
+    <value>Reminders for Windows</value>
   </data>
   <data name="RemindersStayOnThisPC" xml:space="preserve">
     <value>Reminders stay on this PC.</value>
