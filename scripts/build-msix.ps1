@@ -3,10 +3,11 @@ param(
     [ValidateSet('x64', 'ARM64')]
     [string]$Architecture = 'x64',
     [ValidatePattern('^[A-Za-z0-9.-]{3,50}$')]
-    [string]$IdentityName = 'RemindersForWindows',
-    [string]$Publisher = 'CN=paulsavvas.com',
+    [string]$IdentityName = 'Battery-rar.RemindersForWindowsGCBD',
+    [string]$Publisher = 'CN=Battery-rar',
     [string]$PublisherDisplayName,
     [string]$CertificateThumbprint,
+    [string]$SdkBinDirectory,
     [switch]$Store,
     [switch]$SkipBuild
 )
@@ -18,8 +19,8 @@ if ($Store) {
     if (-not $PSBoundParameters.ContainsKey('IdentityName')) { $IdentityName = $storeManifest.Package.Identity.Name }
     if (-not $PSBoundParameters.ContainsKey('Publisher')) { $Publisher = $storeManifest.Package.Identity.Publisher }
     if (-not $PSBoundParameters.ContainsKey('PublisherDisplayName')) { $PublisherDisplayName = $storeManifest.Package.Properties.PublisherDisplayName }
-    if ([string]::IsNullOrWhiteSpace($IdentityName) -or $IdentityName -eq 'RemindersForWindows' -or
-        [string]::IsNullOrWhiteSpace($PublisherDisplayName) -or $Publisher -eq 'CN=paulsavvas.com') {
+    if ([string]::IsNullOrWhiteSpace($IdentityName) -or $IdentityName -eq 'Battery-rar.RemindersForWindowsGCBD' -or
+        [string]::IsNullOrWhiteSpace($PublisherDisplayName) -or $Publisher -eq 'CN=Battery-rar') {
         throw 'Store submissions require the assigned Partner Center identity in Package.appxmanifest or explicit identity parameters.'
     }
     if ($CertificateThumbprint) { throw 'Store submissions are signed by Microsoft. Omit -CertificateThumbprint.' }
@@ -27,13 +28,20 @@ if ($Store) {
         throw 'Use the exact Package/Identity/Publisher assigned by Partner Center for Store submission.'
     }
 }
+if ($IdentityName -in @('RemindersForWindows', 'PaulSavvas.RemindersforWindows')) {
+    throw 'Use a package identity dedicated to the fork to preserve the upstream installation.'
+}
 $portableOutput = if ($Architecture -eq 'ARM64') { Join-Path $repository 'dist-windows-arm64' } else { Join-Path $repository 'dist-windows' }
 $packageOutput = Join-Path $repository $(if ($Store) { 'dist-store' } else { 'dist-msix' })
 $project = Join-Path $repository 'src\Reminders.WinUI\Reminders.WinUI.csproj'
 $sdkRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
-$makeAppx = Get-ChildItem $sdkRoot -Recurse -Filter makeappx.exe -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -match '\\x64\\makeappx\.exe$' } |
-    Sort-Object { [version]$_.Directory.Parent.Name } -Descending | Select-Object -First 1
+$makeAppx = if ($SdkBinDirectory) {
+    Get-Item -LiteralPath (Join-Path $SdkBinDirectory 'makeappx.exe')
+} else {
+    Get-ChildItem $sdkRoot -Recurse -Filter makeappx.exe -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match '\\x64\\makeappx\.exe$' } |
+        Sort-Object { [version]$_.Directory.Parent.Name } -Descending | Select-Object -First 1
+}
 if (-not $makeAppx) { throw 'MakeAppx.exe was not found in the installed Windows SDK.' }
 $makePri = Join-Path $makeAppx.Directory.FullName 'makepri.exe'
 if (-not (Test-Path -LiteralPath $makePri)) { throw 'MakePri.exe was not found in the installed Windows SDK.' }

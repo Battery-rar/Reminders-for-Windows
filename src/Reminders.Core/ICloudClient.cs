@@ -18,13 +18,13 @@ internal sealed partial class ICloudClient : IDisposable
     public bool Restoring { get; set; }
     public bool RestoreRetryable { get; private set; }
     public string RestoreDetail { get; private set; } = "";
-    public ICloudClient(string account, SecretStore secrets, Func<HttpMessageHandler>? handlerFactory = null, bool? cacheChinaMainland = null)
+    public ICloudClient(string account, SecretStore secrets, Func<HttpMessageHandler>? handlerFactory = null, bool cacheChinaMainland = false)
     {
         Account = account; this.secrets = secrets; this.handlerFactory = handlerFactory;
-        var saved = J.Parse(secrets.Session(account)) as JsonObject;
+        var saved = J.Parse(secrets.Session(account, cacheChinaMainland)) as JsonObject;
         // The credential write may finish before the cache transaction commits.
-        if (cacheChinaMainland is bool region && saved.Flag("china_mainland") != region) saved = null;
-        auth = new AppleAuth(saved, handlerFactory, cacheChinaMainland ?? false);
+        if (saved.Flag("china_mainland") != cacheChinaMainland) saved = null;
+        auth = new AppleAuth(saved, handlerFactory, cacheChinaMainland);
         auth.Diagnostic += message => Diagnostic?.Invoke(message);
     }
     public bool IsSwitchingAccount(string account, bool chinaMainland) =>
@@ -126,7 +126,7 @@ internal sealed partial class ICloudClient : IDisposable
         void SaveCredentials()
         {
             if (password is not null) secrets.Password(account, password, candidate.ChinaMainland);
-            secrets.Session(account, candidate.State.ToJsonString());
+            secrets.Session(account, candidate.State.ToJsonString(), candidate.ChinaMainland);
         }
         if (commitAccount is null) SaveCredentials();
         else commitAccount(SaveCredentials);
@@ -136,7 +136,7 @@ internal sealed partial class ICloudClient : IDisposable
     private static Task CheckBrowserAccess(AppleAuth session, CancellationToken token) =>
         session.State.Flag("browser_cookie_session") && !session.State.Flag("trusted_session")
             ? new CloudKit(session).CheckAccess(token) : Task.CompletedTask;
-    internal void Persist() { auth.SaveCookies(); secrets.Session(Account, auth.State.ToJsonString()); }
+    internal void Persist() { auth.SaveCookies(); secrets.Session(Account, auth.State.ToJsonString(), ChinaMainland); }
     public void Invalidate() { Connected = false; pendingTwoFactor = false; DiscardPendingSignIn(); }
 
     private void DiscardPendingSignIn()
@@ -146,8 +146,8 @@ internal sealed partial class ICloudClient : IDisposable
     }
     public void SignOut()
     {
-        secrets.Delete(Account); Invalidate();
         var chinaMainland = ChinaMainland;
+        secrets.Delete(Account, chinaMainland); Invalidate();
         auth.Dispose(); auth = new AppleAuth(null, handlerFactory, chinaMainland);
         auth.Diagnostic += message => Diagnostic?.Invoke(message);
     }

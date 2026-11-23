@@ -1,8 +1,8 @@
-# Privacy Policy for Reminders for Windows
+# Privacy Policy for Reminders for Windows GCBD
 
-Effective date: October 5, 2026. Last updated: October 22, 2026.
+Effective date: October 5, 2026. Last updated: November 23, 2026.
 
-Paul Savvas maintains Reminders for Windows, an independent Windows app that works with Apple iCloud Reminders. This policy describes the app's handling of personal information. The app is not affiliated with Apple or Microsoft. For privacy questions, contact hello@paulsavvas.com.
+Reminders for Windows GCBD is the Battery-rar fork of the independent Windows app originally developed by Paul Savvas. This policy covers the fork's handling of personal information. The app is independent of Apple and Microsoft. For privacy questions about the fork, use the Battery-rar repository. Keep account information and logs out of public issues.
 
 ## Information the app accesses
 
@@ -14,13 +14,13 @@ Apple-device sign-in: an optional Microsoft Edge WebView2 window displays Apple'
 
 Preferences and diagnostics: the app stores settings such as theme, list order, list appearance, pane sizes, sync interval, and notification preferences. Local logs record technical events, request status, and errors. Error messages may include account-related details or local file paths. Logs are not automatically uploaded to the developer.
 
-Update requests: the app checks GitHub for releases on launch and periodically while running, and when you request a check. GitHub receives ordinary network information, including your IP address, request time, and an app version in the request header. Installer downloads also identify the requested release and architecture. The updater does not send reminder contents or Apple sign-in credentials to GitHub.
+Update requests: the app checks the Battery-rar GitHub repository when you request a check. Builds with fork installer updates explicitly enabled also check at launch and periodically while running. GitHub receives ordinary network information, including your IP address, request time, and an app version in the request header. Installer downloads also identify the requested release and architecture. The updater does not send reminder contents or Apple sign-in credentials to GitHub.
 
 ## How information is used
 
 The app uses this information to sign in to iCloud, display and edit reminders, sync changes with Apple, support cached use and queued offline edits, resolve sync conflicts, remember preferences, show due-date notifications, and check for app updates. Existing iCloud tags are displayed and used for filtering; tag editing is unavailable. Sample reminders in the UI demo are kept in memory. The separate local test account stores sample data and preferences on this PC. Neither mode sends sample reminders to iCloud.
 
-The app has no advertising, behavioral analytics, or automatic developer telemetry. Paul Savvas does not operate a server that receives your reminder database or Apple credentials from the app, and does not sell personal information obtained through the app.
+The app has no advertising, behavioral analytics, or automatic developer telemetry. The app sends authentication and reminder sync data to the selected iCloud region.
 
 ## Services that receive information
 
@@ -34,7 +34,7 @@ If you contact the developer, the information you choose to send, such as your e
 
 ## Local storage and security
 
-For unpackaged installations, reminder data and the account identifier are normally stored in %LOCALAPPDATA%\RemindersSync\cache.db. Logs are in %LOCALAPPDATA%\RemindersSync\logs. Interface preferences and downloaded updates are under %LOCALAPPDATA%\RemindersForWindows. Windows may redirect these locations into package-specific storage for an MSIX installation.
+For unpackaged installations, reminder data and the account identifier are normally stored in %LOCALAPPDATA%\RemindersForWindowsGCBD\cache.db. Logs, preferences, downloaded updates and the sign-in browser profile are under the same folder. Windows may redirect these locations into package-specific storage for an MSIX installation. The fork starts with its own cache and credentials. Sign in again to download your synced reminders.
 
 The reminder database is not encrypted by the app. Its protection depends on your Windows account, device security, and any disk encryption you enable. Passwords and session tokens are stored separately in Windows Credential Manager, not in the SQLite database. Network communication with Apple and GitHub uses HTTPS. No storage or transmission method can guarantee complete security.
 
@@ -46,13 +46,13 @@ You can view and edit your reminders in the app or through Apple's supported cli
 
 You can disable due-date notifications in Settings and adjust lock-screen notifications in Windows. Closing the app stops its running sync and update checks. An installation managed by Microsoft Store can still be updated by Windows independently.
 
-Settings → Account → Sign out removes the app's saved password, session cookies, and trust tokens while retaining cached reminders and queued edits. Settings → Sync & storage → Discard unsynced changes lets you select tasks with queued uploads or conflicts: new local-only tasks are removed locally, and existing tasks are restored from fresh iCloud copies. Settings → Sync & storage → Clear app cache removes the complete local reminder cache, including pending uploads and conflicts, while retaining saved sign-in and app preferences. These recovery actions require confirmation, do not delete records in iCloud, and do not erase logs, downloaded installers, or device backups.
+Settings → Account → Sign out removes the selected region's saved password, session cookies, and trust tokens while retaining cached reminders and queued edits. Settings → Sync & storage → Discard unsynced changes lets you select tasks with queued uploads or conflicts: new local-only tasks are removed locally, and existing tasks are restored from fresh iCloud copies. Settings → Sync & storage → Clear app cache removes the complete local reminder cache, including pending uploads and conflicts, while retaining saved sign-in and app preferences. These recovery actions require confirmation, do not delete records in iCloud, and do not erase logs, downloaded installers, or device backups.
 
-To remove local app data, fully close the app first, and save or sync any edits you want to keep. Remove the app's RemindersSync and RemindersForWindows data folders, or the corresponding package-specific data. In Windows Credential Manager, remove only this app's generic credentials for your Apple Account: their names include .com.paulsavvas.reminders-sync.password or .com.paulsavvas.reminders-sync.session, including session chunk entries. Removing the cache discards unsynced edits and does not delete reminders already stored in iCloud. Contact the developer if you need help locating these files or entries.
+To remove the fork's local app data, fully close the app and sync any edits you want to keep. Remove its RemindersForWindowsGCBD data folder, or the corresponding package-specific data. Its Windows Credential Manager entries include Battery-rar.RemindersForWindowsGCBD and the region. They include password, session and session chunk entries. Removing the cache discards unsynced edits. Synced reminders stay in iCloud.
 
 ## Privacy requests and children
 
-Depending on the law that applies to you, you may have rights to access, correct, or delete personal information, or object to certain processing. Contact hello@paulsavvas.com about information you have sent to the developer or for help managing local app data. The developer cannot retrieve your device's private cache or change Apple's records remotely; requests about data held by Apple, GitHub, or Microsoft should also be directed to that provider.
+Depending on the law that applies to you, you may have rights to access, correct, or delete personal information, or object to certain processing. Direct requests about data held by Apple, GitHub, or Microsoft to the relevant provider. The fork's maintainers cannot retrieve your device's private cache or change your iCloud records remotely.
 
 The app is not directed at children under 13. If you believe a child has provided personal information to the developer through a support request, contact the address above so it can be addressed.
 

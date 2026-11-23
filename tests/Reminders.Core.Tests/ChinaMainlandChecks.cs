@@ -19,6 +19,7 @@ internal static class ChinaMainlandChecks
             cookies = new[]
             {
                 new { name = "test", value = "mainland", domain = ".icloud.com.cn", path = "/" },
+                new { name = "test", value = "global", domain = ".icloud.com", path = "/" },
                 new { name = "test", value = "unrelated", domain = ".icloud.com.cn.example.com", path = "/" }
             }
         }).AsObject();
@@ -66,10 +67,10 @@ internal static class ChinaMainlandChecks
             var result = await imported.ImportBrowserSession(account, state, default);
             check(result.Flag("authenticated"), "mainland browser session can be imported and checked");
         }
-        var saved = J.Parse(secrets.Session(account));
+        var saved = J.Parse(secrets.Session(account, chinaMainland: true));
         check(saved.Flag("china_mainland") && saved.Array("cookies").Count == 1 && saved.Array("cookies")[0].Text("value") == "mainland", "mainland session retains the region and only Apple cookies");
         secrets.Password(account, "saved-global-password");
-        using var restarted = new ICloudClient(account, secrets, Handler);
+        using var restarted = new ICloudClient(account, secrets, Handler, cacheChinaMainland: true);
         check(!restarted.Status.Flag("can_restore"), "mainland sign-in cannot reuse a saved global password");
         try { await restarted.Connect(null, true, false, default); check(false, "mainland password fallback rejects a global saved credential"); }
         catch (CoreException error) { check(error.Code == "AUTH_REQUIRED", "password fallback requires a saved credential for the selected region"); }
@@ -78,7 +79,7 @@ internal static class ChinaMainlandChecks
         check(globalCache.Status.Flag("can_restore"), "the existing global password remains available in its original region");
         // The stale mainland session must be ignored, independently of the saved password.
         secrets.Delete(account);
-        secrets.Session(account, saved!.ToJsonString());
+        secrets.Session(account, saved!.ToJsonString(), chinaMainland: true);
         check(!await globalCache.Restore(default) && validations == 2 && queries == 2, "a mainland vault session cannot restore into a global cache");
 
         await CheckRegionSwitchAsync(account, authHost, state, check);
@@ -133,7 +134,7 @@ internal static class ChinaMainlandChecks
             try { await service.CallAsync("browser_login", browserLogin); check(false, "browser region switch must reject edits queued during validation"); }
             catch (CoreException error)
             {
-                check(error.Code == "BAD_REQUEST" && cache.Pending(1).Count == 1 && new SecretStore(vault).Session(account) is null,
+                check(error.Code == "BAD_REQUEST" && cache.Pending(1).Count == 1 && new SecretStore(vault).Session(account, chinaMainland: true) is null,
                     "region switch rechecks the queue before saving credentials or replacing the cache");
             }
 

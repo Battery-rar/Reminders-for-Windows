@@ -49,7 +49,9 @@ internal sealed class CloudKit(AppleAuth auth)
     {
         static string? ServiceUrl(JsonNode? service) => service is JsonValue value && value.TryGetValue<string>(out var url) ? url : service.Text("url");
         var services = auth.State["webservices"]; var raw = ServiceUrl(services?["ckdatabasews"]) ?? ServiceUrl(services?["reminders"]) ?? throw new CoreException("ERROR", "This iCloud session did not expose the Reminders service").WithPresentation("ErrorRemindersServiceUnavailable");
-        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri) || uri.Scheme != "https" || !ICloudEndpoints.IsICloudDomain(uri.Host) || uri.UserInfo.Length != 0) throw new CoreException("ERROR", "iCloud returned an unsafe service URL").WithPresentation("ErrorUnsafeICloudServiceUrl");
+        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri) || uri.Scheme != "https" || !uri.IsDefaultPort || uri.UserInfo.Length != 0 ||
+            !ICloudEndpoints.IsICloudDomain(uri.Host, auth.ChinaMainland))
+            throw new CoreException("ERROR", "iCloud returned an unsafe service URL").WithPresentation("ErrorUnsafeICloudServiceUrl");
         var url = uri.GetLeftPart(UriPartial.Path).TrimEnd('/') + "/database/1/com.apple.reminders/production/private/" + operation + "?" + auth.Query + "&remapEnums=true&getCurrentSyncToken=true";
         var response = await auth.SendAsync(auth.Request(HttpMethod.Post, url, body, false), 32 * 1024 * 1024, token);
         if (response.Status is < 200 or >= 300)

@@ -44,7 +44,7 @@ jobs:
 
   # Tagging v* publishes a draft release carrying both architectures. It is
   # left as a draft for release-note and asset review. Notes distinguish unsigned
-  # Store submission MSIX files from installers. The updater sees a release only
+  # development MSIX files from installers. The updater sees a release only
   # after the draft is published as stable.
   release:
     name: Draft release
@@ -116,7 +116,5 @@ jobs:
             Keep the publish folder together, including `Reminders.Core.dll`.
 
             **Reminders-for-Windows-x64.msix** and
-            **Reminders-for-Windows-ARM64.msix** are unsigned Store submission
-            packages for Partner Center certification and signing. Store
-            publication does not sign these separate GitHub files. Install from
-            the Microsoft Store listing for a Store-signed package.
+            **Reminders-for-Windows-ARM64.msix** are unsigned development packages
+            with the fork's identity. Use the matching Setup.exe for installation.

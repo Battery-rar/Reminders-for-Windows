@@ -182,14 +182,16 @@ foreach (var chinaMainland in new[] { false, true })
         Check(!await client.Restore(default), "restore preserves outstanding challenge"); Equal(1, handshakeCount, "restore did not reissue challenge");
         var delivery = await client.RequestCode(true, default); Check(delivery.Flag("sent") && delivery.Text("method") == "sms", "409 delivery accepted");
         Check((await client.SubmitCode("123456", default)).Flag("authenticated"), "SMS trust/accountLogin completes");
-        Check(loginSecrets.Session("vector@example.com") is not null, "session persisted in vault");
+        Check(loginSecrets.Session("vector@example.com", chinaMainland) is not null, "session persisted in vault");
         Equal(chinaMainland, client.ChinaMainland, "verified native sign-in activates the selected region");
-        Equal(chinaMainland, J.Parse(loginSecrets.Session("vector@example.com")).Flag("china_mainland"), "verified native sign-in persists the selected region");
+        Equal(chinaMainland, J.Parse(loginSecrets.Session("vector@example.com", chinaMainland)).Flag("china_mainland"), "verified native sign-in persists the selected region");
         client.Invalidate(); Check(await client.Restore(default), "trusted token restore"); Equal(1, handshakeCount, "token restore skips SRP");
         Check(loginSecrets.Password("vector@example.com", chinaMainland) is not null, "native sign-in saves the password for its region");
         client.SignOut();
-        Check(loginSecrets.Password("vector@example.com") is null && loginSecrets.Password("vector@example.com", chinaMainland: true) is null,
-            "sign out removes both regional password entries for the account");
+        Check(loginSecrets.Password("vector@example.com", chinaMainland) is null && loginSecrets.Session("vector@example.com", chinaMainland) is null,
+            "sign out removes the selected region's password and session");
+        if (chinaMainland)
+            Equal("existing-global-session", J.Parse(loginSecrets.Session("vector@example.com")).Text("session_token"), "mainland sign-out preserves the global session");
     }
 }
 // A server that repeats its continuation token must fail instead of spinning.
@@ -287,6 +289,7 @@ try
 finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); Directory.Delete(shutdownRoot, true); }
 await AuthVerificationChecks.RunAsync(Check);
 await ChinaMainlandChecks.RunAsync(Check);
+await PhaseOneSecurityChecks.RunAsync(Check);
 await BrowserSessionTrustChecks.RunAsync(Check);
 await SignOutChecks.RunAsync(Check);
 await CacheRecoveryChecks.RunAsync(Check);

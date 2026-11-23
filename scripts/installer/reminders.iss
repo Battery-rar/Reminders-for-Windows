@@ -25,25 +25,24 @@
 #endif
 
 [Setup]
-; A stable GUID keeps upgrades in place instead of stacking side-by-side
-; entries in Apps & Features. Never change it for this product.
-AppId={{7C4E1E2A-9F3B-4D5C-8A61-2B0E7F9C4A13}
-AppName=Reminders for Windows
+; This fork has its own stable upgrade identity and installation directory.
+AppId={{6E246184-A393-43C8-ADA2-118254DBD91E}
+AppName=Reminders for Windows GCBD
 AppVersion={#AppVersion}
-AppVerName=Reminders for Windows {#AppVersion}
-AppPublisher=paulsavvas.com
-AppPublisherURL=https://paulsavvas.com
-AppSupportURL=https://github.com/Psavvas/Reminders-for-Windows/issues
-AppUpdatesURL=https://github.com/Psavvas/Reminders-for-Windows/releases
+AppVerName=Reminders for Windows GCBD {#AppVersion}
+AppPublisher=Battery-rar
+AppPublisherURL=https://github.com/Battery-rar/Reminders-for-Windows
+AppSupportURL=https://github.com/Battery-rar/Reminders-for-Windows/issues
+AppUpdatesURL=https://github.com/Battery-rar/Reminders-for-Windows/releases
 VersionInfoVersion={#AppVersion}
 
 ; Per-user install: no UAC prompt, and it matches where the app already keeps
-; its data (%LOCALAPPDATA%\RemindersSync). A machine-wide install would need
+; its data (%LOCALAPPDATA%\RemindersForWindowsGCBD). A machine-wide install would need
 ; admin for no benefit, since nothing here is shared between users.
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-DefaultDirName={autopf}\Reminders for Windows
-DefaultGroupName=Reminders for Windows
+DefaultDirName={autopf}\Reminders for Windows GCBD
+DefaultGroupName=Reminders for Windows GCBD
 DisableProgramGroupPage=yes
 AllowNoIcons=yes
 
@@ -51,7 +50,7 @@ OutputDir={#OutputDir}
 OutputBaseFilename=Reminders-for-Windows-{#Arch}-Setup
 SetupIconFile={#IconFile}
 UninstallDisplayIcon={app}\Reminders.exe
-UninstallDisplayName=Reminders for Windows
+UninstallDisplayName=Reminders for Windows GCBD
 
 ; The app holds the SQLite cache open, so an upgrade over a running install
 ; would otherwise fail on locked binaries. Restart Manager asks the running
@@ -82,43 +81,43 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "startup"; Description: "Start Reminders for Windows when I sign in"; GroupDescription: "Startup"; Flags: unchecked
+Name: "startup"; Description: "Start Reminders for Windows GCBD when I sign in"; GroupDescription: "Startup"; Flags: unchecked
 
 [Files]
 ; Install the complete self-contained app, including the C# backend library.
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [InstallDelete]
-#ifdef DisableUpstreamInstallerUpdates
-; An upgrade from an upstream installer may already have enabled in-app installation.
-Type: files; Name: "{app}\installer-installation.txt"
-#endif
-; Remove only this app's old shortcuts when upgrading to the new display name.
-Type: files; Name: "{autoprograms}\Cloud Reminder Sync\Cloud Reminder Sync.lnk"
-Type: files; Name: "{autoprograms}\Cloud Reminder Sync\{cm:UninstallProgram,Cloud Reminder Sync}.lnk"
-Type: files; Name: "{autodesktop}\Cloud Reminder Sync.lnk"
-Type: files; Name: "{userstartup}\Cloud Reminder Sync.lnk"
-Type: files; Name: "{autoprograms}\iCloud Reminders\iCloud Reminders.lnk"
-Type: files; Name: "{autoprograms}\iCloud Reminders\{cm:UninstallProgram,iCloud Reminders}.lnk"
-Type: files; Name: "{autodesktop}\iCloud Reminders.lnk"
-Type: files; Name: "{userstartup}\iCloud Reminders.lnk"
+; A normal installation turns off a prior opt-in for in-app installation.
+Type: files; Name: "{app}\gcbd-updates.ini"
 
 [Icons]
-Name: "{group}\Reminders for Windows"; Filename: "{app}\Reminders.exe"
-Name: "{group}\{cm:UninstallProgram,Reminders for Windows}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Reminders for Windows"; Filename: "{app}\Reminders.exe"; Tasks: desktopicon
-Name: "{userstartup}\Reminders for Windows"; Filename: "{app}\Reminders.exe"; Tasks: startup
+Name: "{group}\Reminders for Windows GCBD"; Filename: "{app}\Reminders.exe"
+Name: "{group}\{cm:UninstallProgram,Reminders for Windows GCBD}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\Reminders for Windows GCBD"; Filename: "{app}\Reminders.exe"; Tasks: desktopicon
+Name: "{userstartup}\Reminders for Windows GCBD"; Filename: "{app}\Reminders.exe"; Tasks: startup
 
 [Run]
-Filename: "{app}\Reminders.exe"; Description: "{cm:LaunchProgram,Reminders for Windows}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Reminders.exe"; Description: "{cm:LaunchProgram,Reminders for Windows GCBD}"; Flags: nowait postinstall skipifsilent
 Filename: "{app}\Reminders.exe"; Flags: nowait; Check: IsAppUpdate
 
-#ifndef DisableUpstreamInstallerUpdates
 [INI]
-Filename: "{app}\installer-installation.txt"; Section: "Installation"; Key: "Type"; String: "InnoSetup"; Flags: uninsdeleteentry uninsdeletesectionifempty
+Filename: "{app}\gcbd-installation.ini"; Section: "Installation"; Key: "Product"; String: "Battery-rar.RemindersForWindowsGCBD"; Flags: uninsdeleteentry uninsdeletesectionifempty
+#ifdef EnableForkInstallerUpdates
+Filename: "{app}\gcbd-updates.ini"; Section: "Installation"; Key: "Updates"; String: "Enabled"; Flags: uninsdeleteentry uninsdeletesectionifempty
 #endif
 
 [Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if (GetIniString('Installation', 'Product', '', ExpandConstant('{app}\gcbd-installation.ini')) <> 'Battery-rar.RemindersForWindowsGCBD') and
+     (FileExists(ExpandConstant('{app}\Reminders.exe')) or
+      FileExists(ExpandConstant('{app}\installer-installation.txt')) or
+      FileExists(ExpandConstant('{app}\unins000.exe'))) then
+    Result := 'Choose a separate folder for Reminders for Windows GCBD to preserve the existing installation.';
+end;
+
 function IsAppUpdate: Boolean;
 var
   I: Integer;
@@ -130,8 +129,9 @@ begin
 end;
 
 [UninstallDelete]
-Type: files; Name: "{app}\installer-installation.txt"
+Type: files; Name: "{app}\gcbd-installation.ini"
+Type: files; Name: "{app}\gcbd-updates.ini"
 ; Log files the app writes next to its data. Reminder content, settings and the
 ; sync cache are deliberately left in place so reinstalling does not lose them;
 ; credentials live in Windows Credential Manager and are never touched here.
-Type: filesandordirs; Name: "{localappdata}\RemindersSync\logs"
+Type: filesandordirs; Name: "{localappdata}\RemindersForWindowsGCBD\logs"

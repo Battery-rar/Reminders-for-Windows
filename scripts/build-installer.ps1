@@ -12,8 +12,8 @@
     with a certificate from the current user's store. No certificate is
     generated or committed by this repository.
 
-    Use -DisableUpstreamInstallerUpdates for a custom build that must not
-    install upstream releases through the in-app updater.
+    The app offers manual release checks by default. Use -EnableForkInstallerUpdates
+    only for a build that should install releases from the fork through the app.
 
 .EXAMPLE
     .\scripts\build-installer.ps1
@@ -29,7 +29,7 @@ param(
     [string]$Architecture = 'x64',
     [string]$CertificateThumbprint,
     [switch]$SkipBuild,
-    [switch]$DisableUpstreamInstallerUpdates
+    [switch]$EnableForkInstallerUpdates
 )
 
 $ErrorActionPreference = 'Stop'
@@ -79,7 +79,7 @@ $compilerArguments = @(
     "/DOutputDir=$([IO.Path]::GetFullPath($installerOutput).TrimEnd('\'))"
     "/DIconFile=$([IO.Path]::GetFullPath($icon))"
 )
-if ($DisableUpstreamInstallerUpdates) { $compilerArguments += '/DDisableUpstreamInstallerUpdates=1' }
+if ($EnableForkInstallerUpdates) { $compilerArguments += '/DEnableForkInstallerUpdates=1' }
 & $iscc @compilerArguments $script
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed to build the installer.' }
 

@@ -9,12 +9,15 @@ internal sealed partial class Cache : IDisposable
     private readonly object gate = new();
     private static readonly string[] Flags = ["completed", "flagged", "all_day", "deleted", "is_group", "resolved"];
     internal static readonly string[] EditFields = ["title", "description", "due_date", "priority", "completed", "flagged", "list_id", "parent_id", "deleted", "all_day", "recurrence", "recurrence_ids", "time_zone"];
+
+    static Cache() => SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
+
     public Cache(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path }.ToString());
         connection.Open();
-        Execute("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
+        Execute("PRAGMA trusted_schema=OFF; PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
         // Migrate before creating indexes, including caches from pre-v2 releases.
         if (Query("SELECT name FROM sqlite_master WHERE type='table' AND name='reminders'").Count > 0 && !Query("PRAGMA table_info(reminders)").Any(r => r.Text("name") == "completed_date")) Execute("ALTER TABLE reminders ADD COLUMN completed_date TEXT");
         using var stream = typeof(Cache).Assembly.GetManifestResourceStream("Reminders.Core.Schema.sql")!;

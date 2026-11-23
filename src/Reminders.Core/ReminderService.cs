@@ -8,6 +8,7 @@ namespace Reminders.Core;
 public sealed partial class ReminderService : IAsyncDisposable
 {
     private readonly Cache cache;
+    private readonly FileStream cacheLease;
     private readonly ICloudClient? cloudClient;
     private readonly SyncEngine? sync;
     private ICloudClient client => cloudClient ?? throw new CoreException("AUTH_REQUIRED", "This account only stores reminders on this PC.").WithPresentation("ErrorLocalAccountNoICloud");
@@ -27,23 +28,51 @@ public sealed partial class ReminderService : IAsyncDisposable
     public ReminderService(string dataDirectory) : this(dataDirectory, new WindowsSecrets()) { }
     internal ReminderService(string dataDirectory, ISecrets secrets, Func<HttpMessageHandler>? handlerFactory = null)
     {
-        cache = new Cache(Path.Combine(dataDirectory, "cache.db"));
-        cloudClient = new ICloudClient((cache.Meta("apple_id") ?? "").Trim().ToLowerInvariant(), new SecretStore(secrets), handlerFactory, cache.Meta("china_mainland") == "1");
-        client.Diagnostic += message => Diagnostic?.Invoke(message);
-        authSnapshot = client.Status; sync = new(cache, client, clientGate, Emit);
+        (cache, cacheLease) = OpenCache(dataDirectory);
+        try
+        {
+            cloudClient = new ICloudClient((cache.Meta("apple_id") ?? "").Trim().ToLowerInvariant(), new SecretStore(secrets), handlerFactory, cache.Meta("china_mainland") == "1");
+            client.Diagnostic += message => Diagnostic?.Invoke(message);
+            authSnapshot = client.Status; sync = new(cache, client, clientGate, Emit);
+        }
+        catch { DisposeStorage(); throw; }
     }
-    private ReminderService(Cache localCache)
+    private ReminderService((Cache Cache, FileStream Lease) local)
     {
         // This constructor never opens the iCloud cache, credential vault or HTTP client.
-        cache = localCache;
+        (cache, cacheLease) = local;
         try { DemoAccount.Seed(cache); }
-        catch { cache.Dispose(); throw; }
+        catch { DisposeStorage(); throw; }
         authSnapshot = (JsonObject)J.Node(new { authenticated = true, apple_id = "demo", needs_2fa = false, restoring = false, local_only = true });
     }
     public static ReminderService OpenDemo(string dataDirectory, string? password)
     {
         DemoAccount.ValidatePassword(password);
-        return new ReminderService(new Cache(Path.Combine(dataDirectory, "demo", "cache.db")));
+        return new ReminderService(OpenCache(Path.Combine(dataDirectory, "demo")));
+    }
+    private static (Cache Cache, FileStream Lease) OpenCache(string directory)
+    {
+        Directory.CreateDirectory(directory);
+        FileStream lease;
+        try { lease = new FileStream(Path.Combine(directory, "cache.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+        catch (IOException error) when ((error.HResult & 0xffff) is 11 or 32 or 33)
+        {
+            throw new CoreException("CACHE_IN_USE", "Reminders is already using this cache in another instance.")
+                .WithPresentation("ErrorCacheInUse");
+        }
+        // Leave the lock file at its original path so every instance opens the same file.
+        try { return (new Cache(Path.Combine(directory, "cache.db")), lease); }
+        catch { lease.Dispose(); throw; }
+    }
+
+    private void DisposeStorage()
+    {
+        try { cloudClient?.Dispose(); }
+        finally
+        {
+            try { cache.Dispose(); }
+            finally { cacheLease.Dispose(); }
+        }
     }
     private void QueueSync(bool full = false)
     {
@@ -60,7 +89,7 @@ public sealed partial class ReminderService : IAsyncDisposable
     {
         lock (workGate)
         {
-            if (disposed) return;
+            if (disposed || backgroundLifetime.IsCancellationRequested) return;
             var backgroundToken = backgroundLifetime.Token;
             var id = Interlocked.Increment(ref nextTask);
             var task = Task.Run(async () =>
@@ -79,9 +108,9 @@ public sealed partial class ReminderService : IAsyncDisposable
     private async Task CancelBackgroundWorkAsync()
     {
         Task[] work;
-        CancellationTokenSource source;
-        lock (workGate) { source = backgroundLifetime; work = queuedWork.Values.ToArray(); }
-        await source.CancelAsync();
+        Task cancellation;
+        lock (workGate) { cancellation = backgroundLifetime.CancelAsync(); work = queuedWork.Values.ToArray(); }
+        await cancellation;
         await Task.WhenAll(work);
     }
     private void ResumeBackgroundWork()
@@ -419,7 +448,7 @@ public sealed partial class ReminderService : IAsyncDisposable
         try
         {
             try { if (cloudClient?.Connected == true) cloudClient.Persist(); }
-            finally { cloudClient?.Dispose(); cache.Dispose(); }
+            finally { DisposeStorage(); }
         }
         finally { clientGate.Release(); }
         lifetime.Dispose(); backgroundLifetime.Dispose(); clientGate.Dispose(); signInGate.Dispose();

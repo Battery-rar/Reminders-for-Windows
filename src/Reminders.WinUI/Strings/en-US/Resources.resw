@@ -136,7 +136,7 @@
     <value>Apple's sign-in service returned HTTP {0}. Reload Apple sign-in to try again, or cancel and use text verification.</value>
   </data>
   <data name="AppTitle" xml:space="preserve">
-    <value>Reminders for Windows</value>
+    <value>Reminders for Windows GCBD</value>
   </data>
   <data name="Automatic" xml:space="preserve">
     <value>Automatic</value>
@@ -254,9 +254,6 @@
   </data>
   <data name="ConflictItem.Content" xml:space="preserve">
     <value>Sync conflicts</value>
-  </data>
-  <data name="ContactPaulSavvas" xml:space="preserve">
-    <value>Contact Paul Savvas</value>
   </data>
   <data name="ContinueInApp" xml:space="preserve">
     <value>Continue in app</value>
@@ -1317,7 +1314,7 @@ Any subtasks will also be deleted.</value>
     <value>Reminders for Windows icon</value>
   </data>
   <data name="RemindersForWindowsTextBlock.Text" xml:space="preserve">
-    <value>Reminders for Windows</value>
+    <value>Reminders for Windows GCBD</value>
   </data>
   <data name="RemindersStayOnThisPC" xml:space="preserve">
     <value>Reminders stay on this PC.</value>
@@ -1946,5 +1943,8 @@ Accept any updated terms, then check that your lists appear.</value>
   </data>
   <data name="ChinaMainlandSignIn.Content" xml:space="preserve">
     <value>iCloud China mainland (GCBD)</value>
+  </data>
+  <data name="ErrorCacheInUse" xml:space="preserve">
+    <value>Reminders is already open. Close the other instance and try again.</value>
   </data>
 </root>
