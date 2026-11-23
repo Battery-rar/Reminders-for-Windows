@@ -86,6 +86,7 @@ internal sealed class UiPreferenceData
     [System.Text.Json.Serialization.JsonPropertyName("navigation_pane_open")]
     public bool NavigationPaneOpen { get; set; } = true;
     public List<string> ListOrder { get; set; } = [];
+    public string ListSort { get; set; } = "manual";
     public Dictionary<string, ListAppearance> Lists { get; set; } = [];
     public double? DetailPaneFraction { get; set; }
     public bool CompletionAnimation { get; set; } = true;
@@ -94,6 +95,6 @@ internal sealed class UiPreferenceData
 
 internal sealed class ListAppearance
 {
-    public string Glyph { get; set; } = "\uE8FD";
+    public string? Glyph { get; set; }
     public string? Color { get; set; }
 }

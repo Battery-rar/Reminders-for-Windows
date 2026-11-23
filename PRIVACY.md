@@ -1,8 +1,8 @@
-# Privacy Policy for Reminders for Windows
+# Privacy Policy for Apple Reminders on Windows
 
 Effective date: October 5, 2026. Last updated: November 23, 2026.
 
-This policy covers the Battery-rar fork of Reminders for Windows, the independent app originally developed by Paul Savvas. The app is independent of Apple and Microsoft. For privacy questions about the fork, use the Battery-rar repository. Keep account information and logs out of public issues.
+This policy covers Apple Reminders on Windows, the independent Battery-rar fork of the app originally developed by Paul Savvas. For privacy questions about the fork, use the Battery-rar repository. Keep account information and logs out of public issues.
 
 ## Information the app accesses
 

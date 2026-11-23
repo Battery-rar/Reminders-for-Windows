@@ -296,14 +296,14 @@ public sealed partial class MainWindow : Window
         });
     }
 
-    private static (string, string, string?, bool) ListPresentation(ReminderList list) =>
-        (list.Id, list.Title, list.ColorHex, list.IsGroup);
+    private static (string, string, string?, string?, bool) ListPresentation(ReminderList list) =>
+        (list.Id, list.Title, list.ColorHex, list.BadgeEmblem, list.IsGroup);
 
-    private NavigationViewItem CreateNavigationItem(string label, string glyph, string tag)
+    private NavigationViewItem CreateNavigationItem(string label, IconElement icon, string tag)
     {
         var item = new NavigationViewItem
         {
-            Content = label, Tag = tag, Icon = new FontIcon { Glyph = glyph }
+            Content = label, Tag = tag, Icon = icon
         };
         AttachPaneHover(item);
         return item;
@@ -313,6 +313,11 @@ public sealed partial class MainWindow : Window
     {
         item.PointerEntered += NavigationPaneItem_PointerEntered;
         item.PointerExited += NavigationPaneItem_PointerExited;
+        if (item.Content is string label)
+            ToolTipService.SetToolTip(item, new ToolTip
+            {
+                Content = label, PlacementTarget = item, Placement = Microsoft.UI.Xaml.Controls.Primitives.PlacementMode.Right
+            });
     }
 
     private void NavigationPaneItem_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -745,7 +750,7 @@ public sealed partial class MainWindow : Window
         if (_restoringNavigation) return;
         if (args.IsSettingsSelected) { RestoreNavigationSelection(); return; }
         if (args.SelectedItemContainer?.Tag?.ToString() is not string tag) return;
-        if (tag is "sync" or "conflicts") { RestoreNavigationSelection(); return; }
+        if (tag is "sync" or "conflicts" or "sidebar") { RestoreNavigationSelection(); return; }
         var split = tag.Split(':', 2); if (split.Length != 2) return;
         var target = new NavEntry(args.SelectedItemContainer.Content?.ToString() ?? L10n.Get("Reminders"), "", split[0] switch { "list" => NavKind.List, "tag" => NavKind.Tag, _ => NavKind.Smart }, split[1]);
         if (_savingDetail || _detailTransition || _dialogOpen) { RestoreNavigationSelection(); return; }

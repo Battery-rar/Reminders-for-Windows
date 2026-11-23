@@ -44,8 +44,42 @@ public sealed partial class MainWindow
                 RestoreNavigationSelection();
                 if (await ConfirmLeaveDetailAsync()) await ResolveConflictsAsync();
             }
+            else if (args.InvokedItemContainer?.Tag?.ToString() == "sidebar")
+            {
+                RestoreNavigationSelection();
+                await ShowSidebarSettingsAsync();
+            }
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntCompleteAction"), L10n.Error(error), InfoBarSeverity.Error); }
+    }
+
+    private string SidebarSort => _uiPreferences.ListSort is SidebarPresentation.NameAscending or SidebarPresentation.NameDescending
+        ? _uiPreferences.ListSort : SidebarPresentation.Manual;
+
+    private async Task ShowSidebarSettingsAsync()
+    {
+        if (_dialogOpen || _savingDetail) return;
+        _dialogOpen = true;
+        try
+        {
+            var order = new ComboBox { Header = L10n.Get("ListOrder"), HorizontalAlignment = HorizontalAlignment.Stretch };
+            var choices = new[] { SidebarPresentation.Manual, SidebarPresentation.NameAscending, SidebarPresentation.NameDescending };
+            foreach (var (mode, label) in choices.Zip(new[] { "SidebarSortManual", "SidebarSortAscending", "SidebarSortDescending" }))
+                order.Items.Add(new ComboBoxItem { Content = L10n.Get(label), Tag = mode });
+            order.SelectedIndex = Array.IndexOf(choices, SidebarSort);
+            var hint = new TextBlock { Text = L10n.Get("SidebarManualOrderHint"), TextWrapping = TextWrapping.Wrap };
+            void UpdateHint() => hint.Visibility = order.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+            order.SelectionChanged += (_, _) => UpdateHint();
+            UpdateHint();
+            var panel = new StackPanel { Spacing = 12, MinWidth = 280 };
+            panel.Children.Add(order); panel.Children.Add(hint);
+            if (await MakeDialog(L10n.Get("SidebarSettingsItem/Content"), panel, L10n.Get("Save")).ShowAsync() != ContentDialogResult.Primary ||
+                order.SelectedItem is not ComboBoxItem { Tag: string modeSelected } || SidebarSort == modeSelected) return;
+            _uiPreferences.ListSort = modeSelected;
+            SaveUiPreferences();
+            RebuildListNavigation();
+        }
+        finally { _dialogOpen = false; }
     }
 
     private List<ReminderList> OrderedLists()
@@ -53,7 +87,7 @@ public sealed partial class MainWindow
         var saved = _settings.Property("list_order");
         var order = saved.ValueKind == JsonValueKind.Array && saved.GetArrayLength() > 0
             ? saved.EnumerateArray().Select(v => v.GetString() ?? "").ToList() : _uiPreferences.ListOrder;
-        return _lists.Where(list => !list.IsGroup).OrderBy(list => { var index = order.IndexOf(list.Id); return index < 0 ? int.MaxValue : index; }).ToList();
+        return SidebarPresentation.Order(_lists.Where(list => !list.IsGroup), SidebarSort, order, list => list.Id, list => list.Title).ToList();
     }
 
     private static Brush ColorBrush(string? hex)
@@ -63,34 +97,58 @@ public sealed partial class MainWindow
         return (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
     }
 
-    private void RebuildListNavigation()
+    private static FontIcon MakeSidebarIcon(string? glyph, string? color)
     {
+        var icon = SidebarPresentation.ResolveIcon(glyph);
+        if (icon.IsEmoji)
+            return new FontIcon { Glyph = icon.Glyph, FontFamily = new FontFamily("Segoe UI Emoji"), FontSize = 18 };
+        var result = new FontIcon { Glyph = icon.Glyph, FontSize = 18 };
+        if (!new AccessibilitySettings().HighContrast) result.Foreground = ColorBrush(color);
+        return result;
+    }
+
+    private void RebuildListNavigation(string? focusListId = null)
+    {
+        ClearSidebarDropTarget();
         _restoringNavigation = true;
         while (Navigation.MenuItems.Count > 7) Navigation.MenuItems.RemoveAt(7);
         var ordered = OrderedLists();
+        NavigationViewItem? focusItem = null;
         foreach (var list in ordered)
         {
             _uiPreferences.Lists.TryGetValue(list.Id, out var appearance);
-            var item = CreateNavigationItem(list.Title, appearance?.Glyph ?? "\uE8FD", $"list:{list.Id}");
-            item.Icon.Foreground = ColorBrush(appearance?.Color ?? list.ColorHex);
+            var icon = MakeSidebarIcon(appearance?.Glyph ?? list.BadgeEmblem, appearance?.Color ?? list.ColorHex);
+            var item = CreateNavigationItem(list.Title, icon, $"list:{list.Id}");
+            AttachReminderDropTarget(item);
             var menu = new MenuFlyout();
             var customize = new MenuFlyoutItem { Text = L10n.Get("ChangeIconAndColor") };
             customize.Click += async (_, _) => await CustomizeListAsync(list);
             menu.Items.Add(customize);
-            var up = new MenuFlyoutItem { Text = L10n.Get("MoveUp"), IsEnabled = ordered.IndexOf(list) > 0 };
-            up.Click += async (_, _) => await MoveListAsync(list.Id, -1);
-            var down = new MenuFlyoutItem { Text = L10n.Get("MoveDown"), IsEnabled = ordered.IndexOf(list) < ordered.Count - 1 };
-            down.Click += async (_, _) => await MoveListAsync(list.Id, 1);
-            menu.Items.Add(up); menu.Items.Add(down); item.ContextFlyout = menu;
+            if (SidebarSort == SidebarPresentation.Manual)
+            {
+                var index = ordered.IndexOf(list);
+                var up = new MenuFlyoutItem { Text = L10n.Get("MoveUp"), IsEnabled = index > 0 };
+                up.Click += async (_, _) => await MoveListAsync(list.Id, -1);
+                var down = new MenuFlyoutItem { Text = L10n.Get("MoveDown"), IsEnabled = index < ordered.Count - 1 };
+                down.Click += async (_, _) => await MoveListAsync(list.Id, 1);
+                menu.Items.Add(up); menu.Items.Add(down);
+            }
+            item.ContextFlyout = menu;
             Navigation.MenuItems.Add(item);
+            if (list.Id == focusListId) focusItem = item;
         }
         if (_tags.Count > 0)
         {
             Navigation.MenuItems.Add(new NavigationViewItemHeader { Content = L10n.Get("Tags") });
-            foreach (var tag in _tags) Navigation.MenuItems.Add(CreateNavigationItem("#" + tag, "\uE8EC", $"tag:{tag}"));
+            foreach (var tag in _tags) Navigation.MenuItems.Add(CreateNavigationItem("#" + tag, new FontIcon { Glyph = "\uE8EC" }, $"tag:{tag}"));
         }
         _restoringNavigation = false;
         RestoreNavigationSelection();
+        if (focusItem is not null)
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            {
+                if (!_windowClosed && Navigation.MenuItems.Contains(focusItem)) focusItem.Focus(FocusState.Programmatic);
+            });
     }
 
     private void SaveUiPreferences()
@@ -102,6 +160,7 @@ public sealed partial class MainWindow
 
     private async Task MoveListAsync(string id, int direction)
     {
+        if (SidebarSort != SidebarPresentation.Manual) return;
         var order = OrderedLists().Select(list => list.Id).ToList();
         var index = order.IndexOf(id); var target = index + direction;
         if (index < 0 || target < 0 || target >= order.Count) return;
@@ -109,26 +168,34 @@ public sealed partial class MainWindow
         try
         {
             if (!_demo) _settings = await _sync.CallAsync("set_settings", new { list_order = order });
-            _uiPreferences.ListOrder = order; SaveUiPreferences(); RebuildListNavigation();
+            _uiPreferences.ListOrder = order; SaveUiPreferences(); RebuildListNavigation(id);
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntSaveListOrder"), L10n.Error(error), InfoBarSeverity.Error); }
     }
 
     private async Task CustomizeListAsync(ReminderList list)
     {
-        if (_dialogOpen) return;
+        if (_dialogOpen || _savingDetail) return;
         _dialogOpen = true;
         try
         {
             _uiPreferences.Lists.TryGetValue(list.Id, out var appearance);
+            const string custom = "custom";
             var icons = new ComboBox { Header = L10n.Get("Icon"), HorizontalAlignment = HorizontalAlignment.Stretch };
+            icons.Items.Add(new ComboBoxItem { Content = L10n.Get("UseICloudListIcon"), Tag = "" });
             foreach (var icon in ListIcons)
             {
                 var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
                 row.Children.Add(new FontIcon { Glyph = icon.Glyph, FontSize = 18 }); row.Children.Add(new TextBlock { Text = icon.Name });
                 icons.Items.Add(new ComboBoxItem { Content = row, Tag = icon.Glyph });
             }
-            icons.SelectedIndex = Math.Max(0, Array.FindIndex(ListIcons, icon => icon.Glyph == appearance?.Glyph));
+            icons.Items.Add(new ComboBoxItem { Content = L10n.Get("CustomListSymbol"), Tag = custom });
+            var preset = Array.FindIndex(ListIcons, icon => icon.Glyph == appearance?.Glyph);
+            icons.SelectedIndex = appearance?.Glyph is null ? 0 : preset >= 0 ? preset + 1 : icons.Items.Count - 1;
+            var customIcon = new TextBox { Header = L10n.Get("CustomListSymbol"), PlaceholderText = L10n.Get("ListSymbolPlaceholder"),
+                MaxLength = 64, Text = icons.SelectedIndex == icons.Items.Count - 1 ? appearance?.Glyph ?? "" : "" };
+            var iconPreview = new ContentControl { HorizontalAlignment = HorizontalAlignment.Center };
+            var fallback = new TextBlock { Text = L10n.Get("ListSymbolFallback"), TextWrapping = TextWrapping.Wrap };
             var colors = new ComboBox { Header = L10n.Get("Color"), HorizontalAlignment = HorizontalAlignment.Stretch };
             colors.Items.Add(new ComboBoxItem { Content = L10n.Get("UseICloudListColor"), Tag = "" });
             foreach (var color in ListColors)
@@ -139,13 +206,36 @@ public sealed partial class MainWindow
             }
             colors.SelectedIndex = Array.FindIndex(ListColors, color => color.Hex == appearance?.Color) + 1;
             var panel = new StackPanel { Spacing = 16, MinWidth = 320 };
-            panel.Children.Add(icons); panel.Children.Add(colors);
+            panel.Children.Add(iconPreview); panel.Children.Add(icons); panel.Children.Add(customIcon); panel.Children.Add(fallback); panel.Children.Add(colors);
             panel.Children.Add(new TextBlock { Text = L10n.Get("ListAppearanceStorageDescription"), TextWrapping = TextWrapping.Wrap });
+            string? SelectedGlyph() => (icons.SelectedItem as ComboBoxItem)?.Tag?.ToString() switch
+            {
+                custom => customIcon.Text.Trim(),
+                "" => null,
+                var selected => selected
+            };
+            string? SelectedColor() => (colors.SelectedItem as ComboBoxItem)?.Tag?.ToString() is { Length: > 0 } color ? color : null;
+            void UpdatePreview()
+            {
+                var customSelected = (icons.SelectedItem as ComboBoxItem)?.Tag?.ToString() == custom;
+                var glyph = SelectedGlyph();
+                customIcon.Visibility = customSelected ? Visibility.Visible : Visibility.Collapsed;
+                fallback.Visibility = customSelected && glyph is { Length: > 0 } && SidebarPresentation.ResolveIcon(glyph).IsFallback
+                    ? Visibility.Visible : Visibility.Collapsed;
+                iconPreview.Content = MakeSidebarIcon(glyph ?? list.BadgeEmblem, SelectedColor() ?? list.ColorHex);
+            }
+            icons.SelectionChanged += (_, _) => UpdatePreview();
+            colors.SelectionChanged += (_, _) => UpdatePreview();
+            customIcon.TextChanged += (_, _) => UpdatePreview();
+            UpdatePreview();
             var dialog = MakeDialog(list.Title, panel, L10n.Get("Save"));
             if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-            _uiPreferences.Lists[list.Id] = new() { Glyph = ((ComboBoxItem)icons.SelectedItem).Tag.ToString()!, Color = ((ComboBoxItem)colors.SelectedItem).Tag.ToString() };
-            if (_uiPreferences.Lists[list.Id].Color == "") _uiPreferences.Lists[list.Id].Color = null;
-            SaveUiPreferences(); RebuildListNavigation();
+            var glyph = SelectedGlyph();
+            var pickedColor = SelectedColor();
+            if (string.IsNullOrWhiteSpace(glyph)) glyph = null;
+            if (glyph is null && pickedColor is null) _uiPreferences.Lists.Remove(list.Id);
+            else _uiPreferences.Lists[list.Id] = new() { Glyph = glyph, Color = pickedColor };
+            SaveUiPreferences(); RebuildListNavigation(list.Id);
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntCustomizeList"), L10n.Error(error), InfoBarSeverity.Error); }
         finally { _dialogOpen = false; }

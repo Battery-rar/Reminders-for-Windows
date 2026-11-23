@@ -23,7 +23,8 @@
 #ifndef IconFile
   #error IconFile must be supplied by build-installer.ps1
 #endif
-#define ProductName "Reminders for Windows"
+#define ProductName "Apple Reminders on Windows"
+#define PreviousProductName "Reminders for Windows"
 
 [Setup]
 ; This fork has its own stable upgrade identity and installation directory.
@@ -36,6 +37,7 @@ AppPublisherURL=https://github.com/Battery-rar/Reminders-for-Windows
 AppSupportURL=https://github.com/Battery-rar/Reminders-for-Windows/issues
 AppUpdatesURL=https://github.com/Battery-rar/Reminders-for-Windows/releases
 VersionInfoVersion={#AppVersion}
+VersionInfoProductName={#ProductName}
 
 ; Per-user install: no UAC prompt, and it matches where the app already keeps
 ; its data (%LOCALAPPDATA%\RemindersForWindowsGCBD). A machine-wide install would need
@@ -109,6 +111,11 @@ Type: files; Name: "{autoprograms}\Reminders for Windows GCBD\{cm:UninstallProgr
 Type: dirifempty; Name: "{autoprograms}\Reminders for Windows GCBD"; Check: IsForkUpgrade
 Type: files; Name: "{autodesktop}\Reminders for Windows GCBD.lnk"; Check: IsForkUpgrade
 Type: files; Name: "{userstartup}\Reminders for Windows GCBD.lnk"; Check: IsForkUpgrade
+Type: files; Name: "{autoprograms}\Battery-rar\{#PreviousProductName}\{#PreviousProductName}.lnk"; Check: IsForkUpgrade
+Type: files; Name: "{autoprograms}\Battery-rar\{#PreviousProductName}\{cm:UninstallProgram,{#PreviousProductName}}.lnk"; Check: IsForkUpgrade
+Type: dirifempty; Name: "{autoprograms}\Battery-rar\{#PreviousProductName}"; Check: IsForkUpgrade
+Type: files; Name: "{autodesktop}\{#PreviousProductName}.lnk"; Check: IsPreviousForkShortcut('{autodesktop}')
+Type: files; Name: "{userstartup}\{#PreviousProductName}.lnk"; Check: IsPreviousForkShortcut('{userstartup}')
 
 [Icons]
 Name: "{group}\{#ProductName}"; Filename: "{app}\Reminders.exe"
@@ -142,6 +149,23 @@ end;
 function ShortcutAvailable(Directory: String): Boolean;
 begin
   Result := not FileExists(ExpandConstant(Directory) + '\{#ProductName}.lnk');
+end;
+
+function IsPreviousForkShortcut(Directory: String): Boolean;
+var
+  ShortcutPath: String;
+  Shell, Shortcut: Variant;
+begin
+  Result := False;
+  ShortcutPath := ExpandConstant(Directory) + '\{#PreviousProductName}.lnk';
+  if not IsForkUpgrade or not FileExists(ShortcutPath) then Exit;
+  try
+    Shell := CreateOleObject('WScript.Shell');
+    Shortcut := Shell.CreateShortcut(ShortcutPath);
+    Result := CompareText(Shortcut.TargetPath, ExpandConstant('{app}\Reminders.exe')) = 0;
+  except
+    Log('Leaving the existing shortcut because its target could not be verified.');
+  end;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
