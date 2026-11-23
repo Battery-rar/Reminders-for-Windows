@@ -38,7 +38,17 @@
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <Grid Margin="24,0,24,12" MinHeight="64" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <StackPanel VerticalAlignment="Center"><TextBlock x:Uid="ViewTitle" x:Name="ViewTitle" TextTrimming="CharacterEllipsis" Style="{ThemeResource TitleTextBlockStyle}"/><TextBlock x:Name="ViewSubtitle" Visibility="Collapsed" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,2,0,0"/></StackPanel>
-       <Button x:Uid="AddButton" x:Name="AddButton" Grid.Column="1" Height="36" MinWidth="36" VerticalAlignment="Center" Style="{ThemeResource AccentButtonStyle}" Click="Add_Click"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14"/><TextBlock x:Uid="AddLabel" x:Name="AddLabel"/></StackPanel></Button>
+       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+        <Button x:Uid="AddButton" x:Name="AddButton" Height="36" MinWidth="36" Style="{ThemeResource AccentButtonStyle}" Click="Add_Click"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14"/><TextBlock x:Uid="AddLabel" x:Name="AddLabel"/></StackPanel></Button>
+        <Button x:Uid="QuickAddButton" Height="36" Width="36" Padding="0">
+         <Button.Flyout><MenuFlyout>
+          <MenuFlyoutItem x:Uid="QuickAddToday" Tag="0" Click="QuickAdd_Click"/>
+          <MenuFlyoutItem x:Uid="QuickAddTomorrow" Tag="1" Click="QuickAdd_Click"/>
+          <MenuFlyoutItem x:Uid="QuickAddFiveDays" Tag="5" Click="QuickAdd_Click"/>
+         </MenuFlyout></Button.Flyout>
+         <FontIcon Glyph="&#xE70D;" FontSize="12"/>
+        </Button>
+       </StackPanel>
       </Grid>
       <Grid Grid.Row="1" Padding="24,0,24,12" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <AutoSuggestBox x:Uid="SearchBox" x:Name="SearchBox" QueryIcon="Find" TextChanged="SearchBox_TextChanged" MinHeight="40" VerticalAlignment="Center"/>
@@ -66,7 +76,7 @@
           <Button Grid.Column="2" Style="{ThemeResource SubtleButtonStyle}" Width="32" Height="32" MinWidth="0" Padding="0" Margin="4,-4,0,0" VerticalAlignment="Top"
                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="{x:Bind SubtaskToggleVisibility, Mode=OneWay}"
                   AutomationProperties.Name="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind SubtaskToggleLabel, Mode=OneWay}" Click="ToggleSubtasks_Click">
-           <FontIcon Glyph="{x:Bind SubtaskGlyph, Mode=OneWay}" FontSize="12"/>
+           <FontIcon Glyph="&#xE70D;" FontSize="12" Width="16" Height="16" Rotation="{x:Bind SubtaskChevronRotation, Mode=OneWay}" Loaded="SubtaskChevron_Loaded"/>
           </Button>
          </Grid>
         </DataTemplate>
@@ -123,7 +133,11 @@
          <Button x:Uid="AddSubtaskButton" x:Name="AddSubtaskButton" Click="AddSubtask_Click"/>
          <Border Style="{StaticResource EditorSectionStyle}">
           <StackPanel Spacing="10">
-           <TextBlock x:Uid="ScheduleTextBlock" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+           <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock x:Uid="ScheduleTextBlock" VerticalAlignment="Center" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+            <Button x:Name="DetailClearSchedule" Grid.Column="1" Visibility="Collapsed" Click="ClearSchedule_Click"/>
+           </Grid>
            <Grid x:Name="DetailDateTime" ColumnSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><CalendarDatePicker x:Uid="DetailDate" x:Name="DetailDate" HorizontalAlignment="Stretch" DateChanged="Detail_Changed"/><TimePicker x:Uid="DetailTime" x:Name="DetailTime" Grid.Column="1" HorizontalAlignment="Stretch" TimeChanged="Detail_Changed"/></Grid>
            <Grid x:Name="DetailAllDayRow"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Uid="AllDayTextBlock" VerticalAlignment="Center"/><ToggleSwitch x:Uid="DetailAllDay" x:Name="DetailAllDay" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" Toggled="Detail_Changed"/></Grid>
            <Grid x:Name="DetailRecurrence" ColumnSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><ComboBox x:Uid="DetailRepeatChoice" x:Name="DetailRepeatChoice" HorizontalAlignment="Stretch" SelectionChanged="Detail_Changed"><ComboBoxItem x:Uid="NeverComboBoxItem"/><ComboBoxItem x:Uid="DailyComboBoxItem"/><ComboBoxItem x:Uid="WeeklyComboBoxItem"/><ComboBoxItem x:Uid="MonthlyComboBoxItem"/><ComboBoxItem x:Uid="YearlyComboBoxItem"/></ComboBox><NumberBox x:Uid="DetailRepeatInterval" x:Name="DetailRepeatInterval" Grid.Column="1" Minimum="1" Maximum="999" Value="1" SpinButtonPlacementMode="Compact" ValueChanged="Detail_Changed"/></Grid>

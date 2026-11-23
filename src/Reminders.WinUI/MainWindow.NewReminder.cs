@@ -19,7 +19,7 @@ public sealed partial class MainWindow
         return grid;
     }
 
-    private async Task ShowNewReminderAsync(ReminderItem? parent = null)
+    private async Task ShowNewReminderAsync(ReminderItem? parent = null, int? daysFromToday = null)
     {
         if (_dialogOpen || _savingDetail || AuthGate.Visibility != Visibility.Collapsed || SetupGuide.Visibility == Visibility.Visible) return;
         _dialogOpen = true;
@@ -38,7 +38,9 @@ public sealed partial class MainWindow
             if (list.SelectedIndex < 0) list.SelectedIndex = 0;
 
             var date = new CalendarDatePicker { Header = L10n.Get("DueDate"), HorizontalAlignment = HorizontalAlignment.Stretch };
-            if (_view.Kind == NavKind.Smart && _view.Key == "today") date.Date = DateTimeOffset.Now;
+            if (daysFromToday is { } days)
+                date.Date = ReminderSchedule.FromToday(DateTimeOffset.UtcNow, TimeZoneInfo.Local, days);
+            else if (_view.Kind == NavKind.Smart && _view.Key == "today") date.Date = DateTimeOffset.Now;
             var scheduled = new ToggleSwitch { IsOn = date.Date is not null, OnContent = "", OffContent = "", MinWidth = 0 };
             AutomationProperties.SetName(scheduled, L10n.Get("SetDueDate"));
             ToolTipService.SetToolTip(scheduled, L10n.Get("SetADueDate"));
@@ -80,7 +82,7 @@ public sealed partial class MainWindow
                 Padding = new Thickness(0, 0, 8, 0) };
             var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.RequestedTheme,
                 Title = parent is null ? L10n.Get("NewReminder") : L10n.Get("NewSubtask"), Content = scroll, PrimaryButtonText = parent is null ? L10n.Get("AddReminder") : L10n.Get("AddSubtask"), CloseButtonText = L10n.Get("Cancel"),
-                DefaultButton = ContentDialogButton.Primary, IsPrimaryButtonEnabled = false };
+                IsPrimaryButtonEnabled = false };
             dialog.Resources["ContentDialogMinWidth"] = 0d;
             dialog.Resources["ContentDialogMaxWidth"] = 680d;
             void Resize()
@@ -118,9 +120,17 @@ public sealed partial class MainWindow
             title.TextChanged += (_, _) => Validate(); list.SelectionChanged += (_, _) => Validate();
             interval.ValueChanged += (_, _) => Validate();
             dialog.Opened += (_, _) => title.Focus(FocusState.Programmatic);
+            var submittedFromTitle = false;
+            SubmitTitleOnEnter(title, () =>
+            {
+                if (!dialog.IsPrimaryButtonEnabled || submittedFromTitle) return;
+                submittedFromTitle = true;
+                dialog.Hide();
+            });
             UpdateSchedule();
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary || list.SelectedValue is not string listId) return;
-            var due = FormatDueDate(scheduled.IsOn ? date.Date : null, allDay.IsOn, time.Time);
+            var result = await dialog.ShowAsync();
+            if ((!submittedFromTitle && result != ContentDialogResult.Primary) || list.SelectedValue is not string listId) return;
+            var due = ReminderSchedule.Format(scheduled.IsOn ? date.Date : null, allDay.IsOn, time.Time);
             var priorityValue = priority.SelectedIndex switch { 1 => 9, 2 => 5, 3 => 1, _ => 0 };
             var recurrence = repeat.SelectedIndex == 0 ? null : new RepeatSchedule { Frequency = repeat.SelectedIndex, Interval = (long)interval.Value };
             if (_demo)
@@ -131,8 +141,8 @@ public sealed partial class MainWindow
             }
             else await _sync.CallAsync("create_reminder", new { list_id = listId, parent_id = parent?.Id, title = title.Text.Trim(), description = notes.Text,
                 due_date = due, all_day = allDay.IsOn, priority = priorityValue, flagged = flagged.IsOn, recurrence });
-            if (parent is not null) _collapsedSubtasks.Remove(parent.Id);
-            await RefreshAllAsync();
+            if (parent is not null && _collapsedSubtasks.Remove(parent.Id)) RebuildReminderSections();
+            await RefreshAllAsync(preserveDetail: parent is not null);
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntAddReminder"), L10n.Error(error), InfoBarSeverity.Error); }
         finally { if (resize is not null) Root.SizeChanged -= resize; _dialogOpen = false; }

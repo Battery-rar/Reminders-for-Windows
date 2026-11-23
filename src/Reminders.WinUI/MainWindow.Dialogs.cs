@@ -158,10 +158,6 @@ public sealed partial class MainWindow
         PrimaryButtonText = action, CloseButtonText = L10n.Get("Cancel"), DefaultButton = ContentDialogButton.Primary
     };
 
-    private static string? FormatDueDate(DateTimeOffset? date, bool allDay, TimeSpan time) => date is not DateTimeOffset value ? null
-        : allDay ? value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
-        : value.Date.Add(time).ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture);
-
     private async Task AnimateCompletionAsync(ReminderItem reminder)
     {
         if (!_uiPreferences.CompletionAnimation || !new UISettings().AnimationsEnabled) return;
@@ -181,7 +177,7 @@ public sealed partial class MainWindow
         finally { visual.StopAnimation("Opacity"); visual.Opacity = 1; }
     }
 
-    private void LoadDemoRows()
+    private void LoadDemoRows(bool fromSync = false, bool preserveDetail = false)
     {
         foreach (var row in _demoRows) row.ContextOnly = false;
         IEnumerable<ReminderItem> rows = _demoRows.Where(row => !row.Deleted);
@@ -201,7 +197,7 @@ public sealed partial class MainWindow
         if (_view.Kind == NavKind.Tag || !string.IsNullOrWhiteSpace(SearchBox.Text))
             foreach (var row in rows) row.ContextOnly = false;
         rows = _sort switch { "title" => rows.OrderBy(row => row.Title), "priority" => rows.OrderBy(row => row.Priority == 0 ? 10 : row.Priority), _ => rows.OrderBy(row => row.DueDate is null).ThenBy(row => row.DueDate) };
-        SetReminderRows(IncludeDemoFamily(rows.ToList()));
+        SetReminderRows(IncludeDemoFamily(rows.ToList()), fromSync, preserveDetail);
         SetBadge("smart:today", _demoRows.Count(row => !row.Completed && !row.Deleted && DateTimeOffset.TryParse(row.DueDate, out var due) && (row.AllDay ? due.Date : due.LocalDateTime.Date) <= DateTime.Today));
     }
 }

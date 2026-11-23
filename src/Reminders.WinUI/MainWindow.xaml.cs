@@ -79,6 +79,10 @@ public sealed partial class MainWindow : Window
         DetailDateTime.SizeChanged += EditorPair_SizeChanged;
         DetailRecurrence.SizeChanged += EditorPair_SizeChanged;
         DetailOptions.SizeChanged += EditorPair_SizeChanged;
+        SubmitTitleOnEnter(DetailTitle, async () =>
+        {
+            if (!_dialogOpen && SaveButton.IsEnabled) await SaveDetailAsync(preserveEditor: true);
+        });
         var settingsAccelerator = new KeyboardAccelerator { Key = (global::Windows.System.VirtualKey)188, Modifiers = global::Windows.System.VirtualKeyModifiers.Control };
         settingsAccelerator.Invoked += SettingsAccelerator_Invoked;
         Root.KeyboardAccelerators.Add(settingsAccelerator);
@@ -262,10 +266,10 @@ public sealed partial class MainWindow : Window
         SetupHelpLink.IsEnabled = true;
     }
 
-    private async Task RefreshAllAsync(bool fromSync = false)
+    private async Task RefreshAllAsync(bool fromSync = false, bool preserveDetail = false)
     {
         await LoadNavigationAsync();
-        await LoadRemindersAsync(fromSync);
+        await LoadRemindersAsync(fromSync, preserveDetail);
         await RefreshStatusAsync();
     }
 
@@ -331,10 +335,10 @@ public sealed partial class MainWindow : Window
             item.InfoBadge = value > 0 ? new InfoBadge { Value = value } : null;
     }
 
-    private async Task LoadRemindersAsync(bool fromSync = false)
+    private async Task LoadRemindersAsync(bool fromSync = false, bool preserveDetail = false)
     {
         ShowCompleted.Visibility = _view.Kind == NavKind.Smart && _view.Key == "completed" ? Visibility.Collapsed : Visibility.Visible;
-        if (_demo) { _reminderLoads.Invalidate(); LoadDemoRows(); return; }
+        if (_demo) { _reminderLoads.Invalidate(); LoadDemoRows(fromSync, preserveDetail); return; }
         try
         {
             var presentation = CurrentReminderQuery;
@@ -352,7 +356,7 @@ public sealed partial class MainWindow : Window
             {
                 if (_windowClosed || _accountBusy || AuthGate.Visibility != Visibility.Collapsed || _completing.Count > 0 ||
                     CurrentReminderQuery != presentation) return;
-                SetReminderRows(data.Rows, fromSync, _selected?.Id == selectedId ? data.SelectedId : null);
+                SetReminderRows(data.Rows, fromSync, preserveDetail, _selected?.Id == selectedId ? data.SelectedId : null);
             });
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntLoadReminders"), L10n.Error(error), InfoBarSeverity.Error); }
@@ -376,29 +380,34 @@ public sealed partial class MainWindow : Window
             : (count == 1 ? "ReminderCountOne" : "ReminderCountMany");
         RowCount.Text = L10n.Format(countKey, count);
     }
-    private void SetReminderRows(IEnumerable<ReminderItem> rows, bool fromSync = false, string? resolvedSelectedId = null)
+    private void SetReminderRows(IReadOnlyList<ReminderItem> rows, bool fromSync = false, bool preserveDetail = false, string? resolvedSelectedId = null)
     {
         var presentation = CurrentReminderQuery;
         var sameQuery = _renderedQuery == presentation;
         var selected = _selected;
-        var preserveEditor = selected is not null && (_detailDirty || fromSync && (_savingDetail || IsEditorFocused()));
-        var preserveRow = fromSync && sameQuery && preserveEditor;
+        var projectSavedDetail = selected is not null && ReferenceEquals(_savedDetailPendingProjection, selected);
+        var preserveEditor = selected is not null && (projectSavedDetail || preserveDetail || _detailDirty || fromSync && (_savingDetail || IsEditorFocused()));
+        var preservedIndex = fromSync && !projectSavedDetail && sameQuery && preserveEditor ? _reminders.IndexOf(selected!) : -1;
         var priorRows = _reminders.ToDictionary(row => row.Id);
+        if (selected is not null) priorRows[selected.Id] = selected;
         var updatedRows = new List<ReminderItem>();
         var changed = false;
         var editorChanged = false;
 
+        if (selected is not null && resolvedSelectedId is not null && selected.Id != resolvedSelectedId &&
+            rows.Any(row => row.Id == resolvedSelectedId))
+        {
+            if (_collapsedSubtasks.Remove(selected.Id)) _collapsedSubtasks.Add(resolvedSelectedId);
+            priorRows.Remove(selected.Id);
+            selected.Id = resolvedSelectedId;
+            priorRows[resolvedSelectedId] = selected;
+            changed = true;
+        }
+
         foreach (var row in rows)
         {
-            if (preserveRow && (row.Id == selected!.Id || row.Id == resolvedSelectedId)) continue;
+            if (preservedIndex >= 0 && row.Id == selected!.Id) continue;
             var previous = priorRows.GetValueOrDefault(row.Id);
-            if (previous is null && selected is not null && row.Id == resolvedSelectedId && row.Id != selected.Id)
-            {
-                previous = selected;
-                if (_collapsedSubtasks.Remove(previous.Id)) _collapsedSubtasks.Add(row.Id);
-                previous.Id = row.Id;
-                changed = true;
-            }
             if (previous is not null)
             {
                 changed |= previous.ApplySnapshot(row, out var detailChanged);
@@ -407,16 +416,13 @@ public sealed partial class MainWindow : Window
             updatedRows.Add(previous ?? row);
         }
 
-        if (preserveRow)
-        {
-            var index = _reminders.IndexOf(selected!);
-            if (index >= 0) updatedRows.Insert(Math.Min(index, updatedRows.Count), selected!);
-        }
+        if (preservedIndex >= 0) updatedRows.Insert(Math.Min(preservedIndex, updatedRows.Count), selected!);
         var dayChanged = _reminderDate != DateTime.Today;
         _reminderDate = DateTime.Today;
-        if (!changed && !dayChanged && sameQuery && _reminders.SequenceEqual(updatedRows)) return;
+        if (!projectSavedDetail && !preserveDetail && !changed && !dayChanged && sameQuery && _reminders.SequenceEqual(updatedRows)) return;
         _reminders = updatedRows;
         _renderedQuery = presentation;
+        if (projectSavedDetail) _savedDetailPendingProjection = null;
         if (!string.IsNullOrWhiteSpace(SearchBox.Text) || _view.Kind == NavKind.Tag)
         {
             var byId = _reminders.ToDictionary(row => row.Id);
@@ -900,6 +906,7 @@ public sealed partial class MainWindow : Window
     }
     private void ShowDetail(ReminderItem? reminder, bool animate = true)
     {
+        if (!ReferenceEquals(_selected, reminder)) _savedDetailPendingProjection = null;
         _selected = reminder; _loadingDetail = true; NoSelection.Visibility = reminder is null ? Visibility.Visible : Visibility.Collapsed; DetailPane.Visibility = reminder is null ? Visibility.Collapsed : Visibility.Visible;
         if (reminder is not null)
         {
@@ -952,6 +959,9 @@ public sealed partial class MainWindow : Window
         DetailAllDayRow.Visibility = DetailDate.Date is not null ? Visibility.Visible : Visibility.Collapsed;
         DetailTime.IsEnabled = DetailDate.Date is not null && !DetailAllDay.IsOn;
         DetailTime.Visibility = DetailTime.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
+        DetailClearSchedule.Visibility = DetailDate.Date is not null ? Visibility.Visible : Visibility.Collapsed;
+        DetailClearSchedule.IsEnabled = DetailRepeatChoice.IsEnabled;
+        DetailClearSchedule.Content = L10n.Get(repeats ? "ClearDueDateAndRepeat" : "ClearDueDate");
         var hint = !DetailRepeatChoice.IsEnabled ? L10n.Get("EditCustomRepeatOnAppleDevice")
             : repeats && DetailDate.Date is null ? L10n.Get("RepeatNeedsDueDate") : "";
         DetailRepeatHint.Text = hint;
@@ -966,6 +976,13 @@ public sealed partial class MainWindow : Window
         var repeats = DetailRepeatChoice.SelectedIndex > 0 || _selected.Recurrence?.Supported == false;
         SaveButton.IsEnabled = _detailDirty && (!repeats || DetailDate.Date is not null)
             && (!DetailRepeatInterval.IsEnabled || double.IsFinite(DetailRepeatInterval.Value) && DetailRepeatInterval.Value is >= 1 and <= 999 && DetailRepeatInterval.Value == Math.Truncate(DetailRepeatInterval.Value));
+    }
+    private void ClearSchedule_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selected is null || !DetailRepeatChoice.IsEnabled) return;
+        DetailRepeatChoice.SelectedIndex = 0;
+        DetailDate.Date = null;
+        DetailDate.Focus(FocusState.Programmatic);
     }
     private string CaptureDetailValues() => JsonSerializer.Serialize(new
     {
@@ -998,6 +1015,11 @@ public sealed partial class MainWindow : Window
         finally { _dialogOpen = false; }
     }
     private async void Add_Click(object sender, RoutedEventArgs e) => await ShowNewReminderAsync();
+    private async void QuickAdd_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem { Tag: string tag } && int.TryParse(tag, out var days))
+            await ShowNewReminderAsync(daysFromToday: days);
+    }
     private async void NewAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) { args.Handled = true; await ShowNewReminderAsync(); }
     private void SearchAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) { args.Handled = true; if (AuthGate.Visibility == Visibility.Collapsed && SetupGuide.Visibility == Visibility.Collapsed) SearchBox.Focus(FocusState.Programmatic); }
     private async void SettingsAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) { args.Handled = true; await ShowSettingsAsync(); }

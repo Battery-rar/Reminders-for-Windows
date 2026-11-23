@@ -2,6 +2,8 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Reminders.Windows.Services;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace Reminders.Windows;
 
@@ -11,6 +13,7 @@ public sealed partial class MainWindow
     private bool _detailTransition;
     private bool _allowWindowClose;
     private bool _windowClosed;
+    private ReminderItem? _savedDetailPendingProjection;
 
     private void RestoreReminderSelection()
     {
@@ -42,14 +45,42 @@ public sealed partial class MainWindow
         finally { _detailTransition = false; _dialogOpen = false; }
     }
 
-    private async Task<bool> SaveDetailAsync()
+    private static void SubmitTitleOnEnter(TextBox title, Action submit)
+    {
+        var composing = false;
+        var composition = 0;
+        title.TextCompositionStarted += (_, _) =>
+        {
+            composing = true;
+            composition++;
+        };
+        title.TextCompositionEnded += (_, _) =>
+        {
+            // The key that confirmed the IME candidate can still be routed
+            // after TextCompositionEnded. Release the guard after that input.
+            var ended = composition;
+            title.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+            {
+                if (ended == composition) composing = false;
+            });
+        };
+        title.PreviewKeyDown += (_, args) =>
+        {
+            static bool Down(VirtualKey key) => (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key) & CoreVirtualKeyStates.Down) != 0;
+            if (composing || args.Key != VirtualKey.Enter || Down(VirtualKey.Control) || Down(VirtualKey.Shift) || Down(VirtualKey.Menu)) return;
+            args.Handled = true;
+            if (!args.KeyStatus.WasKeyDown) submit();
+        };
+    }
+
+    private async Task<bool> SaveDetailAsync(bool preserveEditor = false)
     {
         if (_savingDetail) return false;
         if (_selected is not { } selected || !_detailDirty) return true;
         if (!SaveButton.IsEnabled) return false;
         var draft = CaptureDetailValues();
         var title = DetailTitle.Text.Trim(); var notes = DetailNotes.Text;
-        var due = FormatDueDate(DetailDate.Date, DetailAllDay.IsOn, DetailTime.Time);
+        var due = ReminderSchedule.Format(DetailDate.Date, DetailAllDay.IsOn, DetailTime.Time);
         var listId = DetailList.SelectedValue as string ?? selected.ListId;
         var allDay = DetailAllDay.IsOn; var flagged = DetailFlagged.IsOn;
         var priority = long.Parse(((ComboBoxItem?)DetailPriority.SelectedItem)?.Tag?.ToString() ?? "0");
@@ -59,11 +90,16 @@ public sealed partial class MainWindow
         if (DetailRepeatChoice.IsEnabled) values["recurrence"] = recurrence;
         var saved = false;
         _savingDetail = true; SaveButton.IsEnabled = false;
-        DetailScroll.IsEnabled = false; ReminderList.IsEnabled = false; Navigation.IsEnabled = false;
+        ReminderList.IsEnabled = false;
+        if (!preserveEditor)
+        {
+            DetailScroll.IsEnabled = false; Navigation.IsEnabled = false;
+        }
         try
         {
             var patch = ReminderEditPatch.Build(selected.Id, _detailBaseline!, draft, values);
             if (selected.ChangeTag is not null) patch["edit_base_tag"] = selected.ChangeTag;
+            ReminderItem? snapshot = null;
             if (_demo)
             {
                 if (patch.ContainsKey("title")) selected.Title = title;
@@ -77,15 +113,28 @@ public sealed partial class MainWindow
             }
             else
             {
-                await _sync.CallAsync("update_reminder", patch);
+                snapshot = await _sync.CallAsync<ReminderItem>("update_reminder", patch);
             }
             saved = true;
-            if (ReferenceEquals(_selected, selected) && CaptureDetailValues() == draft)
+            if (ReferenceEquals(_selected, selected))
             {
                 _detailBaseline = draft;
-                _detailDirty = false;
+                _detailDirty = CaptureDetailValues() != _detailBaseline;
+                if (preserveEditor)
+                {
+                    _reminderLoads.Invalidate();
+                    _savedDetailPendingProjection = selected;
+                }
             }
-            await RefreshAllAsync(); return true;
+            await RefreshAllAsync(preserveDetail: preserveEditor);
+            if (preserveEditor)
+            {
+                // A move or a cleared date can remove the saved parent from
+                // this list while its editor stays open.
+                if (snapshot is not null && !_reminders.Contains(selected)) selected.ApplySnapshot(snapshot, out _);
+                DetailListName.Text = _lists.FirstOrDefault(list => list.Id == selected.ListId)?.Title ?? L10n.Get("Reminder");
+            }
+            return true;
         }
         catch (Exception error)
         {
@@ -95,7 +144,11 @@ public sealed partial class MainWindow
         finally
         {
             _savingDetail = false;
-            DetailScroll.IsEnabled = true; ReminderList.IsEnabled = true; Navigation.IsEnabled = true;
+            ReminderList.IsEnabled = true;
+            if (!preserveEditor)
+            {
+                DetailScroll.IsEnabled = true; Navigation.IsEnabled = true;
+            }
             if (_detailDirty && _selected is not null) Detail_Changed(DetailTitle, EventArgs.Empty);
         }
     }

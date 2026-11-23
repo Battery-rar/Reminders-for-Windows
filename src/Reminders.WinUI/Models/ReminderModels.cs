@@ -43,14 +43,14 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonIgnore] public Microsoft.UI.Xaml.Thickness RowPadding => new(8, _depth > 0 ? 4 : 10, 8, _depth > 0 ? 4 : 10);
     [JsonIgnore] public global::Windows.UI.Text.FontWeight RowTitleWeight => _depth > 0 ? Microsoft.UI.Text.FontWeights.Normal : Microsoft.UI.Text.FontWeights.SemiBold;
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility SubtaskToggleVisibility => _hasChildren ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
-    [JsonIgnore] public string SubtaskGlyph => _expanded ? "\uE70D" : "\uE76C";
+    [JsonIgnore] public float SubtaskChevronRotation => _expanded ? 0f : -90f;
     [JsonIgnore] public string SubtaskToggleLabel => L10n.Format(_expanded ? "CollapseSubtasksOf" : "ExpandSubtasksOf", DisplayTitle);
     public void ConfigureHierarchy(int depth, bool hasChildren, bool expanded)
     {
         if (_depth == depth && _hasChildren == hasChildren && _expanded == expanded) return;
         _depth = depth; _hasChildren = hasChildren; _expanded = expanded;
         foreach (var name in new[] { nameof(HierarchyIndent), nameof(RowPadding), nameof(RowTitleWeight),
-            nameof(SubtaskToggleVisibility), nameof(SubtaskGlyph), nameof(SubtaskToggleLabel), nameof(DescriptionVisibility) })
+            nameof(SubtaskToggleVisibility), nameof(SubtaskChevronRotation), nameof(SubtaskToggleLabel) })
             PropertyChanged?.Invoke(this, new(name));
     }
 
@@ -59,7 +59,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
         ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility OverdueMetadataVisibility => IsOverdue
         ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
-    [JsonIgnore] public Microsoft.UI.Xaml.Visibility DescriptionVisibility => _depth > 0 || string.IsNullOrWhiteSpace(Description)
+    [JsonIgnore] public Microsoft.UI.Xaml.Visibility DescriptionVisibility => string.IsNullOrWhiteSpace(Description)
         ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
     [JsonIgnore] public bool IsOverdue => !Completed && !Deleted && DateTimeOffset.TryParse(DueDate, out var due)
         && (AllDay ? due.Date < DateTime.Today : due < DateTimeOffset.Now);
