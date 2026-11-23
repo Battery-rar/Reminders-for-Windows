@@ -259,11 +259,11 @@ internal sealed partial class ICloudClient : IDisposable
         {
             var allDay = patch.ContainsKey("all_day") ? patch.Flag("all_day") : CloudKit.Int(record, "AllDay") != 0;
             var zone = CloudKit.Text(record, "TimeZone");
-            if (zone is null && !allDay && patch.Text("due_date") is not null && setMissingTimeZone)
+            if (string.IsNullOrWhiteSpace(zone) && patch.Text("due_date") is not null && setMissingTimeZone)
             {
-                // New timed reminders must carry their origin zone so their
-                // floating wire value still represents the same instant elsewhere.
                 var local = TimeUtil.Zone();
+                // The absolute timestamp preserves the instant. The named zone
+                // preserves the wall-clock schedule when a reminder repeats.
                 zone = TimeZoneInfo.TryConvertWindowsIdToIanaId(local.Id, out var iana) ? iana : local.Id;
                 fields["TimeZone"] = CloudKit.String(zone);
                 tokens.Add("timeZone");

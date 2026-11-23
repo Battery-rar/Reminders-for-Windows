@@ -37,7 +37,6 @@ public sealed partial class MainWindow
             PaneDivider.Visibility = sizes.Compact ? Visibility.Collapsed : Visibility.Visible;
             BackToReminders.Visibility = sizes.Compact ? Visibility.Visible : Visibility.Collapsed;
             AddLabel.Visibility = sizes.List < 400 ? Visibility.Collapsed : Visibility.Visible;
-            ArrangeDetailPair(DetailDateTime, DetailTime);
             ArrangeDetailPair(DetailRecurrence, DetailRepeatInterval);
             ArrangeDetailPair(DetailOptions, DetailFlagged);
         }

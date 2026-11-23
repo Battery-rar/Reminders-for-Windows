@@ -65,7 +65,7 @@ internal static class Recurrence
             consumed++;
             if (count > 0 && consumed >= count) return null;
             var next = TimeUtil.Anchor(wall, zone);
-            if (CloudKit.Field(rule, "EndDate") is JsonValue end && end.TryGetValue<long>(out var endMs) && next > TimeUtil.FromFloating(endMs, zoneName)) return null;
+            if (CloudKit.Field(rule, "EndDate") is JsonValue end && end.TryGetValue<long>(out var endMs) && next > DateTimeOffset.FromUnixTimeMilliseconds(endMs)) return null;
             if (allDay)
             {
                 if (wall.Date > TimeZoneInfo.ConvertTime(completedAt, zone).Date) return TimeUtil.CalendarDate(wall);

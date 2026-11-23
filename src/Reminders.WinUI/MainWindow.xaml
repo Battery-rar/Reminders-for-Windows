@@ -4,14 +4,18 @@
  xmlns:local="using:Reminders.Windows"
  xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
  <Grid x:Name="Root" SizeChanged="Root_SizeChanged" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Grid.KeyboardAccelerators>
    <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewAccelerator_Invoked"/>
    <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="SearchAccelerator_Invoked"/>
   </Grid.KeyboardAccelerators>
-  <NavigationView x:Uid="Navigation" x:Name="Navigation" IsBackButtonVisible="Collapsed"
+  <TitleBar x:Name="WindowTitleBar" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" IsPaneToggleButtonVisible="True" PaneToggleRequested="TitleBar_PaneToggleRequested">
+   <TitleBar.IconSource><ImageIconSource ImageSource="ms-appx:///Assets/icon-v2.png"/></TitleBar.IconSource>
+  </TitleBar>
+  <NavigationView x:Uid="Navigation" x:Name="Navigation" Grid.Row="1" IsBackButtonVisible="Collapsed"
                   AllowDrop="True" DragOver="SidebarNavigation_DragOver"
                   PaneDisplayMode="LeftCompact" IsPaneOpen="True" OpenPaneLength="260" CompactPaneLength="48"
-                  IsSettingsVisible="True" IsPaneToggleButtonVisible="True" AlwaysShowHeader="False" IsTitleBarAutoPaddingEnabled="False"
+                  IsSettingsVisible="True" IsPaneToggleButtonVisible="False" AlwaysShowHeader="False" IsTitleBarAutoPaddingEnabled="False"
                   PaneOpening="Navigation_PaneOpening" PaneClosing="Navigation_PaneClosing"
                   ItemInvoked="Navigation_ItemInvoked" SelectionChanged="Navigation_SelectionChanged">
    <NavigationView.Resources>
@@ -29,7 +33,6 @@
     <NavigationViewItemHeader x:Uid="MyListsNavigationViewItemHeader"/>
    </NavigationView.MenuItems>
    <NavigationView.FooterMenuItems>
-    <NavigationViewItem x:Uid="SidebarSettingsItem" SelectsOnInvoked="False" Tag="sidebar"><NavigationViewItem.Icon><FontIcon Glyph="&#xE8CB;"/></NavigationViewItem.Icon></NavigationViewItem>
     <NavigationViewItem x:Uid="ConflictItem" x:Name="ConflictItem" SelectsOnInvoked="False" Tag="conflicts" Visibility="Collapsed"><NavigationViewItem.Icon><FontIcon Glyph="&#xE814;"/></NavigationViewItem.Icon></NavigationViewItem>
     <NavigationViewItem x:Uid="SyncNowNavigationViewItem" SelectsOnInvoked="False" Tag="sync"><NavigationViewItem.Icon><FontIcon Glyph="&#xE895;"/></NavigationViewItem.Icon></NavigationViewItem>
    </NavigationView.FooterMenuItems>
@@ -40,17 +43,7 @@
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <Grid Margin="24,0,24,12" MinHeight="64" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <StackPanel VerticalAlignment="Center"><TextBlock x:Uid="ViewTitle" x:Name="ViewTitle" TextTrimming="CharacterEllipsis" Style="{ThemeResource TitleTextBlockStyle}"/><TextBlock x:Name="ViewSubtitle" Visibility="Collapsed" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,2,0,0"/></StackPanel>
-       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-        <Button x:Uid="AddButton" x:Name="AddButton" Height="36" MinWidth="36" Style="{ThemeResource AccentButtonStyle}" Click="Add_Click" ToolTipService.Placement="Bottom"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14"/><TextBlock x:Uid="AddLabel" x:Name="AddLabel"/></StackPanel></Button>
-        <Button x:Uid="QuickAddButton" Height="36" Width="36" Padding="0" ToolTipService.Placement="Bottom">
-         <Button.Flyout><MenuFlyout>
-          <MenuFlyoutItem x:Uid="QuickAddToday" Tag="0" Click="QuickAdd_Click"/>
-          <MenuFlyoutItem x:Uid="QuickAddTomorrow" Tag="1" Click="QuickAdd_Click"/>
-          <MenuFlyoutItem x:Uid="QuickAddFiveDays" Tag="5" Click="QuickAdd_Click"/>
-         </MenuFlyout></Button.Flyout>
-         <FontIcon Glyph="&#xE70D;" FontSize="12"/>
-        </Button>
-       </StackPanel>
+       <Button x:Uid="AddButton" x:Name="AddButton" Grid.Column="1" Height="36" MinWidth="36" VerticalAlignment="Center" Style="{ThemeResource AccentButtonStyle}" Click="Add_Click" ToolTipService.Placement="Bottom"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE710;" FontSize="14"/><TextBlock x:Uid="AddLabel" x:Name="AddLabel"/></StackPanel></Button>
       </Grid>
       <Grid Grid.Row="1" Padding="24,0,24,12" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <AutoSuggestBox x:Uid="SearchBox" x:Name="SearchBox" QueryIcon="Find" TextChanged="SearchBox_TextChanged" MinHeight="40" VerticalAlignment="Center"/>
@@ -88,7 +81,8 @@
       <Grid x:Name="EmptyState" Grid.Row="2" Visibility="Collapsed" IsHitTestVisible="False"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="24" MaxWidth="320"><FontIcon Glyph="&#xE90C;" FontSize="32" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,0,0,4"/><TextBlock x:Uid="EmptyStateTitle" x:Name="EmptyStateTitle" TextWrapping="Wrap" TextAlignment="Center" Style="{ThemeResource SubtitleTextBlockStyle}"/><TextBlock x:Uid="EmptyStateMessage" x:Name="EmptyStateMessage" TextWrapping="Wrap" TextAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel></Grid>
       <Grid Grid.Row="3" Padding="24,12,24,16" ColumnSpacing="12">
        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-       <ToggleSwitch x:Uid="ShowCompleted" x:Name="ShowCompleted" MinWidth="0" VerticalAlignment="Center" Toggled="ShowCompleted_Toggled"/>
+       <ToggleButton x:Uid="ShowCompleted" x:Name="ShowCompleted" MinWidth="0" VerticalAlignment="Center"
+                     Checked="ShowCompleted_Changed" Unchecked="ShowCompleted_Changed"/>
        <Grid x:Name="SyncIndicator" Grid.Column="1" ColumnSpacing="6" VerticalAlignment="Center" HorizontalAlignment="Right" ToolTipService.Placement="Top" Visibility="Collapsed">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <ProgressRing x:Name="SyncRing" Width="14" Height="14" IsActive="False"/>
@@ -141,8 +135,13 @@
             <TextBlock x:Uid="ScheduleTextBlock" VerticalAlignment="Center" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
             <Button x:Name="DetailClearSchedule" Grid.Column="1" Visibility="Collapsed" Click="ClearSchedule_Click"/>
            </Grid>
-           <Grid x:Name="DetailDateTime" ColumnSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><CalendarDatePicker x:Uid="DetailDate" x:Name="DetailDate" HorizontalAlignment="Stretch" DateChanged="Detail_Changed"/><TimePicker x:Uid="DetailTime" x:Name="DetailTime" Grid.Column="1" HorizontalAlignment="Stretch" TimeChanged="Detail_Changed"/></Grid>
+           <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <CalendarDatePicker x:Uid="DetailDate" x:Name="DetailDate" MinWidth="0" HorizontalAlignment="Stretch" DateChanged="Detail_Changed"/>
+            <Button x:Uid="DetailAddToToday" x:Name="DetailAddToToday" Grid.Column="1" VerticalAlignment="Bottom" Click="DetailAddToToday_Click"/>
+           </Grid>
            <Grid x:Name="DetailAllDayRow"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Uid="AllDayTextBlock" VerticalAlignment="Center"/><ToggleSwitch x:Uid="DetailAllDay" x:Name="DetailAllDay" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" Toggled="Detail_Changed"/></Grid>
+           <TimePicker x:Uid="DetailTime" x:Name="DetailTime" HorizontalAlignment="Stretch" TimeChanged="Detail_Changed"/>
            <Grid x:Name="DetailRecurrence" ColumnSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><ComboBox x:Uid="DetailRepeatChoice" x:Name="DetailRepeatChoice" HorizontalAlignment="Stretch" SelectionChanged="Detail_Changed"><ComboBoxItem x:Uid="NeverComboBoxItem"/><ComboBoxItem x:Uid="DailyComboBoxItem"/><ComboBoxItem x:Uid="WeeklyComboBoxItem"/><ComboBoxItem x:Uid="MonthlyComboBoxItem"/><ComboBoxItem x:Uid="YearlyComboBoxItem"/></ComboBox><NumberBox x:Uid="DetailRepeatInterval" x:Name="DetailRepeatInterval" Grid.Column="1" Minimum="1" Maximum="999" Value="1" SpinButtonPlacementMode="Compact" ValueChanged="Detail_Changed"/></Grid>
            <TextBlock x:Name="DetailRepeatHint" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="Collapsed"/>
           </StackPanel>
@@ -176,7 +175,7 @@
    </Grid>
   </NavigationView>
 
-  <ContentControl x:Name="AuthGate" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+  <ContentControl x:Name="AuthGate" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
    <ScrollViewer Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center">
    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="28" MaxWidth="480" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
     <Border.Transitions><TransitionCollection><EntranceThemeTransition FromVerticalOffset="24"/></TransitionCollection></Border.Transitions>
@@ -213,7 +212,7 @@
    </ScrollViewer>
   </ContentControl>
 
-  <Grid x:Name="SetupGuide" Visibility="Collapsed" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+  <Grid x:Name="SetupGuide" Grid.Row="1" Visibility="Collapsed" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
     <Border x:Name="SetupCard" MaxWidth="560" Margin="24" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="16">
      <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>

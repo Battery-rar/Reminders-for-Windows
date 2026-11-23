@@ -1586,11 +1586,8 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="ShowCompleted.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
     <value>Show completed reminders</value>
   </data>
-  <data name="ShowCompleted.OffContent" xml:space="preserve">
-    <value>Completed</value>
-  </data>
-  <data name="ShowCompleted.OnContent" xml:space="preserve">
-    <value>Completed</value>
+  <data name="ShowCompleted.Content" xml:space="preserve">
+    <value>Show Completed</value>
   </data>
   <data name="SignedIn" xml:space="preserve">
     <value>Signed in</value>
@@ -1953,23 +1950,20 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="ClearDueDateAndRepeat" xml:space="preserve">
     <value>Clear due date and repeat</value>
   </data>
-  <data name="QuickAddToday.Text" xml:space="preserve">
-    <value>Today</value>
+  <data name="ScheduleQuickDates" xml:space="preserve">
+    <value>Quick dates</value>
   </data>
-  <data name="QuickAddButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Add a scheduled reminder</value>
+  <data name="ScheduleDayAfterTomorrow" xml:space="preserve">
+    <value>Day after tomorrow</value>
   </data>
-  <data name="QuickAddButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>Add a scheduled reminder</value>
-  </data>
-  <data name="QuickAddTomorrow.Text" xml:space="preserve">
-    <value>Tomorrow</value>
-  </data>
-  <data name="QuickAddFiveDays.Text" xml:space="preserve">
+  <data name="ScheduleInFiveDays" xml:space="preserve">
     <value>In 5 days</value>
   </data>
-  <data name="SidebarSettingsItem.Content" xml:space="preserve">
-    <value>Sidebar settings</value>
+  <data name="DetailAddToToday.Content" xml:space="preserve">
+    <value>Add to Today</value>
+  </data>
+  <data name="SidebarSettings" xml:space="preserve">
+    <value>Sidebar</value>
   </data>
   <data name="ListOrder" xml:space="preserve">
     <value>List order</value>
@@ -1984,7 +1978,7 @@ Accept any updated terms, then check that your lists appear.</value>
     <value>Name (Z to A)</value>
   </data>
   <data name="SidebarManualOrderHint" xml:space="preserve">
-    <value>Use a list’s context menu to move it up or down.</value>
+    <value>In Manual order, use a list’s context menu to move it up or down.</value>
   </data>
   <data name="UseICloudListIcon" xml:space="preserve">
     <value>Use iCloud list icon</value>

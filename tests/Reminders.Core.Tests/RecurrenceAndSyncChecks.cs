@@ -15,7 +15,7 @@ internal static class RecurrenceAndSyncChecks
         check(Recurrence.Next(Rule(4), "2024-02-29T09:00:00Z", "UTC", TimeUtil.Parse("2024-03-01T00:00:00Z")) == TimeUtil.Iso(TimeUtil.Parse("2028-02-29T09:00:00Z")), "yearly repeats preserve leap-day anchor");
         var counted = Rule(1); counted["fields"]!["OccurrenceCount"] = CloudKit.Number(2);
         check(Recurrence.Next(counted, "2026-01-01T09:00:00Z", "UTC", TimeUtil.Parse("2026-01-03T00:00:00Z")) is null, "exhausted repeat count ends the sequence");
-        var ended = Rule(1); ended["fields"]!["EndDate"] = CloudKit.Timestamp(TimeUtil.ToFloating(TimeUtil.Parse("2026-01-01T23:00:00Z"), "UTC"));
+        var ended = Rule(1); ended["fields"]!["EndDate"] = CloudKit.Timestamp(TimeUtil.Parse("2026-01-01T23:00:00Z").ToUnixTimeMilliseconds());
         check(Recurrence.Next(ended, "2026-01-01T09:00:00Z", "UTC", TimeUtil.Parse("2026-01-01T10:00:00Z")) is null, "repeat end date is honored");
         var custom = Rule(2); custom["fields"]!["DaysOfTheWeek"] = CloudKit.String("MO,WE");
         try { Recurrence.Next(custom, "2026-01-01T09:00:00Z", "UTC", DateTimeOffset.UtcNow); check(false, "custom recurrence must not be silently replaced"); }
@@ -98,7 +98,7 @@ internal static class RecurrenceAndSyncChecks
         // of our writer. Completing it must advance seven days, not one day.
         var appleDue = DateTimeOffset.UtcNow.AddHours(-1);
         records["Reminder/apple-weekly"] = new JsonObject { ["recordName"] = "Reminder/apple-weekly", ["recordType"] = "Reminder", ["recordChangeTag"] = "apple",
-            ["fields"] = new JsonObject { ["List"] = CloudKit.Reference("List/test"), ["Completed"] = CloudKit.Number(0), ["DueDate"] = CloudKit.Timestamp(TimeUtil.ToFloating(appleDue, "UTC")), ["TimeZone"] = CloudKit.String("UTC"), ["RecurrenceRuleIDs"] = J.Node(new { type = "STRING_LIST", value = new[] { "apple-weekly" } }) } };
+            ["fields"] = new JsonObject { ["List"] = CloudKit.Reference("List/test"), ["Completed"] = CloudKit.Number(0), ["DueDate"] = CloudKit.Timestamp(appleDue.ToUnixTimeMilliseconds()), ["TimeZone"] = CloudKit.String("UTC"), ["RecurrenceRuleIDs"] = J.Node(new { type = "STRING_LIST", value = new[] { "apple-weekly" } }) } };
         records["RecurrenceRule/apple-weekly"] = new JsonObject { ["recordName"] = "RecurrenceRule/apple-weekly", ["recordType"] = "RecurrenceRule", ["recordChangeTag"] = "apple",
             ["fields"] = new JsonObject { ["Frequency"] = CloudKit.Number(1), ["Interval"] = CloudKit.Number(1), ["Reminder"] = CloudKit.Reference("Reminder/apple-weekly") } };
         var appleAdvanced = await client.Update("Reminder/apple-weekly", J.Node(new { completed = true, completion_id = "Reminder/apple-weekly-history" }).AsObject(), "apple", default);

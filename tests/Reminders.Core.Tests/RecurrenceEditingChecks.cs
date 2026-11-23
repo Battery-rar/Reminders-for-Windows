@@ -12,7 +12,7 @@ internal static class RecurrenceEditingChecks
         records["Reminder/task"] = new JsonObject { ["recordName"] = "Reminder/task", ["recordType"] = "Reminder", ["recordChangeTag"] = "original", ["fields"] = new JsonObject
         {
             ["TitleDocument"] = CloudKit.String(AppleDocument.Encode("Keep this task")), ["List"] = CloudKit.Reference("List/test"),
-            ["DueDate"] = CloudKit.Timestamp(TimeUtil.ToFloating(TimeUtil.Parse(due), "UTC")), ["TimeZone"] = CloudKit.String("UTC"),
+            ["DueDate"] = CloudKit.Timestamp(TimeUtil.Parse(due).ToUnixTimeMilliseconds()), ["TimeZone"] = CloudKit.String("UTC"),
             ["Completed"] = CloudKit.Number(0), ["HashtagIDs"] = J.Node(new { type = "STRING_LIST", value = new[] { "tag" } })
         } };
         var secrets = new SecretStore(new MemorySecrets()); secrets.Session("test@example.com", J.Node(new { session_token = "test" }).ToJsonString());
@@ -60,7 +60,7 @@ internal static class RecurrenceEditingChecks
         check(writes == beforeRetry, "replaying an added schedule recovers before checking the old parent revision");
 
         records[ruleId]["fields"]!["OccurrenceCount"] = CloudKit.Number(8);
-        records[ruleId]["fields"]!["EndDate"] = CloudKit.Timestamp(TimeUtil.ToFloating(DateTimeOffset.UtcNow.AddYears(2), "UTC"));
+        records[ruleId]["fields"]!["EndDate"] = CloudKit.Timestamp(DateTimeOffset.UtcNow.AddYears(2).ToUnixTimeMilliseconds());
         var change = Edit(3, 3); change["title"] = "Changed together";
         var changed = await client.Update("Reminder/task", change, added.Text("change_tag"), default);
         check(CloudKit.Int(records[ruleId], "Frequency") == 2 && CloudKit.Int(records[ruleId], "Interval") == 3, "change an existing repeat to every three months");

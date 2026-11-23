@@ -86,7 +86,8 @@ public sealed partial class MainWindow
             foreach (var child in DemoDescendants(match.Id))
             {
                 if (child.Deleted != match.Deleted || child.ListId != match.ListId || !included.Add(child.Id)) continue;
-                if (_view.Key == "completed" ? !child.Completed : _view.Key != "deleted" && !ShowCompleted.IsOn && child.Completed) continue;
+                if (_view.Kind == NavKind.Smart && _view.Key == "completed" ? !child.Completed :
+                    !(_view.Kind == NavKind.Smart && _view.Key == "deleted") && !IncludesCompleted && child.Completed) continue;
                 child.ContextOnly = true; rows.Add(child);
             }
         var pending = new Queue<ReminderItem>(rows);

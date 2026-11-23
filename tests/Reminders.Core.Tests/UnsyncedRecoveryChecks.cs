@@ -32,7 +32,7 @@ internal static class UnsyncedRecoveryChecks
         records["Reminder/child"]["parent"] = CloudKit.Reference("Reminder/edit");
         records["Reminder/edit"]["fields"]!["HashtagIDs"] = J.Node(new { type = "STRING_LIST", value = new[] { "school" } });
         records["Reminder/edit"]["fields"]!["RecurrenceRuleIDs"] = J.Node(new { type = "STRING_LIST", value = new[] { "weekly" } });
-        records["Reminder/edit"]["fields"]!["DueDate"] = CloudKit.Timestamp(TimeUtil.ToFloating(TimeUtil.Parse("2026-11-05T14:00:00Z"), "UTC"));
+        records["Reminder/edit"]["fields"]!["DueDate"] = CloudKit.Timestamp(TimeUtil.Parse("2026-11-05T14:00:00Z").ToUnixTimeMilliseconds());
         records["Reminder/edit"]["fields"]!["TimeZone"] = CloudKit.String("UTC");
         var vault = new MemorySecrets(); var secrets = new SecretStore(vault);
         secrets.Session("test@example.com", J.Node(new { session_token = "test-token" }).ToJsonString());
