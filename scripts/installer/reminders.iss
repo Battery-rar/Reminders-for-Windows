@@ -133,6 +133,7 @@ const
 
 var
   PreviousDirectory: String;
+  PreviousUninstaller: String;
 
 #if Arch == "universal"
 function UseX64Payload: Boolean;
@@ -182,12 +183,26 @@ begin
 end;
 
 procedure InitializeWizard;
+var
+  Command: String;
+  EndQuote: Integer;
 begin
   PreviousDirectory := RegisteredDirectory;
-  { Old in-app updates supply /DIR explicitly. Apply the same rename there. }
-  if (PreviousDirectory <> '') and
-     (CompareText(RemoveBackslashUnlessRoot(WizardDirValue), PreviousDirectory) = 0) then
+  if PreviousDirectory = '' then Exit;
+  if CompareText(RemoveBackslashUnlessRoot(WizardDirValue), PreviousDirectory) = 0 then
     WizardForm.DirEdit.Text := RenamedDirectory(PreviousDirectory);
+
+  { Inno stores the exact previous uninstaller path between quotation marks. }
+  if not RegQueryStringValue(HKA, UninstallKey, 'UninstallString', Command) then Exit;
+  if Copy(Command, 1, 1) <> '"' then Exit;
+  Command := Copy(Command, 2, Length(Command));
+  EndQuote := Pos('"', Command);
+  if EndQuote = 0 then Exit;
+  Command := Copy(Command, 1, EndQuote - 1);
+  if (CompareText(ExtractFileDir(Command), PreviousDirectory) = 0) and
+     (CompareText(ExtractFileExt(Command), '.exe') = 0) and
+     (CompareText(Copy(ExtractFileName(Command), 1, 5), 'unins') = 0) then
+    PreviousUninstaller := Command;
 end;
 
 procedure RegisterExtraCloseApplicationsResources;
@@ -233,10 +248,28 @@ end;
 procedure RemovePreviousShortcuts(Directory, Name: String);
 begin
   RemovePreviousLink(Directory, Name, 'Reminders.exe');
-  RemovePreviousLink(Directory, 'Uninstall ' + Name, 'unins000.exe');
+  if PreviousUninstaller <> '' then
+    RemovePreviousLink(Directory, 'Uninstall ' + Name, ExtractFileName(PreviousUninstaller));
   RemoveDir(Directory);
   RemovePreviousLink(ExpandConstant('{autodesktop}'), Name, 'Reminders.exe');
   RemovePreviousLink(ExpandConstant('{userstartup}'), Name, 'Reminders.exe');
+end;
+
+procedure RetirePreviousExecutable(FileName: String);
+var
+  Backup: String;
+  Suffix: Integer;
+begin
+  if (FileName = '') or not FileExists(FileName) then Exit;
+  Backup := FileName + '.previous';
+  Suffix := 0;
+  while FileExists(Backup) do
+  begin
+    Suffix := Suffix + 1;
+    Backup := FileName + '.previous.' + IntToStr(Suffix);
+  end;
+  if not RenameFile(FileName, Backup) then
+    Log('Could not retire previous executable: ' + FileName);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -248,6 +281,9 @@ begin
   begin
     { Current shortcuts already point to the new directory if Setup replaced them. }
     RemovePreviousShortcuts(ExpandConstant('{autoprograms}\Battery-rar\{#ProductName}'), '{#ProductName}');
+    { Keep recovery copies without leaving an old app or uninstaller on a live shortcut target. }
+    RetirePreviousExecutable(AddBackslash(PreviousDirectory) + 'Reminders.exe');
+    RetirePreviousExecutable(PreviousUninstaller);
   end;
 end;
 

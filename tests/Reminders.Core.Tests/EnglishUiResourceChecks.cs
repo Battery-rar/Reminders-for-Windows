@@ -39,6 +39,8 @@ internal static class EnglishUiResourceChecks
         check(Format(new("ReminderCountMany", 1200)) == "1,200 reminders", "count retains English number formatting");
         check(Format(new("NotifyNamesAndMore", "One, Two, Three", 2)) == "One, Two, Three, and 2 more", "notification names and count placeholders");
         var due = new DateTime(2026, 10, 12, 15, 30, 0);
+        check(string.Format(CultureInfo.GetCultureInfo("zh-CN"), simplifiedChinese["DueDateAllDay"], due) == "10月12日 周一",
+            "Simplified Chinese date uses month-day-weekday order");
         check(Format(new("DueDateAndTime", due)) == "Mon, Oct 12 · " + due.ToString("t", CultureInfo.GetCultureInfo("en-US")),
             "date template retains English rendering");
         var timedDue = new DateTimeOffset(due, TimeSpan.Zero);

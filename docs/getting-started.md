@@ -95,8 +95,9 @@ native library, resources and `Reminders.Core.dll`. ARM64 output is under
 
 The default per-user install path is `%LOCALAPPDATA%\Programs\Apple Reminders on Windows`.
 An upgrade from this fork's previous default path uses the new folder and updates
-the Windows uninstall registration and shortcuts. Setup leaves the old binaries
-on disk after a move to the new path. A previously chosen custom path is reused.
+the Windows uninstall registration and shortcuts. Setup leaves recovery copies
+of the old binaries and retires the old app and uninstaller entry points.
+A previously chosen custom path is reused.
 
 ## Language and printing
 
