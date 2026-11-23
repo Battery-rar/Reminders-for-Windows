@@ -42,6 +42,19 @@ internal static class SidebarPresentation
         return lists.OrderBy(list => positions.GetValueOrDefault(id(list), int.MaxValue));
     }
 
+    public static List<string>? Reorder(IEnumerable<string> ids, string moving, string anchor, bool after)
+    {
+        if (moving == anchor) return null;
+        var order = ids.ToList();
+        var previous = order.IndexOf(moving);
+        if (previous < 0 || !order.Contains(anchor)) return null;
+        order.RemoveAt(previous);
+        var destination = order.IndexOf(anchor) + (after ? 1 : 0);
+        if (destination == previous) return null;
+        order.Insert(destination, moving);
+        return order;
+    }
+
     public static SidebarIcon ResolveIcon(string? badge)
     {
         var value = badge?.Trim();

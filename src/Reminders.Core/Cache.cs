@@ -287,6 +287,11 @@ internal sealed partial class Cache : IDisposable
     public JsonArray Tags => Query("SELECT name,COUNT(*) AS n FROM tags t JOIN reminders r ON r.id=t.reminder_id WHERE r.deleted=0 AND r.completed=0 GROUP BY name ORDER BY name");
     public void ApplyRecords(JsonArray records, bool full = false) => Transaction(() =>
     {
+        ApplyRecordsInTransaction(records, full);
+        return true;
+    });
+    internal void ApplyRecordsInTransaction(JsonArray records, bool full = false)
+    {
         if (full)
         {
             Execute("DELETE FROM lists");
@@ -321,12 +326,11 @@ internal sealed partial class Cache : IDisposable
             else if (type == "List")
             {
                 var rawColor = CloudKit.Text(combined, "Color");
-                Execute("INSERT INTO lists(id,title,color_hex,count,is_group,position) VALUES(@p0,@p1,@p2,@p3,@p4,(SELECT COUNT(*) FROM lists)) ON CONFLICT(id) DO UPDATE SET title=excluded.title,color_hex=excluded.color_hex,count=excluded.count,is_group=excluded.is_group",
+                Execute("INSERT INTO lists(id,title,color_hex,count,is_group,position) VALUES(@p0,@p1,@p2,@p3,@p4,(SELECT COALESCE(MAX(position) + 1, 0) FROM lists)) ON CONFLICT(id) DO UPDATE SET title=excluded.title,color_hex=excluded.color_hex,count=excluded.count,is_group=excluded.is_group",
                     id, CloudKit.Text(combined, "Name") ?? "Untitled", rawColor?.StartsWith('#') == true ? rawColor : J.Parse(rawColor).Text("daHexString"), CloudKit.Int(combined, "Count"), CloudKit.Int(combined, "IsGroup") != 0);
             }
         }
-        return true;
-    });
+    }
     public void ReplaceTags(string id, JsonArray tags) => Transaction(() => { ReplaceTagsInTransaction(id, tags); return true; });
     internal void ReplaceTagsInTransaction(string id, JsonArray tags)
     {

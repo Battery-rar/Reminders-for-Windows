@@ -141,6 +141,9 @@ internal static partial class AppleDocument
         }
         public byte[] Blob(ulong field) => entries.SingleOrDefault(e => e.Tag == ((field << 3) | 2))?.Data ?? throw new InvalidDataException();
         public WireMessage Message(ulong field) => Read(Blob(field));
+        public bool Has(ulong field) => entries.Any(entry => entry.Tag >> 3 == field);
+        public IEnumerable<byte[]> Blobs(ulong field) => entries.Where(entry => entry.Tag == ((field << 3) | 2)).Select(entry => entry.Data);
+        public void AddBlob(ulong field, byte[] data) => entries.Add(new((field << 3) | 2, data));
         public List<WireMessage> Messages(ulong field) => entries.Where(e => e.Tag == ((field << 3) | 2)).Select(e => Read(e.Data)).ToList();
         public ulong Integer(ulong field) => Integers(field).SingleOrDefault();
         public IEnumerable<ulong> Integers(ulong field)

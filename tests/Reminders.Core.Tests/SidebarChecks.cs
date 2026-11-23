@@ -24,6 +24,15 @@ internal static class SidebarChecks
         string Order(string sort, params string[] manual) => string.Join("", SidebarPresentation.Order(input, sort, manual, x => x.Id, x => x.Title).Select(x => x.Id));
         check(Order("manual", "c", "c", "removed", "a") == "cab", "manual order skips duplicate and removed entries and appends new lists");
         check(Order("name_asc", "c", "b") == "abc" && Order("name_desc", "a") == "cba", "name sorting is independent of saved manual order");
+        string[] manual = ["a", "b", "c", "d"];
+        check(SidebarPresentation.Reorder(manual, "a", "c", after: true)?.SequenceEqual(["b", "c", "a", "d"]) == true,
+            "a sidebar drop after an item only moves the dragged list");
+        check(SidebarPresentation.Reorder(manual, "d", "b", after: false)?.SequenceEqual(["a", "d", "b", "c"]) == true,
+            "a sidebar drop before an item preserves the other list positions");
+        check(SidebarPresentation.Reorder(manual, "a", "b", after: false) is null &&
+            SidebarPresentation.Reorder(manual, "b", "b", after: true) is null &&
+            SidebarPresentation.Reorder(manual, "a", "removed", after: true) is null,
+            "no-op and stale sidebar drops never save a new order");
         var saved = new UiPreferenceData { ListSort = "name_desc", ListOrder = ["c", "b"], Lists = new() { ["a"] = new() { Glyph = family } } };
         var restored = JsonSerializer.Deserialize<UiPreferenceData>(JsonSerializer.Serialize(saved))!;
         check(restored.ListSort == "name_desc" && restored.ListOrder.SequenceEqual(saved.ListOrder) && restored.Lists["a"].Glyph == family,
