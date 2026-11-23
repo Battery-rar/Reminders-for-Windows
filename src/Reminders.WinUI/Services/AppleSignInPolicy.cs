@@ -8,13 +8,13 @@ internal sealed record AppleSignInFailure(PresentationMessage Message, string Di
 
 internal static class AppleSignInPolicy
 {
-    public const string StartUrl = "https://www.icloud.com/reminders/";
+    public static string StartUrl(bool chinaMainland) => ICloudEndpoints.Home(chinaMainland) + "/reminders/";
 
     public static bool IsRemindersResponse(Uri uri, int status)
     {
         var path = uri.AbsolutePath;
         return status == 200 && IsAppleUri(uri) &&
-            (uri.Host == "ckdatabasews.icloud.com" || uri.Host.EndsWith("-ckdatabasews.icloud.com", StringComparison.OrdinalIgnoreCase)) &&
+            ICloudEndpoints.IsCloudKitWebServiceHost(uri.Host) &&
             path.StartsWith("/database/1/com.apple.reminders/production/private/", StringComparison.Ordinal) &&
             (path.EndsWith("/records/query", StringComparison.Ordinal) || path.EndsWith("/changes/zone", StringComparison.Ordinal));
     }
@@ -29,9 +29,7 @@ internal static class AppleSignInPolicy
         return HasText(identity["appleId"]) || HasText(identity["primaryEmail"]);
     }
 
-    public static bool IsAppleUri(Uri uri) => uri.Scheme == "https" && uri.UserInfo.Length == 0 &&
-        (uri.Host == "icloud.com" || uri.Host.EndsWith(".icloud.com", StringComparison.OrdinalIgnoreCase) ||
-         uri.Host == "apple.com" || uri.Host.EndsWith(".apple.com", StringComparison.OrdinalIgnoreCase));
+    public static bool IsAppleUri(Uri uri) => uri.Scheme == "https" && uri.UserInfo.Length == 0 && ICloudEndpoints.IsAppleDomain(uri.Host);
 
     // window.open() can create a blank child before navigating it. Keep that
     // child attached to its opener; all subsequent navigations are checked.
@@ -41,8 +39,10 @@ internal static class AppleSignInPolicy
     public static string? Stage(Uri uri)
     {
         if (!IsAppleUri(uri)) return null;
-        if (uri.Host == "idmsa.apple.com" && uri.AbsolutePath.StartsWith("/appleauth/auth", StringComparison.Ordinal)) return "authentication";
-        if (uri.Host == "setup.icloud.com" && uri.AbsolutePath.StartsWith("/setup/ws/1/", StringComparison.Ordinal)) return "account";
+        if ((uri.Host == ICloudEndpoints.AuthHost(false) || uri.Host == ICloudEndpoints.AuthHost(true)) &&
+            uri.AbsolutePath.StartsWith("/appleauth/auth", StringComparison.Ordinal)) return "authentication";
+        if ((uri.Host == ICloudEndpoints.SetupHost(false) || uri.Host == ICloudEndpoints.SetupHost(true)) &&
+            uri.AbsolutePath.StartsWith("/setup/ws/1/", StringComparison.Ordinal)) return "account";
         return null;
     }
 

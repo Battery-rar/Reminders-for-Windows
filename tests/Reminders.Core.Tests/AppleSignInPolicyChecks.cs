@@ -6,6 +6,8 @@ internal static class AppleSignInPolicyChecks
 {
     public static void Run(Action<bool, string> check)
     {
+        check(AppleSignInPolicy.StartUrl(false) == "https://www.icloud.com/reminders/", "global web sign-in retains its original entry point");
+        check(AppleSignInPolicy.StartUrl(true) == "https://www.icloud.com.cn/reminders/", "mainland web sign-in uses Apple's mainland Reminders entry point");
         var account = JsonNode.Parse("""{"hsaTrustedBrowser":false,"hsaChallengeRequired":false,"dsInfo":{"appleId":"test@example.com"},"webservices":{"ckdatabasews":{"url":"https://p01-ckdatabasews.icloud.com"}}}""")!;
         check(AppleSignInPolicy.CanImportAccount(account), "observed completed web sign-in is eligible even when remembered browser trust is false");
         account["hsaTrustedBrowser"] = true;
@@ -17,12 +19,14 @@ internal static class AppleSignInPolicyChecks
         account["hsaChallengeRequired"] = false; account["webservices"] = new JsonObject();
         check(!AppleSignInPolicy.CanImportAccount(account), "incomplete account response is not treated as a completed sign-in");
         check(!AppleSignInPolicy.CanImportAccount(new JsonObject()), "missing account identity cannot trigger handoff");
+        foreach (var host in new[] { "p01-ckdatabasews.icloud.com", "ckdatabasews.icloud.com.cn", "p01-ckdatabasews.icloud.com.cn" })
         foreach (var endpoint in new[] { "records/query", "changes/zone" })
-            check(AppleSignInPolicy.IsRemindersResponse(new Uri("https://p01-ckdatabasews.icloud.com/database/1/com.apple.reminders/production/private/" + endpoint), 200), "loaded Reminders can trigger handoff without an observed account response: " + endpoint);
+            check(AppleSignInPolicy.IsRemindersResponse(new Uri($"https://{host}/database/1/com.apple.reminders/production/private/{endpoint}"), 200), "loaded Reminders can trigger handoff without an observed account response: " + host + "/" + endpoint);
         foreach (var address in new[]
         {
             "https://example.com/database/1/com.apple.reminders/production/private/records/query",
             "https://p01-ckdatabasews.icloud.com.example.com/database/1/com.apple.reminders/production/private/records/query",
+            "https://p01-ckdatabasews.icloud.com.cn.example.com/database/1/com.apple.reminders/production/private/records/query",
             "http://p01-ckdatabasews.icloud.com/database/1/com.apple.reminders/production/private/records/query",
             "https://p01-ckdatabasews.icloud.com/database/1/com.apple.notes/production/private/records/query",
             "https://p01-ckdatabasews.icloud.com/database/1/com.apple.reminders/production/private/records/modify"
@@ -30,7 +34,8 @@ internal static class AppleSignInPolicyChecks
         check(!AppleSignInPolicy.IsRemindersResponse(new Uri("https://p01-ckdatabasews.icloud.com/database/1/com.apple.reminders/production/private/records/query"), 401), "failed web data access does not imply a finished sign-in");
         check(AppleSignInPolicy.IsPopupUri("about:blank"), "blank popup preserves the opener while Apple prepares navigation");
         check(AppleSignInPolicy.IsPopupUri("https://idmsa.apple.com/appleauth/auth/authorize/signin"), "Apple authentication popups are permitted");
-        foreach (var address in new[] { "http://www.icloud.com/", "https://apple.com.example.com/", "https://user@www.icloud.com/", "file:///C:/test", "javascript:alert(1)", "about:config" })
+        check(AppleSignInPolicy.IsPopupUri("https://idmsa.apple.com.cn/appleauth/auth/authorize/signin"), "China mainland Apple authentication popups are permitted");
+        foreach (var address in new[] { "http://www.icloud.com/", "https://apple.com.example.com/", "https://apple.com.cn.example.com/", "https://user@www.icloud.com/", "file:///C:/test", "javascript:alert(1)", "about:config" })
             check(!AppleSignInPolicy.IsPopupUri(address), "popup rejects unsafe destination " + address);
         var auth = new Uri("https://idmsa.apple.com/appleauth/auth/signin/complete?account=private@example.com&token=private-token");
         foreach (var status in new[] { 200, 204, 400, 401, 403, 409 })
@@ -40,6 +45,8 @@ internal static class AppleSignInPolicyChecks
         check(Message(failure).Contains("sign-in service returned HTTP 503"), "authentication server failure is distinct from iCloud account transfer");
         check(failure.Diagnostic == "apple sign-in: stage=authentication HTTP 503", "HTTP diagnostics exclude URL and account parameters");
         check(Message(AppleSignInPolicy.HttpFailure(new Uri("https://setup.icloud.com/setup/ws/1/accountLogin"), 500)!).Contains("iCloud account"), "account server failure identifies the right stage");
+        check(AppleSignInPolicy.Stage(new Uri("https://setup.icloud.com.cn/setup/ws/1/accountLogin")) == "account", "China mainland setup responses are recognized");
+        check(AppleSignInPolicy.Stage(new Uri("https://idmsa.apple.com.cn/appleauth/auth/signin/complete")) == "authentication", "China mainland authentication responses are recognized");
         check(Message(AppleSignInPolicy.HttpFailure(auth, 429)!).Contains("Wait a little"), "rate limiting does not encourage immediate repeated sign-in");
         check(AppleSignInPolicy.HttpFailure(new Uri("https://www.apple.com/legal/privacy/"), 503) is null, "unrelated page failure is not labelled authentication failure");
         check(AppleSignInPolicy.AccountEndpoint(new Uri("https://setup.icloud.com/setup/ws/1/validate?secret=hidden")) == "validate", "validation endpoint is recognized without logging query strings");

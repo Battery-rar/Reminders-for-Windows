@@ -7,36 +7,67 @@ internal sealed partial class ICloudClient : IDisposable
     private readonly SecretStore secrets;
     private readonly Func<HttpMessageHandler>? handlerFactory;
     private AppleAuth auth;
+    private sealed record PendingSignIn(AppleAuth Auth, string Account, string? Password, Action<Action>? CommitAccount);
+    private PendingSignIn? pendingSignIn;
+    private bool pendingTwoFactor;
     public string Account { get; private set; }
+    public bool ChinaMainland => auth.ChinaMainland;
     internal event Action<string>? Diagnostic;
     public bool Connected { get; private set; }
-    public bool PendingTwoFactor { get; private set; }
+    public bool PendingTwoFactor => pendingTwoFactor || pendingSignIn is not null;
     public bool Restoring { get; set; }
     public bool RestoreRetryable { get; private set; }
     public string RestoreDetail { get; private set; } = "";
-    public ICloudClient(string account, SecretStore secrets, Func<HttpMessageHandler>? handlerFactory = null)
+    public ICloudClient(string account, SecretStore secrets, Func<HttpMessageHandler>? handlerFactory = null, bool? cacheChinaMainland = null)
     {
         Account = account; this.secrets = secrets; this.handlerFactory = handlerFactory;
-        auth = new AppleAuth(J.Parse(secrets.Session(account)) as JsonObject, handlerFactory);
+        var saved = J.Parse(secrets.Session(account)) as JsonObject;
+        // The credential write may finish before the cache transaction commits.
+        if (cacheChinaMainland is bool region && saved.Flag("china_mainland") != region) saved = null;
+        auth = new AppleAuth(saved, handlerFactory, cacheChinaMainland ?? false);
         auth.Diagnostic += message => Diagnostic?.Invoke(message);
     }
-    public void SetAccount(string account)
+    public bool IsSwitchingAccount(string account, bool chinaMainland) =>
+        Account.Length > 0 && (account != Account || chinaMainland != ChinaMainland);
+
+    public JsonObject Status
     {
-        if (account == Account) return;
-        auth.Dispose(); auth = new AppleAuth(null, handlerFactory); Account = account; Connected = false; PendingTwoFactor = false;
-        auth.Diagnostic += message => Diagnostic?.Invoke(message);
+        get
+        {
+            var signingIn = pendingSignIn?.Auth ?? auth;
+            var account = pendingSignIn?.Account ?? Account;
+            return new() { ["authenticated"] = Connected && !PendingTwoFactor, ["apple_id"] = account, ["china_mainland"] = signingIn.ChinaMainland,
+                ["needs_2fa"] = PendingTwoFactor, ["trusted_session"] = signingIn.State.Flag("trusted_session"), ["restoring"] = Restoring,
+                ["can_restore"] = secrets.HasPassword(account, signingIn.ChinaMainland), ["two_factor"] = signingIn.TwoFactorStatus };
+        }
     }
-    public JsonObject Status => new() { ["authenticated"] = Connected && !PendingTwoFactor, ["apple_id"] = Account, ["needs_2fa"] = PendingTwoFactor, ["trusted_session"] = auth.State.Flag("trusted_session"), ["restoring"] = Restoring, ["can_restore"] = secrets.HasPassword(Account), ["two_factor"] = auth.TwoFactorStatus };
-    public async Task<JsonNode> Connect(string? password, bool remember, bool acceptTerms, CancellationToken token)
+    public Task<JsonNode> Connect(string? password, bool remember, bool acceptTerms, CancellationToken token) =>
+        Connect(Account, ChinaMainland, password, remember, acceptTerms, token);
+
+    public async Task<JsonNode> Connect(string account, bool chinaMainland, string? password, bool remember, bool acceptTerms, CancellationToken token,
+        Action<Action>? commitAccount = null)
     {
-        password ??= secrets.Password(Account) ?? throw new CoreException("AUTH_REQUIRED", "No saved iCloud credential is available").WithPresentation("ErrorMissingSavedICloudCredential");
+        DiscardPendingSignIn();
+        password ??= secrets.Password(account, chinaMainland) ?? throw new CoreException("AUTH_REQUIRED", "No saved iCloud credential is available").WithPresentation("ErrorMissingSavedICloudCredential");
+        var candidate = account == Account && chinaMainland == ChinaMainland ? auth : new AppleAuth(null, handlerFactory, chinaMainland);
+        if (candidate != auth) candidate.Diagnostic += message => Diagnostic?.Invoke(message);
+
+        void SaveSignIn(bool pendingTwoFactor)
+        {
+            var savedPassword = remember ? password : null;
+            if (pendingTwoFactor && IsSwitchingAccount(account, chinaMainland))
+                pendingSignIn = new(candidate, account, savedPassword, commitAccount);
+            else AdoptSession(candidate, account, pendingTwoFactor, commitAccount, savedPassword);
+        }
+
         try
         {
-            await auth.SignIn(Account, password, acceptTerms, token); PendingTwoFactor = auth.RequiresTwoFactor; Connected = !PendingTwoFactor;
-            if (remember) secrets.Password(Account, password); Persist();
+            try { await candidate.SignIn(account, password, acceptTerms, token); }
+            catch (CoreException error) when (error.Code == "2FA_REQUIRED") { SaveSignIn(pendingTwoFactor: true); throw; }
+            SaveSignIn(candidate.RequiresTwoFactor);
             if (PendingTwoFactor) throw new CoreException("2FA_REQUIRED", "Two-factor authentication required").WithPresentation("ErrorTwoFactorAuthenticationRequired"); return Status;
         }
-        catch (CoreException ex) when (ex.Code == "2FA_REQUIRED") { PendingTwoFactor = true; Connected = false; if (remember) secrets.Password(Account, password); Persist(); throw; }
+        finally { if (candidate != auth && candidate != pendingSignIn?.Auth) candidate.Dispose(); }
     }
     public async Task<bool> Restore(CancellationToken token)
     {
@@ -49,16 +80,24 @@ internal sealed partial class ICloudClient : IDisposable
             else await Connect(null, true, false, token);
             RestoreRetryable = false; RestoreDetail = ""; return true;
         }
-        catch (CoreException ex) { RestoreRetryable = ex.Code == "NETWORK" && (auth.State.Text("session_token") is not null || auth.State.Flag("browser_cookie_session") && auth.State.Array("cookies").Count > 0 || secrets.Password(Account) is not null); RestoreDetail = ex.Detail; return false; }
+        catch (CoreException ex) { RestoreRetryable = ex.Code == "NETWORK" && (auth.State.Text("session_token") is not null || auth.State.Flag("browser_cookie_session") && auth.State.Array("cookies").Count > 0 || secrets.HasPassword(Account, ChinaMainland)); RestoreDetail = ex.Detail; return false; }
         finally { Restoring = false; }
     }
-    public Task<JsonNode> RequestCode(bool sms, CancellationToken token) => auth.RequestCode(sms, token);
+    public Task<JsonNode> RequestCode(bool sms, CancellationToken token) => (pendingSignIn?.Auth ?? auth).RequestCode(sms, token);
     public async Task<JsonNode> SubmitCode(string code, CancellationToken token)
     {
-        try { await auth.SubmitCode(code, token); PendingTwoFactor = false; Connected = true; return Status; }
+        if (pendingSignIn is { } staged)
+        {
+            await staged.Auth.SubmitCode(code, token);
+            AdoptSession(staged.Auth, staged.Account, pendingTwoFactor: false, staged.CommitAccount, staged.Password);
+            pendingSignIn = null;
+            return Status;
+        }
+        try { await auth.SubmitCode(code, token); pendingTwoFactor = false; Connected = true; return Status; }
         finally { Persist(); }
     }
-    public async Task<JsonNode> ImportBrowserSession(string? expectedAccount, JsonObject state, CancellationToken token, Action<string>? validateAccount = null)
+    public async Task<JsonNode> ImportBrowserSession(string? expectedAccount, JsonObject state, CancellationToken token, Action<string>? validateAccount = null,
+        Action<string, Action>? commitAccount = null)
     {
         if (!state.Flag("browser_cookie_session") || state.Array("cookies").Count == 0) state.Required("session_token", 16384);
         var candidate = new AppleAuth((JsonObject)state.DeepClone(), handlerFactory);
@@ -74,19 +113,44 @@ internal sealed partial class ICloudClient : IDisposable
             validateAccount?.Invoke(account);
             await CheckBrowserAccess(candidate, token);
             token.ThrowIfCancellationRequested();
-            candidate.SaveCookies();
-            secrets.Session(account, candidate.State.ToJsonString());
-            auth.Dispose(); auth = candidate; Account = account; PendingTwoFactor = false; Connected = true;
+            Action<Action>? commit = commitAccount is null ? null : save => commitAccount(account, save);
+            AdoptSession(candidate, account, pendingTwoFactor: false, commit);
+            DiscardPendingSignIn();
             return Status;
         }
-        catch { candidate.Dispose(); throw; }
+        finally { if (candidate != auth) candidate.Dispose(); }
+    }
+    private void AdoptSession(AppleAuth candidate, string account, bool pendingTwoFactor, Action<Action>? commitAccount, string? password = null)
+    {
+        candidate.SaveCookies();
+        void SaveCredentials()
+        {
+            if (password is not null) secrets.Password(account, password, candidate.ChinaMainland);
+            secrets.Session(account, candidate.State.ToJsonString());
+        }
+        if (commitAccount is null) SaveCredentials();
+        else commitAccount(SaveCredentials);
+        if (candidate != auth) auth.Dispose();
+        auth = candidate; Account = account; this.pendingTwoFactor = pendingTwoFactor; Connected = !pendingTwoFactor;
     }
     private static Task CheckBrowserAccess(AppleAuth session, CancellationToken token) =>
         session.State.Flag("browser_cookie_session") && !session.State.Flag("trusted_session")
             ? new CloudKit(session).CheckAccess(token) : Task.CompletedTask;
     internal void Persist() { auth.SaveCookies(); secrets.Session(Account, auth.State.ToJsonString()); }
-    public void Invalidate() { Connected = false; PendingTwoFactor = false; }
-    public void SignOut() { secrets.Delete(Account); Invalidate(); auth.Dispose(); auth = new AppleAuth(null, handlerFactory); auth.Diagnostic += message => Diagnostic?.Invoke(message); }
+    public void Invalidate() { Connected = false; pendingTwoFactor = false; DiscardPendingSignIn(); }
+
+    private void DiscardPendingSignIn()
+    {
+        pendingSignIn?.Auth.Dispose();
+        pendingSignIn = null;
+    }
+    public void SignOut()
+    {
+        secrets.Delete(Account); Invalidate();
+        var chinaMainland = ChinaMainland;
+        auth.Dispose(); auth = new AppleAuth(null, handlerFactory, chinaMainland);
+        auth.Diagnostic += message => Diagnostic?.Invoke(message);
+    }
     private CloudKit Cloud => Connected && !PendingTwoFactor ? new(auth) : throw new CoreException("AUTH_REQUIRED", "Not signed in to iCloud").WithPresentation("ErrorNotSignedInToICloud");
     public Task<string?> Cursor(CancellationToken token) => Cloud.Cursor(token);
     public Task<(JsonArray Records, string? Cursor)> Changes(string? cursor, CancellationToken token) => Cloud.Changes(cursor, ["Reminder", "List", "Hashtag", "RecurrenceRule"], token);
@@ -203,5 +267,5 @@ internal sealed partial class ICloudClient : IDisposable
         foreach (var p in fields) target[p.Key] = p.Value?.DeepClone();
         return MergeResult(original, result);
     }
-    public void Dispose() => auth.Dispose();
+    public void Dispose() { DiscardPendingSignIn(); auth.Dispose(); }
 }

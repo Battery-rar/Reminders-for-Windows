@@ -7,8 +7,10 @@ namespace Reminders.Core;
 
 internal sealed class AppleAuth : IDisposable
 {
-    internal const string AuthEndpoint = "https://idmsa.apple.com/appleauth/auth";
-    private const string SetupEndpoint = "https://setup.icloud.com/setup/ws/1";
+    internal string AuthEndpoint => AuthOrigin + "/appleauth/auth";
+    private string AuthOrigin => "https://" + ICloudEndpoints.AuthHost(ChinaMainland);
+    private string HomeEndpoint => ICloudEndpoints.Home(ChinaMainland);
+    private string SetupEndpoint => "https://" + ICloudEndpoints.SetupHost(ChinaMainland) + "/setup/ws/1";
     private const string Widget = "d39ba9916b7251055b22c7f910e2ea796ee65e98b2ddecea8f5dde8d9d1a815d";
     private const string UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3.1 Safari/605.1.15";
     private readonly Func<HttpMessageHandler> handlerFactory;
@@ -21,19 +23,21 @@ internal sealed class AppleAuth : IDisposable
         Diagnostic?.Invoke($"icloud: {operation} server_error={safeCode}");
     }
     internal JsonObject State { get; private set; }
+    internal bool ChinaMainland => State.Flag("china_mainland");
     private readonly List<JsonNode> phones = [];
     private readonly List<(string Method, long Id, string Mode)> sent = [];
     private (string Method, long Id, string Mode) route = ("unknown", 0, "sms");
     private bool optionsLoaded;
     private bool browserSessionVerified;
     private string? notice;
-    public AppleAuth(JsonObject? state = null, Func<HttpMessageHandler>? handlerFactory = null)
+    public AppleAuth(JsonObject? state = null, Func<HttpMessageHandler>? handlerFactory = null, bool chinaMainland = false)
     {
         State = state ?? new(); State["client_id"] ??= Guid.NewGuid().ToString();
+        State["china_mainland"] ??= chinaMainland;
         foreach (var saved in State.Array("cookies").OfType<JsonObject>())
         {
             var domain = saved.Text("domain")?.TrimStart('.');
-            if (domain is null || !AppleDomain(domain)) continue;
+            if (domain is null || !ICloudEndpoints.IsAppleDomain(domain)) continue;
             try
             {
                 var cookie = new Cookie(saved.Required("name"), saved.Required("value", 16384), saved.Text("path") ?? "/", saved.Required("domain")) { Secure = true, HttpOnly = saved.Flag("http_only") };
@@ -45,8 +49,7 @@ internal sealed class AppleAuth : IDisposable
         this.handlerFactory = handlerFactory ?? (() => new SocketsHttpHandler { AllowAutoRedirect = false, UseProxy = false, UseCookies = true, CookieContainer = cookies, ConnectTimeout = TimeSpan.FromSeconds(15), AutomaticDecompression = DecompressionMethods.All });
         Http = CreateHttp();
     }
-    internal static bool AppleDomain(string host) => host == "apple.com" || host.EndsWith(".apple.com", StringComparison.OrdinalIgnoreCase) || host == "icloud.com" || host.EndsWith(".icloud.com", StringComparison.OrdinalIgnoreCase);
-    internal void SaveCookies() => State["cookies"] = new JsonArray(cookies.GetAllCookies().Cast<Cookie>().Where(c => !c.Expired && AppleDomain(c.Domain.TrimStart('.')))
+    internal void SaveCookies() => State["cookies"] = new JsonArray(cookies.GetAllCookies().Cast<Cookie>().Where(c => !c.Expired && ICloudEndpoints.IsAppleDomain(c.Domain.TrimStart('.')))
         .Select(c => J.Node(new { name = c.Name, value = c.Value, domain = c.Domain, path = c.Path, http_only = c.HttpOnly, expires = c.Expires == DateTime.MinValue ? 0 : new DateTimeOffset(c.Expires.ToUniversalTime()).ToUnixTimeSeconds() })).ToArray());
     private HttpClient CreateHttp()
     {
@@ -65,10 +68,10 @@ internal sealed class AppleAuth : IDisposable
         var request = new HttpRequestMessage(method, uri);
         if (body is not null) request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
         void Add(string name, string? value) { if (value is not null) request.Headers.Add(name, value); }
-        Add("Origin", "https://www.icloud.com"); Add("Referer", auth ? "https://idmsa.apple.com" : "https://www.icloud.com/"); Add("Accept", accept);
+        Add("Origin", HomeEndpoint); Add("Referer", auth ? AuthOrigin : HomeEndpoint + "/"); Add("Accept", accept);
         if (auth)
         {
-            foreach (var p in new Dictionary<string, string> { ["x-apple-oauth-client-id"] = Widget, ["x-apple-oauth-client-type"] = "firstPartyAuth", ["x-apple-oauth-redirect-uri"] = "https://www.icloud.com", ["x-apple-oauth-require-grant-code"] = "true", ["x-apple-oauth-response-mode"] = "web_message", ["x-apple-oauth-response-type"] = "code", ["x-apple-widget-key"] = Widget, ["x-apple-fd-client-info"] = J.Node(new { U = UserAgent, L = "en-US", Z = "GMT+00:00", V = "1.1", F = "" }).ToJsonString() }) Add(p.Key, p.Value);
+            foreach (var p in new Dictionary<string, string> { ["x-apple-oauth-client-id"] = Widget, ["x-apple-oauth-client-type"] = "firstPartyAuth", ["x-apple-oauth-redirect-uri"] = HomeEndpoint, ["x-apple-oauth-require-grant-code"] = "true", ["x-apple-oauth-response-mode"] = "web_message", ["x-apple-oauth-response-type"] = "code", ["x-apple-widget-key"] = Widget, ["x-apple-fd-client-info"] = J.Node(new { U = UserAgent, L = "en-US", Z = "GMT+00:00", V = "1.1", F = "" }).ToJsonString() }) Add(p.Key, p.Value);
             Add("x-apple-oauth-state", State.Text("client_id")); Add("x-apple-frame-id", State.Text("client_id")); Add("x-apple-auth-attributes", State.Text("auth_attributes"));
         }
         else { Add("x-apple-webauth-token", State.Text("session_token")); Add("x-apple-id-account-country", State.Text("account_country")); }
@@ -119,7 +122,8 @@ internal sealed class AppleAuth : IDisposable
         State.Remove("cookies"); State.Remove("browser_cookie_session"); State.Remove("user_agent");
         Http = CreateHttp(); State["session_id"] = null; State["scnt"] = null; State["auth_attributes"] = null;
         var id = Uri.EscapeDataString(State.Required("client_id"));
-        var bootstrap = await Auth(HttpMethod.Get, $"/authorize/signin?frame_id={id}&skVersion=7&iframeid={id}&client_id={Widget}&response_type=code&redirect_uri=https%3A%2F%2Fwww.icloud.com&response_mode=web_message&state={id}&authVersion=latest", null, token);
+        var redirect = Uri.EscapeDataString(HomeEndpoint);
+        var bootstrap = await Auth(HttpMethod.Get, $"/authorize/signin?frame_id={id}&skVersion=7&iframeid={id}&client_id={Widget}&response_type=code&redirect_uri={redirect}&response_mode=web_message&state={id}&authVersion=latest", null, token);
         if (bootstrap.Status is < 200 or >= 300) throw Classify(bootstrap.Status, bootstrap.Text);
         var privateBytes = RandomNumberGenerator.GetBytes(32); var a = Srp.Integer(privateBytes); CryptographicOperations.ZeroMemory(privateBytes);
         var init = await Auth(HttpMethod.Post, "/signin/init", J.Node(new { accountName = account, a = Convert.ToBase64String(Srp.Public(a)), protocols = new[] { "s2k", "s2k_fo" } }), token);
@@ -172,7 +176,8 @@ internal sealed class AppleAuth : IDisposable
     private async Task AccountLogin(CancellationToken token)
     {
         var webToken = State.Text("session_token") ?? throw new CoreException("AUTH_REQUIRED", "Apple did not issue a web authentication token").WithPresentation("ErrorMissingWebAuthToken");
-        var body = new JsonObject { ["accountCountryCode"] = State.Text("account_country") ?? "USA", ["dsWebAuthToken"] = webToken, ["extended_login"] = true };
+        var country = State.Text("account_country") ?? (ChinaMainland ? "CHN" : "USA");
+        var body = new JsonObject { ["accountCountryCode"] = country, ["dsWebAuthToken"] = webToken, ["extended_login"] = true };
         if (State.Text("trust_token") is { } trust) body["trustToken"] = trust;
         var response = await SendAsync(Request(HttpMethod.Post, SetupEndpoint + "/accountLogin?" + Query, body, false), 2 * 1024 * 1024, token);
         if (response.Status is < 200 or >= 300) throw Classify(response.Status, response.Text);

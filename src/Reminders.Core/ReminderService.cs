@@ -13,6 +13,7 @@ public sealed partial class ReminderService : IAsyncDisposable
     private ICloudClient client => cloudClient ?? throw new CoreException("AUTH_REQUIRED", "This account only stores reminders on this PC.").WithPresentation("ErrorLocalAccountNoICloud");
     public bool IsLocalDemo => cloudClient is null;
     private readonly SemaphoreSlim clientGate = new(1, 1);
+    private readonly SemaphoreSlim signInGate = new(1, 1);
     private readonly CancellationTokenSource lifetime = new();
     private CancellationTokenSource backgroundLifetime = new();
     private readonly ConcurrentDictionary<long, Task> background = new();
@@ -27,7 +28,7 @@ public sealed partial class ReminderService : IAsyncDisposable
     internal ReminderService(string dataDirectory, ISecrets secrets, Func<HttpMessageHandler>? handlerFactory = null)
     {
         cache = new Cache(Path.Combine(dataDirectory, "cache.db"));
-        cloudClient = new ICloudClient((cache.Meta("apple_id") ?? "").Trim().ToLowerInvariant(), new SecretStore(secrets), handlerFactory);
+        cloudClient = new ICloudClient((cache.Meta("apple_id") ?? "").Trim().ToLowerInvariant(), new SecretStore(secrets), handlerFactory, cache.Meta("china_mainland") == "1");
         client.Diagnostic += message => Diagnostic?.Invoke(message);
         authSnapshot = client.Status; sync = new(cache, client, clientGate, Emit);
     }
@@ -121,6 +122,21 @@ public sealed partial class ReminderService : IAsyncDisposable
         try { return await action(); }
         finally { try { Volatile.Write(ref authSnapshot, client.Status); } finally { clientGate.Release(); } }
     }
+    private async Task<T> WithSignIn<T>(Func<Task<T>> action, CancellationToken token)
+    {
+        await signInGate.WaitAsync(token);
+        try
+        {
+            // Drain sync through its final cache writes before a session can change regions.
+            await CancelBackgroundWorkAsync();
+            return await WithClient(() => { client.Restoring = false; return action(); }, token);
+        }
+        finally
+        {
+            ResumeBackgroundWork();
+            signInGate.Release();
+        }
+    }
     public async Task<JsonElement> CallAsync(string method, JsonElement parameters, CancellationToken cancellationToken = default)
     {
         Task<JsonElement> call; long id;
@@ -153,37 +169,34 @@ public sealed partial class ReminderService : IAsyncDisposable
                 var account = (p.Optional("apple_id", 320) ?? cache.Meta("apple_id") ?? "").Trim().ToLowerInvariant(); if (account.Length == 0) throw new CoreException("AUTH_REQUIRED", "No Apple ID provided").WithPresentation("ErrorNoAppleIDProvided");
                 if (DemoAccount.IsDemoUsername(account)) throw new CoreException("AUTH_REQUIRED", "Use the local sign-in flow for this account.").WithPresentation("ErrorLocalSignInRequired");
                 var password = p.Optional("password", 4096);
-                var login = await WithClient(async () =>
+                var login = await WithSignIn(async () =>
                 {
+                    var chinaMainland = p.Property("china_mainland") is null
+                        ? account == client.Account && client.ChinaMainland : p.Flag("china_mainland");
                     // Mixing another account's cached reminders with a new session
                     // would upload edits to the wrong CloudKit container.
-                    if (client.Account.Length > 0 && client.Account != account && cache.Pending(1).Count > 0) throw CoreException.Bad("Sync queued changes or sign out and clear the cache before switching accounts.").WithPresentation("ErrorSwitchAccountNeedsSyncOrCacheClear");
-                    if (client.Account.Length > 0 && client.Account != account) cache.Purge();
-                    client.SetAccount(account); cache.SetMeta("apple_id", account);
-                    return await client.Connect(password, cache.Settings.Flag("remember_password"), p.Flag("accept_terms"), token);
+                    var switching = client.IsSwitchingAccount(account, chinaMainland);
+                    cache.EnsureCanSwitchAccount(switching);
+                    return await client.Connect(account, chinaMainland, password, cache.Settings.Flag("remember_password"), p.Flag("accept_terms"), token,
+                        saveCredentials => cache.SaveAccount(account, chinaMainland, switching, saveCredentials));
                 }, token);
                 cache.SetMeta("signed_out", null);
-                ResumeBackgroundWork();
                 QueueSync(cache.Lists.Count == 0); return login;
             case "request_2fa": return await WithClient(() => client.RequestCode(p.Text("method") == "sms", token), token);
             case "browser_login":
                 var browserAccount = p.Optional("apple_id", 320)?.Trim().ToLowerInvariant();
                 var browserState = p["state"] as JsonObject ?? throw CoreException.Bad("Missing Apple session.").WithPresentation("ErrorMissingAppleSession");
-                var browserLogin = await WithClient(async () =>
+                var browserLogin = await WithSignIn(async () =>
                 {
-                    var switching = false;
+                    var chinaMainland = browserState.Flag("china_mainland");
                     var authenticated = await client.ImportBrowserSession(browserAccount, browserState, token, account =>
-                    {
-                        switching = client.Account.Length > 0 && client.Account != account;
-                        if (switching && cache.Pending(1).Count > 0) throw CoreException.Bad("Sync queued changes with this account before switching accounts.").WithPresentation("ErrorSwitchAccountNeedsSync");
-                    });
-                    if (switching) cache.Purge();
-                    cache.SetMeta("apple_id", authenticated.Required("apple_id")); cache.SetMeta("signed_out", null); return authenticated;
+                        cache.EnsureCanSwitchAccount(client.IsSwitchingAccount(account, chinaMainland)),
+                        (account, saveCredentials) => cache.SaveAccount(account, chinaMainland, client.IsSwitchingAccount(account, chinaMainland), saveCredentials));
+                    cache.SetMeta("signed_out", null); return authenticated;
                 }, token);
-                ResumeBackgroundWork();
                 QueueSync(cache.Lists.Count == 0); return browserLogin;
             case "submit_2fa":
-                var code = p.Required("code"); var verified = await WithClient(() => client.SubmitCode(code, token), token); cache.SetMeta("signed_out", null); ResumeBackgroundWork(); QueueSync(cache.Lists.Count == 0); return verified;
+                var code = p.Required("code"); var verified = await WithSignIn(() => client.SubmitCode(code, token), token); cache.SetMeta("signed_out", null); QueueSync(cache.Lists.Count == 0); return verified;
             case "sign_out":
                 if (IsLocalDemo) { authSnapshot["authenticated"] = false; return J.Node(new { signed_out = true }); }
                 // Restoration and full-history sync can hold the account gate
@@ -409,6 +422,6 @@ public sealed partial class ReminderService : IAsyncDisposable
             finally { cloudClient?.Dispose(); cache.Dispose(); }
         }
         finally { clientGate.Release(); }
-        lifetime.Dispose(); backgroundLifetime.Dispose(); clientGate.Dispose();
+        lifetime.Dispose(); backgroundLifetime.Dispose(); clientGate.Dispose(); signInGate.Dispose();
     }
 }

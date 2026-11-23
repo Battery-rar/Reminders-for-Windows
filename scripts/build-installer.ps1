@@ -12,6 +12,9 @@
     with a certificate from the current user's store. No certificate is
     generated or committed by this repository.
 
+    Use -DisableUpstreamInstallerUpdates for a custom build that must not
+    install upstream releases through the in-app updater.
+
 .EXAMPLE
     .\scripts\build-installer.ps1
     Builds the app and then the x64 installer.
@@ -25,7 +28,8 @@ param(
     [ValidateSet('x64', 'ARM64')]
     [string]$Architecture = 'x64',
     [string]$CertificateThumbprint,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$DisableUpstreamInstallerUpdates
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,13 +72,15 @@ $arch = if ($Architecture -eq 'ARM64') { 'arm64' } else { 'x64' }
 
 New-Item -ItemType Directory -Force -Path $installerOutput | Out-Null
 
-& $iscc `
-    "/DAppVersion=$version" `
-    "/DArch=$arch" `
-    "/DSourceDir=$([IO.Path]::GetFullPath($portableOutput).TrimEnd('\'))" `
-    "/DOutputDir=$([IO.Path]::GetFullPath($installerOutput).TrimEnd('\'))" `
-    "/DIconFile=$([IO.Path]::GetFullPath($icon))" `
-    $script
+$compilerArguments = @(
+    "/DAppVersion=$version"
+    "/DArch=$arch"
+    "/DSourceDir=$([IO.Path]::GetFullPath($portableOutput).TrimEnd('\'))"
+    "/DOutputDir=$([IO.Path]::GetFullPath($installerOutput).TrimEnd('\'))"
+    "/DIconFile=$([IO.Path]::GetFullPath($icon))"
+)
+if ($DisableUpstreamInstallerUpdates) { $compilerArguments += '/DDisableUpstreamInstallerUpdates=1' }
+& $iscc @compilerArguments $script
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed to build the installer.' }
 
 $installer = Join-Path $installerOutput "Reminders-for-Windows-$arch-Setup.exe"

@@ -164,6 +164,7 @@
           the panel enough to clip the fields below it too. -->
      <TextBlock x:Uid="GateStatus" x:Name="GateStatus" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Stretch" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
      <StackPanel x:Name="LoginFields" Spacing="12" Visibility="Collapsed">
+      <CheckBox x:Uid="ChinaMainlandSignIn" x:Name="ChinaMainlandSignIn"/>
       <Button x:Uid="AppleDeviceSignIn" x:Name="AppleDeviceSignIn" HorizontalAlignment="Stretch" Click="BrowserSignIn_Click"/>
       <TextBlock x:Uid="ContinueOnAppleSSignInTextBlock" TextWrapping="Wrap" HorizontalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
       <TextBlock x:Uid="OrEnterYourAccountForTextTextBlock" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>

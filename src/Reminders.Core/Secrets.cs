@@ -80,9 +80,10 @@ internal sealed class SecretStore(ISecrets vault)
         var parts = value?.Split(':');
         return parts is { Length: 4 } && parts[0] == "chunks" && parts[1] == "v1" && parts[2] is "a" or "b" && int.TryParse(parts[3], out var count) && count is > 0 and <= 64 ? (parts[2][0], count) : null;
     }
-    public string? Password(string account) => vault.Read(PasswordService, account);
-    public bool HasPassword(string account) { try { return Password(account) is not null; } catch (Exception) { return false; } }
-    public void Password(string account, string value) => vault.Write(PasswordService, account, value);
+    private static string PasswordTarget(bool chinaMainland) => chinaMainland ? PasswordService + ".china-mainland" : PasswordService;
+    public string? Password(string account, bool chinaMainland = false) => vault.Read(PasswordTarget(chinaMainland), account);
+    public bool HasPassword(string account, bool chinaMainland = false) { try { return Password(account, chinaMainland) is not null; } catch (Exception) { return false; } }
+    public void Password(string account, string value, bool chinaMainland = false) => vault.Write(PasswordTarget(chinaMainland), account, value);
     public string? Session(string account)
     {
         var value = vault.Read(SessionService, account); if (Manifest(value) is not { } manifest) return value;
@@ -98,7 +99,7 @@ internal sealed class SecretStore(ISecrets vault)
     }
     public void Delete(string account)
     {
-        vault.Delete(PasswordService, account); vault.Delete(SessionService, account);
+        vault.Delete(PasswordService, account); vault.Delete(PasswordTarget(true), account); vault.Delete(SessionService, account);
         foreach (var slot in new[] { 'a', 'b' }) for (var i = 0; i < 64; i++) vault.Delete(Chunk(slot, i), account);
     }
 }

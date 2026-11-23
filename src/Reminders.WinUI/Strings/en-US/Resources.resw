@@ -1944,4 +1944,7 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="YourICloudRemindersAtHomeOnTextBlock.Text" xml:space="preserve">
     <value>Your iCloud reminders, at home on Windows.</value>
   </data>
+  <data name="ChinaMainlandSignIn.Content" xml:space="preserve">
+    <value>iCloud China mainland (GCBD)</value>
+  </data>
 </root>

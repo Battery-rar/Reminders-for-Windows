@@ -196,6 +196,7 @@ public sealed partial class MainWindow : Window
             SetGateState(L10n.Get("CheckingYourAccount"));
             var status = await _sync.CallAsync("auth_status", new { });
             if (_accountBusy) return;
+            ChinaMainlandSignIn.IsChecked = status.Flag("china_mainland");
             _settings = await _sync.CallAsync("settings", new { });
             if (_accountBusy) return;
             ApplyTheme(_settings.Text("theme", "system"));
@@ -473,7 +474,7 @@ public sealed partial class MainWindow : Window
             else
             {
                 if (!_sync.IsRunning) await _sync.StartAsync();
-                await _sync.CallAsync("login", new { apple_id = AppleIdBox.Text.Trim(), password = PasswordBox.Password });
+                await SignInWithPasswordAsync();
             }
             PasswordBox.Password = ""; _lastSignInFailure = null; await BootAsync();
             if (_sync.IsLocalDemo) ShowInfo(L10n.Get("LocalAccount"), L10n.Get("LocalAccountStartedDescription"), InfoBarSeverity.Informational);
@@ -482,13 +483,21 @@ public sealed partial class MainWindow : Window
         catch (SyncException error) when (error.Code == "TERMS_REQUIRED") { await AcceptTermsAsync(); }
         catch (Exception error) { ShowLogin(); ShowSignInError(error, SignInStage.Password); }
     }
+    private Task<JsonElement> SignInWithPasswordAsync(bool acceptTerms = false) => _sync.CallAsync("login", new
+    {
+        apple_id = AppleIdBox.Text.Trim(),
+        password = PasswordBox.Password,
+        china_mainland = ChinaMainlandSignIn.IsChecked == true,
+        accept_terms = acceptTerms
+    });
+
     private async Task AcceptTermsAsync()
     {
         var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, Title = L10n.Get("UpdatedICloudTerms"), Content = L10n.Get("ICloudTermsDescription"), PrimaryButtonText = L10n.Get("AcceptAndContinue"), CloseButtonText = L10n.Get("Cancel"), DefaultButton = ContentDialogButton.Primary };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         {
             SetGateState(L10n.Get("AcceptingTerms"));
-            try { await _sync.CallAsync("login", new { apple_id = AppleIdBox.Text.Trim(), password = PasswordBox.Password, accept_terms = true }); PasswordBox.Password = ""; _lastSignInFailure = null; await BootAsync(); }
+            try { await SignInWithPasswordAsync(acceptTerms: true); PasswordBox.Password = ""; _lastSignInFailure = null; await BootAsync(); }
             catch (SyncException error) when (error.Code == "2FA_REQUIRED") { await RequestCodeAsync(); }
             catch (Exception error) { ShowLogin(); ShowSignInError(error, SignInStage.Password); }
         }

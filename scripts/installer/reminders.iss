@@ -86,9 +86,13 @@ Name: "startup"; Description: "Start Reminders for Windows when I sign in"; Grou
 
 [Files]
 ; Install the complete self-contained app, including the C# backend library.
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [InstallDelete]
+#ifdef DisableUpstreamInstallerUpdates
+; An upgrade from an upstream installer may already have enabled in-app installation.
+Type: files; Name: "{app}\installer-installation.txt"
+#endif
 ; Remove only this app's old shortcuts when upgrading to the new display name.
 Type: files; Name: "{autoprograms}\Cloud Reminder Sync\Cloud Reminder Sync.lnk"
 Type: files; Name: "{autoprograms}\Cloud Reminder Sync\{cm:UninstallProgram,Cloud Reminder Sync}.lnk"
@@ -109,8 +113,10 @@ Name: "{userstartup}\Reminders for Windows"; Filename: "{app}\Reminders.exe"; Ta
 Filename: "{app}\Reminders.exe"; Description: "{cm:LaunchProgram,Reminders for Windows}"; Flags: nowait postinstall skipifsilent
 Filename: "{app}\Reminders.exe"; Flags: nowait; Check: IsAppUpdate
 
+#ifndef DisableUpstreamInstallerUpdates
 [INI]
 Filename: "{app}\installer-installation.txt"; Section: "Installation"; Key: "Type"; String: "InnoSetup"; Flags: uninsdeleteentry uninsdeletesectionifempty
+#endif
 
 [Code]
 function IsAppUpdate: Boolean;

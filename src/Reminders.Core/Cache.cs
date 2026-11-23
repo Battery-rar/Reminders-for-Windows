@@ -297,7 +297,21 @@ internal sealed partial class Cache : IDisposable
         Execute("DELETE FROM meta WHERE key GLOB 'id_alias:*'");
         SetMeta("disabled_tag_writes", null);
     }
-    public void Purge() => Transaction(() => { PurgeData(); return true; });
+    public void EnsureCanSwitchAccount(bool switching)
+    {
+        if (switching && Query("SELECT EXISTS(SELECT 1 FROM outbox) OR EXISTS(SELECT 1 FROM conflicts WHERE resolved=0) AS unsynced")[0].Flag("unsynced"))
+            throw CoreException.Bad("Sync queued changes or sign out and clear the cache before switching accounts.").WithPresentation("ErrorSwitchAccountNeedsSyncOrCacheClear");
+    }
+
+    public void SaveAccount(string account, bool chinaMainland, bool replaceCache, Action saveCredentials) => Transaction(() =>
+    {
+        EnsureCanSwitchAccount(replaceCache);
+        if (replaceCache) PurgeData();
+        SetMeta("apple_id", account);
+        SetMeta("china_mainland", chinaMainland ? "1" : null);
+        saveCredentials();
+        return true;
+    });
     public JsonNode Clear(bool discardPending) => Transaction(() =>
     {
         var pending = Query("SELECT COUNT(*) AS count FROM outbox")[0].Number("count");

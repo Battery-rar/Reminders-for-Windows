@@ -110,7 +110,7 @@ try
 finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); Directory.Delete(root, true); }
 using (var auth = new AppleAuth(J.Node(new { session_id = "session", session_token = "secret", scnt = "scnt", account_country = "USA" }).AsObject()))
 {
-    using var request = auth.Request(HttpMethod.Post, AppleAuth.AuthEndpoint, new JsonObject(), true);
+    using var request = auth.Request(HttpMethod.Post, auth.AuthEndpoint, new JsonObject(), true);
     Check(!request.Headers.Contains("x-apple-webauth-token") && !request.Headers.Contains("x-apple-id-account-country"), "auth does not receive setup credentials");
     Equal("https://idmsa.apple.com/", request.Headers.Referrer!.ToString(), "auth referer");
     Check(request.Headers.Contains("scnt") && request.Headers.Contains("x-apple-id-session-id"), "challenge headers");
@@ -123,56 +123,74 @@ Check(!AppleAuth.CodeAccepted(200, J.Node(new { securityCode = new { valid = fal
 // HTTP mock verifies response rotation and bounded body reading without accounts.
 using (var auth = new AppleAuth(handlerFactory: () => new ResponseHandler(() => { var r = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") }; r.Headers.Add("scnt", "rotated"); return r; })))
 {
-    await auth.SendAsync(auth.Request(HttpMethod.Get, AppleAuth.AuthEndpoint, null, true), 100, default); Equal("rotated", auth.State.Text("scnt"), "rotated challenge captured");
+    await auth.SendAsync(auth.Request(HttpMethod.Get, auth.AuthEndpoint, null, true), 100, default); Equal("rotated", auth.State.Text("scnt"), "rotated challenge captured");
 }
 using (var auth = new AppleAuth(handlerFactory: () => new ResponseHandler(() => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(new string('x', 101)) })))
-    await Error(() => auth.SendAsync(auth.Request(HttpMethod.Get, AppleAuth.AuthEndpoint, null, true), 100, default), "NETWORK", "response cap");
+    await Error(() => auth.SendAsync(auth.Request(HttpMethod.Get, auth.AuthEndpoint, null, true), 100, default), "NETWORK", "response cap");
 var patchFields = ICloudClient.UpdateFields(new JsonObject(), new() { ["completed"] = true, ["title"] = "🛫" });
 Check(CloudKit.Field(new JsonObject { ["fields"] = patchFields }, "CompletionDate") is not null, "completion timestamp");
 Check(patchFields.Text("ResolutionTokenMap") is null && patchFields["ResolutionTokenMap"] is JsonObject, "merge metadata wrapper");
-var verificationSent = false; var trusted = false; var handshakeCount = 0; var loginVault = new MemorySecrets();
-using (var client = new ICloudClient("vector@example.com", new SecretStore(loginVault), () => new ScriptHandler(async request =>
+foreach (var chinaMainland in new[] { false, true })
 {
-    var path = request.RequestUri!.AbsolutePath;
-    var body = request.Content is null ? null : J.Parse(await request.Content.ReadAsStringAsync());
-    JsonNode response = new JsonObject(); var status = 200;
-    if (path.EndsWith("/signin/init"))
+    var verificationSent = false; var trusted = false; var handshakeCount = 0; var loginVault = new MemorySecrets();
+    var loginSecrets = new SecretStore(loginVault);
+    if (chinaMainland) loginSecrets.Session("vector@example.com", """{"session_token":"existing-global-session"}""");
+    using (var client = new ICloudClient("vector@example.com", new SecretStore(loginVault), () => new ScriptHandler(async request =>
     {
-        handshakeCount++; Equal("vector@example.com", body.Text("accountName"), "Apple accountName casing");
-        Check(body?["a"] is not null && body.Array("protocols").Count == 2, "SRP init payload");
-        response = J.Node(new { protocol = "s2k", iteration = 1000, salt = Convert.ToBase64String(salt), b = Convert.ToBase64String(serverPublic), c = "challenge" });
-    }
-    else if (path.EndsWith("/signin/complete"))
+        var path = request.RequestUri!.AbsolutePath;
+        var regionSuffix = chinaMainland ? ".cn" : "";
+        var host = path.EndsWith("/accountLogin") ? "setup.icloud.com" : "idmsa.apple.com";
+        Equal(host + regionSuffix, request.RequestUri.Host, "native sign-in and verification use the selected region");
+        var body = request.Content is null ? null : J.Parse(await request.Content.ReadAsStringAsync());
+        JsonNode response = new JsonObject(); var status = 200;
+        if (path.EndsWith("/signin/init"))
+        {
+            handshakeCount++; Equal("vector@example.com", body.Text("accountName"), "Apple accountName casing");
+            Check(body?["a"] is not null && body.Array("protocols").Count == 2, "SRP init payload");
+            response = J.Node(new { protocol = "s2k", iteration = 1000, salt = Convert.ToBase64String(salt), b = Convert.ToBase64String(serverPublic), c = "challenge" });
+        }
+        else if (path.EndsWith("/signin/complete"))
+        {
+            Check(body?["m1"] is not null && body?["m2"] is not null && body.Flag("rememberMe"), "SRP complete payload"); status = 409;
+            response = J.Node(new { trustedPhoneNumber = new { id = 7, pushMode = "sms", nonFTEU = true, numberWithDialCode = "••123" } });
+        }
+        else if (path.EndsWith("/accountLogin"))
+        {
+            Equal("web-token", body.Text("dsWebAuthToken"), "setup token payload");
+            response = J.Node(new { dsInfo = new { dsid = "123", hsaVersion = 2 }, hsaChallengeRequired = !trusted, hsaTrustedBrowser = trusted, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } });
+        }
+        else if (path.EndsWith("/verify/phone"))
+        {
+            verificationSent = true; Equal("sms", body.Text("mode"), "SMS delivery mode"); Equal(7L, body?["phoneNumber"].Number("id"), "SMS phone id"); Check(body?["phoneNumber"].Flag("nonFTEU") == true, "nonFTEU echoed"); status = 409;
+        }
+        else if (path.EndsWith("/verify/phone/securitycode"))
+        {
+            Check(verificationSent, "code was requested first"); Equal("123456", body?["securityCode"].Text("code"), "SMS verification payload");
+            Check(!request.Headers.Contains("x-apple-webauth-token"), "verifier excludes webauth token"); status = 409; response = J.Node(new { securityCode = new { valid = true } });
+        }
+        else if (path.EndsWith("/2sv/trust")) trusted = true;
+        var result = new HttpResponseMessage((HttpStatusCode)status) { Content = new StringContent(response.ToJsonString()) }; result.Headers.Add("scnt", "rotated"); result.Headers.Add("x-apple-session-token", "web-token"); return result;
+    })))
     {
-        Check(body?["m1"] is not null && body?["m2"] is not null && body.Flag("rememberMe"), "SRP complete payload"); status = 409;
-        response = J.Node(new { trustedPhoneNumber = new { id = 7, pushMode = "sms", nonFTEU = true, numberWithDialCode = "••123" } });
+        await Error(() => client.Connect("vector@example.com", chinaMainland, "correct horse battery staple", true, false, default), "2FA_REQUIRED", "mock SRP challenge");
+        if (chinaMainland)
+        {
+            Check(client.Status.Flag("china_mainland") && !client.ChinaMainland, "regional switch stages the challenge without changing the active region");
+            Equal("existing-global-session", J.Parse(loginSecrets.Session("vector@example.com")).Text("session_token"), "regional challenge preserves the previous session until verified");
+        }
+        Check(client.PendingTwoFactor && !client.Connected, "pending code state");
+        Check(!await client.Restore(default), "restore preserves outstanding challenge"); Equal(1, handshakeCount, "restore did not reissue challenge");
+        var delivery = await client.RequestCode(true, default); Check(delivery.Flag("sent") && delivery.Text("method") == "sms", "409 delivery accepted");
+        Check((await client.SubmitCode("123456", default)).Flag("authenticated"), "SMS trust/accountLogin completes");
+        Check(loginSecrets.Session("vector@example.com") is not null, "session persisted in vault");
+        Equal(chinaMainland, client.ChinaMainland, "verified native sign-in activates the selected region");
+        Equal(chinaMainland, J.Parse(loginSecrets.Session("vector@example.com")).Flag("china_mainland"), "verified native sign-in persists the selected region");
+        client.Invalidate(); Check(await client.Restore(default), "trusted token restore"); Equal(1, handshakeCount, "token restore skips SRP");
+        Check(loginSecrets.Password("vector@example.com", chinaMainland) is not null, "native sign-in saves the password for its region");
+        client.SignOut();
+        Check(loginSecrets.Password("vector@example.com") is null && loginSecrets.Password("vector@example.com", chinaMainland: true) is null,
+            "sign out removes both regional password entries for the account");
     }
-    else if (path.EndsWith("/accountLogin"))
-    {
-        Equal("web-token", body.Text("dsWebAuthToken"), "setup token payload");
-        response = J.Node(new { dsInfo = new { dsid = "123", hsaVersion = 2 }, hsaChallengeRequired = !trusted, hsaTrustedBrowser = trusted, webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } });
-    }
-    else if (path.EndsWith("/verify/phone"))
-    {
-        verificationSent = true; Equal("sms", body.Text("mode"), "SMS delivery mode"); Equal(7L, body?["phoneNumber"].Number("id"), "SMS phone id"); Check(body?["phoneNumber"].Flag("nonFTEU") == true, "nonFTEU echoed"); status = 409;
-    }
-    else if (path.EndsWith("/verify/phone/securitycode"))
-    {
-        Check(verificationSent, "code was requested first"); Equal("123456", body?["securityCode"].Text("code"), "SMS verification payload");
-        Check(!request.Headers.Contains("x-apple-webauth-token"), "verifier excludes webauth token"); status = 409; response = J.Node(new { securityCode = new { valid = true } });
-    }
-    else if (path.EndsWith("/2sv/trust")) trusted = true;
-    var result = new HttpResponseMessage((HttpStatusCode)status) { Content = new StringContent(response.ToJsonString()) }; result.Headers.Add("scnt", "rotated"); result.Headers.Add("x-apple-session-token", "web-token"); return result;
-})))
-{
-    await Error(() => client.Connect("correct horse battery staple", true, false, default), "2FA_REQUIRED", "mock SRP challenge");
-    Check(client.PendingTwoFactor && !client.Connected, "pending code state");
-    Check(!await client.Restore(default), "restore preserves outstanding challenge"); Equal(1, handshakeCount, "restore did not reissue challenge");
-    var delivery = await client.RequestCode(true, default); Check(delivery.Flag("sent") && delivery.Text("method") == "sms", "409 delivery accepted");
-    Check((await client.SubmitCode("123456", default)).Flag("authenticated"), "SMS trust/accountLogin completes");
-    Check(new SecretStore(loginVault).Session("vector@example.com") is not null, "session persisted in vault");
-    client.Invalidate(); Check(await client.Restore(default), "trusted token restore"); Equal(1, handshakeCount, "token restore skips SRP");
-    client.SignOut(); Check(new SecretStore(loginVault).Password("vector@example.com") is null, "sign out removes remembered password");
 }
 // A server that repeats its continuation token must fail instead of spinning.
 using (var auth = new AppleAuth(J.Node(new { webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } }).AsObject(), () => new ResponseHandler(() => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"records\":[],\"continuationMarker\":\"same\"}") })))
@@ -268,6 +286,7 @@ try
 }
 finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); Directory.Delete(shutdownRoot, true); }
 await AuthVerificationChecks.RunAsync(Check);
+await ChinaMainlandChecks.RunAsync(Check);
 await BrowserSessionTrustChecks.RunAsync(Check);
 await SignOutChecks.RunAsync(Check);
 await CacheRecoveryChecks.RunAsync(Check);

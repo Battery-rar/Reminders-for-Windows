@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
+using Reminders.Core;
 using Reminders.Windows.Services;
 using System.Text.Json.Nodes;
 using Windows.Storage.Streams;
@@ -12,6 +13,7 @@ public sealed partial class MainWindow
     private async void BrowserSignIn_Click(object sender, RoutedEventArgs args)
     {
         if (_dialogOpen || _verificationBusy) return;
+        var chinaMainland = ChinaMainlandSignIn.IsChecked == true;
         _dialogOpen = true;
         using var lifetime = new CancellationTokenSource();
         var host = new Grid { Width = Math.Clamp(Root.ActualWidth - 100, 320, 850), Height = Math.Clamp(Root.ActualHeight - 210, 300, 620) };
@@ -39,7 +41,7 @@ public sealed partial class MainWindow
 #if DEBUG
             if (AppleSignInPreview.Enabled) { browser.CoreWebView2.NavigateToString(AppleSignInPreview.Html); return; }
 #endif
-            browser.CoreWebView2.Navigate(AppleSignInPolicy.StartUrl);
+            browser.CoreWebView2.Navigate(AppleSignInPolicy.StartUrl(chinaMainland));
         }
 
         void ShowFailure(AppleSignInFailure failure)
@@ -108,7 +110,7 @@ public sealed partial class MainWindow
                     AppLog.Info("apple sign-in: stage=reminders session_detected");
                     import = QueueCookieImportAsync(import, core);
                 }
-                if (e.Response.StatusCode != 200 || uri.Host != "setup.icloud.com" || AppleSignInPolicy.AccountEndpoint(uri) is not ("accountLogin" or "validate" or "loginOrCreateAccount")) return;
+                if (e.Response.StatusCode != 200 || uri.Host != ICloudEndpoints.SetupHost(chinaMainland) || AppleSignInPolicy.AccountEndpoint(uri) is not ("accountLogin" or "validate" or "loginOrCreateAccount")) return;
                 // Do not drop a successful validation while an earlier account
                 // response is being read. Trust may change between responses.
                 import = QueueImportAsync(import, core, e);
@@ -185,7 +187,7 @@ public sealed partial class MainWindow
                     ["session_token"] = request?["dsWebAuthToken"]?.DeepClone() ?? (authHeaders.TryGetValue("X-Apple-Session-Token", out var session) ? JsonValue.Create(session) : null),
                     ["trust_token"] = authHeaders.TryGetValue("X-Apple-TwoSV-Trust-Token", out var trust) ? JsonValue.Create(trust) : request?["trustToken"]?.DeepClone(),
                     ["account_country"] = request?["accountCountryCode"]?.DeepClone(),
-                    ["browser_cookie_session"] = true, ["user_agent"] = core.Settings.UserAgent,
+                    ["china_mainland"] = chinaMainland, ["browser_cookie_session"] = true, ["user_agent"] = core.Settings.UserAgent,
                     ["client_id"] = clientId ?? Guid.NewGuid().ToString(),
                     ["cookies"] = JsonSerializerNode(cookies)
                 };
@@ -222,7 +224,9 @@ public sealed partial class MainWindow
 #endif
                 environment = await CoreWebView2Environment.CreateWithOptionsAsync(null, folder, new CoreWebView2EnvironmentOptions());
                 if (closed) return;
-                options = environment.CreateCoreWebView2ControllerOptions(); options.ProfileName = "AppleSignIn"; options.IsInPrivateModeEnabled = true;
+                options = environment.CreateCoreWebView2ControllerOptions();
+                options.ProfileName = chinaMainland ? "AppleSignInChinaMainland" : "AppleSignIn";
+                options.IsInPrivateModeEnabled = true;
                 await browser.EnsureCoreWebView2Async(environment, options);
                 if (closed) return;
                 Configure(browser);
@@ -273,7 +277,7 @@ public sealed partial class MainWindow
     }
 
     private static JsonArray JsonSerializerNode(IEnumerable<CoreWebView2Cookie> cookies) => new(cookies
-        .Where(c => AppleSignInPolicy.IsAppleUri(new Uri("https://" + c.Domain.TrimStart('.'))))
+        .Where(c => ICloudEndpoints.IsAppleDomain(c.Domain.TrimStart('.')))
         .Select(c => new JsonObject { ["name"] = c.Name, ["value"] = c.Value, ["domain"] = c.Domain, ["path"] = c.Path, ["http_only"] = c.IsHttpOnly,
             ["expires"] = c.IsSession ? 0 : (long)c.Expires }).Cast<JsonNode>().ToArray());
 
