@@ -21,11 +21,14 @@ internal static class SubtaskChecks
             string parentId, childId, grandchildId;
             await using (var service = new ReminderService(root, new MemorySecrets()))
             {
-                Task<JsonNode> Create(string title, string? parent = null, string list = "List/a") => Call(service, "create_reminder", new { title, parent_id = parent, list_id = list });
+                Task<JsonNode> Create(string title, string? parent = null, string list = "List/a", string description = "") =>
+                    Call(service, "create_reminder", new { title, parent_id = parent, list_id = list, description });
                 parentId = (await Create("Parent")).Required("id");
-                childId = (await Create("Child", parentId)).Required("id");
+                childId = (await Create("Child", parentId, description: "First note\nSecond note")).Required("id");
                 grandchildId = (await Create("Grandchild", childId)).Required("id");
                 check((await Call(service, "reminder", new { id = childId })).Text("parent_id") == parentId, "created subtask retains its parent offline");
+                var child = (await Call(service, "reminders", new { list_id = "List/a" })).AsArray().Single(row => row.Text("id") == childId);
+                check(child.Text("description") == "First note\nSecond note", "list results supply a child's multiline notes independently of its parent");
                 await Bad(() => Create("Invalid", "missing"), "missing parent cannot create an orphan");
                 await Bad(() => Create("Invalid", parentId, "List/b"), "subtask cannot be created in a different list");
                 await Bad(() => Call(service, "create_reminder", new { list_id = "List/a", parent_id = 42 }), "malformed parent rejected");

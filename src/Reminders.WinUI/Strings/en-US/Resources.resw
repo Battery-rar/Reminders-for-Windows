@@ -1947,4 +1947,25 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="ErrorCacheInUse" xml:space="preserve">
     <value>Reminders is already open. Close the other instance and try again.</value>
   </data>
+  <data name="ClearDueDate" xml:space="preserve">
+    <value>Clear due date</value>
+  </data>
+  <data name="ClearDueDateAndRepeat" xml:space="preserve">
+    <value>Clear due date and repeat</value>
+  </data>
+  <data name="QuickAddToday.Text" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="QuickAddButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Add a scheduled reminder</value>
+  </data>
+  <data name="QuickAddButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Add a scheduled reminder</value>
+  </data>
+  <data name="QuickAddTomorrow.Text" xml:space="preserve">
+    <value>Tomorrow</value>
+  </data>
+  <data name="QuickAddFiveDays.Text" xml:space="preserve">
+    <value>In 5 days</value>
+  </data>
 </root>

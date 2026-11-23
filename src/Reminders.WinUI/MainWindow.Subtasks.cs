@@ -15,12 +15,28 @@ public sealed partial class MainWindow
 
     private async void AddSubtask_Click(object sender, RoutedEventArgs args)
     {
-        if (_selected is not { Completed: false, Deleted: false } parent) return;
+        if (_dialogOpen || _savingDetail || _selected is not { Completed: false, Deleted: false } parent) return;
         if (_detailDirty)
         {
-            ShowInfo(L10n.Get("SaveYourChangesFirst"), L10n.Get("AddSubtaskUnsavedChangesWarning"), InfoBarSeverity.Informational); return;
+            if (!SaveButton.IsEnabled)
+            {
+                ShowInfo(L10n.Get("SaveYourChangesFirst"), L10n.Get("AddSubtaskUnsavedChangesWarning"), InfoBarSeverity.Informational);
+                return;
+            }
+            if (!await SaveDetailAsync(preserveEditor: true) || _detailDirty ||
+                !ReferenceEquals(_selected, parent) || parent.Completed || parent.Deleted) return;
         }
         await ShowNewReminderAsync(parent);
+        if (ReferenceEquals(_selected, parent) && AddSubtaskButton.IsEnabled)
+            AddSubtaskButton.Focus(FocusState.Programmatic);
+    }
+
+    private void SubtaskChevron_Loaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FontIcon icon) return;
+        icon.CenterPoint = new(8, 8, 0);
+        if (new global::Windows.UI.ViewManagement.UISettings().AnimationsEnabled)
+            icon.RotationTransition ??= new ScalarTransition { Duration = TimeSpan.FromMilliseconds(140) };
     }
 
     private List<ReminderItem> DemoDescendants(string id)
