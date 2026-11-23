@@ -39,15 +39,15 @@
    <Grid>
     <Grid x:Name="ReminderLayout" SizeChanged="ReminderLayout_SizeChanged" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
      <Grid.ColumnDefinitions><ColumnDefinition x:Name="ReminderColumn"/><ColumnDefinition x:Name="SplitterColumn" Width="8"/><ColumnDefinition x:Name="DetailsColumn"/></Grid.ColumnDefinitions>
-     <Grid x:Name="ReminderHost" Background="{ThemeResource LayerFillColorDefaultBrush}">
+     <Grid x:Name="ReminderHost" SizeChanged="ReminderHost_SizeChanged" Background="{ThemeResource LayerFillColorDefaultBrush}">
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
       <Grid Margin="24,0,24,12" MinHeight="64" ColumnSpacing="8">
        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <Grid HorizontalAlignment="Left" VerticalAlignment="Center">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <TextBlock x:Uid="ViewTitle" x:Name="ViewTitle" TextTrimming="CharacterEllipsis" Style="{ThemeResource TitleTextBlockStyle}"/>
-        <TextBlock x:Name="RowCount" Grid.Column="1" Margin="10,0,0,4" VerticalAlignment="Bottom"
+        <TextBlock x:Uid="ViewTitle" x:Name="ViewTitle" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Style="{ThemeResource TitleTextBlockStyle}"/>
+        <TextBlock x:Name="RowCount" Grid.Column="1" Margin="10,0,0,4" VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis"
                    Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         <TextBlock x:Name="ViewSubtitle" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed" Style="{ThemeResource CaptionTextBlockStyle}"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,2,0,0"/>
@@ -92,7 +92,8 @@
        </ListView.ItemTemplate>
       </ListView>
       <Grid x:Name="EmptyState" Grid.Row="2" Visibility="Collapsed" IsHitTestVisible="False"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Margin="24" MaxWidth="320"><FontIcon Glyph="&#xE90C;" FontSize="32" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,0,0,4"/><TextBlock x:Uid="EmptyStateTitle" x:Name="EmptyStateTitle" TextWrapping="Wrap" TextAlignment="Center" Style="{ThemeResource SubtitleTextBlockStyle}"/><TextBlock x:Uid="EmptyStateMessage" x:Name="EmptyStateMessage" TextWrapping="Wrap" TextAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel></Grid>
-      <Grid Grid.Row="3" Padding="24,12,24,16" ColumnSpacing="12">
+      <Grid x:Name="ReminderFooter" Grid.Row="3" Padding="24,12,24,16" ColumnSpacing="12">
+       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <ToggleButton x:Uid="ShowCompleted" x:Name="ShowCompleted" MinWidth="0" VerticalAlignment="Center"
                      Checked="ShowCompleted_Changed" Unchecked="ShowCompleted_Changed"/>
