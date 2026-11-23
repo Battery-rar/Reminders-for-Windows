@@ -1078,9 +1078,6 @@ Any subtasks will also be deleted.</value>
   <data name="MyListsNavigationViewItemHeader.Content" xml:space="preserve">
     <value>My lists</value>
   </data>
-  <data name="Navigation.PaneTitle" xml:space="preserve">
-    <value>Apple Reminders on Windows</value>
-  </data>
   <data name="Never" xml:space="preserve">
     <value>Never</value>
   </data>
