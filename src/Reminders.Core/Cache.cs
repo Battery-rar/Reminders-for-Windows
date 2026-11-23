@@ -33,8 +33,43 @@ internal sealed partial class Cache : IDisposable
             SetSettings(new() { ["sync_minutes"] = 1 });
         SetMeta("schema_version", "3");
         if (Meta("calendar_dates") != "1") MigrateCalendarDates();
+        if (Meta("cloud_due_utc") != "1") MigrateCloudDueDates();
         RetireTagWrites();
     }
+
+    private void MigrateCloudDueDates() => Transaction(() =>
+    {
+        var rows = Query("""
+            SELECT r.id, r.due_date, r.all_day, c.json
+            FROM reminders r JOIN related_records c ON c.id=r.id
+            WHERE r.change_tag IS json_extract(c.json, '$.recordChangeTag')
+            AND NOT EXISTS (
+                SELECT 1 FROM outbox o WHERE o.reminder_id=r.id
+                AND CASE WHEN json_valid(o.payload) THEN
+                    json_type(o.payload, '$.due_date') IS NOT NULL OR json_type(o.payload, '$.all_day') IS NOT NULL
+                END
+            )
+            AND (
+                NOT EXISTS (SELECT 1 FROM conflicts f WHERE f.reminder_id=r.id AND f.resolved=0)
+                OR r.dirty=0
+            )
+            """);
+        foreach (var row in rows.OfType<JsonObject>())
+        {
+            if (J.Parse(row.Text("json")) is not JsonObject record ||
+                (CloudKit.Int(record, "AllDay") != 0) != row.Flag("all_day") ||
+                CloudKit.Field(record, "DueDate") is not JsonValue field || !field.TryGetValue<long>(out var timestamp) ||
+                timestamp < DateTimeOffset.MinValue.ToUnixTimeMilliseconds() ||
+                timestamp > DateTimeOffset.MaxValue.ToUnixTimeMilliseconds()) continue;
+            var date = TimeUtil.FromCloudDue(timestamp, row.Flag("all_day"), CloudKit.Text(record, "TimeZone"));
+            if (date != row.Text("due_date")) Execute("UPDATE reminders SET due_date=@p0 WHERE id=@p1", date, row.Required("id"));
+        }
+        // A fresh snapshot also repairs rows whose retained wire record is missing
+        // or belongs to a different revision, without rewriting cloud dates.
+        if (Query("SELECT 1 FROM reminders LIMIT 1").Count > 0) SetMeta("cloudkit_read_protocol", null);
+        SetMeta("cloud_due_utc", "1");
+        return true;
+    });
 
     private void MigrateCalendarDates() => Transaction(() =>
     {
@@ -73,7 +108,7 @@ internal sealed partial class Cache : IDisposable
             var locallyEdited = localDueEdits.Contains(id);
             string? date;
             if (!locallyEdited && row["cloud_due"] is JsonValue value && value.TryGetValue<long>(out var cloudDue))
-                date = TimeUtil.FromCloudDue(cloudDue, true, null);
+                date = TimeUtil.FromCloudDue(cloudDue, true, row.Text("time_zone"));
             else
                 date = TryLegacyCalendarDate(due, TimeUtil.Zone(locallyEdited ? null : row.Text("time_zone")));
             if (date is not null) Execute("UPDATE reminders SET due_date=@p0 WHERE id=@p1", date, id);
@@ -188,9 +223,11 @@ internal sealed partial class Cache : IDisposable
             if (scope == "today")
             {
                 var (tomorrow, boundary) = TodayCutoff();
-                sql += "AND r.completed=0 AND r.due_date < CASE WHEN r.all_day=1 THEN " + Param(tomorrow) + " ELSE " + Param(boundary) + " END ";
+                if (!p.Flag("include_completed")) sql += "AND r.completed=0 ";
+                sql += "AND r.due_date < CASE WHEN r.all_day=1 THEN " + Param(tomorrow) + " ELSE " + Param(boundary) + " END ";
             }
-            else sql += scope switch { "upcoming" => "AND r.completed=0 AND r.due_date IS NOT NULL ", "completed" => "AND r.completed=1 ", "deleted" => "", _ => p.Flag("include_completed") ? "" : "AND r.completed=0 " };
+            else if (scope == "upcoming") sql += p.Flag("include_completed") ? "AND r.due_date IS NOT NULL " : "AND r.completed=0 AND r.due_date IS NOT NULL ";
+            else sql += scope switch { "completed" => "AND r.completed=1 ", "deleted" => "", _ => p.Flag("include_completed") ? "" : "AND r.completed=0 " };
             if (p.Text("list_id") is { } list) sql += "AND r.list_id=" + Param(list) + " ";
             if (p.Optional("search", 4096) is { Length: > 0 } search) sql += "AND (r.title LIKE " + Param("%" + search + "%") + " OR r.description LIKE " + Param("%" + search + "%") + ") ";
             const string dueOrder = "CASE WHEN r.all_day=1 THEN julianday(r.due_date,'utc') ELSE julianday(r.due_date) END";

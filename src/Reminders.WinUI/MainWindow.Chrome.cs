@@ -12,6 +12,18 @@ public sealed partial class MainWindow
 {
     private void InitializeWindowChrome()
     {
+        WindowTitleBar.Title = Title;
+        if (AppWindowTitleBar.IsCustomizationSupported())
+        {
+            ExtendsContentIntoTitleBar = true;
+            SetTitleBar(WindowTitleBar);
+        }
+        else
+        {
+            WindowTitleBar.Visibility = Visibility.Collapsed;
+            Navigation.IsPaneToggleButtonVisible = true;
+            Navigation.Loaded += Navigation_Loaded;
+        }
         Root.ActualThemeChanged += (_, _) => UpdateTitleBarTheme();
         Root.Loaded += (_, _) => UpdateTitleBarTheme();
         foreach (var (banner, surface) in new[] { (AppInfoBar, AppBannerSurface), (UpdateInfoBar, UpdateBannerSurface) })
@@ -30,6 +42,8 @@ public sealed partial class MainWindow
         }
         UpdateTitleBarTheme();
     }
+
+    private void TitleBar_PaneToggleRequested(TitleBar sender, object args) => SetPanePinned(!_panePinnedOpen);
 
     private static void AnimateBanner(FrameworkElement surface)
     {
@@ -61,9 +75,10 @@ public sealed partial class MainWindow
         titleBar.ForegroundColor = foreground;
         titleBar.InactiveBackgroundColor = background;
         titleBar.InactiveForegroundColor = muted;
-        titleBar.ButtonBackgroundColor = background;
+        var captionBackground = ExtendsContentIntoTitleBar ? Color.FromArgb(0, 0, 0, 0) : background;
+        titleBar.ButtonBackgroundColor = captionBackground;
         titleBar.ButtonForegroundColor = foreground;
-        titleBar.ButtonInactiveBackgroundColor = background;
+        titleBar.ButtonInactiveBackgroundColor = captionBackground;
         titleBar.ButtonInactiveForegroundColor = muted;
     }
 }

@@ -76,7 +76,6 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = L10n.Get("AppTitle");
-        DetailDateTime.SizeChanged += EditorPair_SizeChanged;
         DetailRecurrence.SizeChanged += EditorPair_SizeChanged;
         DetailOptions.SizeChanged += EditorPair_SizeChanged;
         SubmitTitleOnEnter(DetailTitle, async () =>
@@ -88,7 +87,6 @@ public sealed partial class MainWindow : Window
         Root.KeyboardAccelerators.Add(settingsAccelerator);
         Navigation.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler(Navigation_PointerMoved), true);
         Navigation.AddHandler(UIElement.PointerExitedEvent, new PointerEventHandler(Navigation_PointerExited), true);
-        Navigation.Loaded += Navigation_Loaded;
         foreach (var item in Navigation.MenuItems.Concat(Navigation.FooterMenuItems).OfType<NavigationViewItem>()) AttachPaneHover(item);
         _sectionView.Source = _reminderSections;
         ReminderList.ItemsSource = _visibleReminders;
@@ -342,12 +340,12 @@ public sealed partial class MainWindow : Window
 
     private async Task LoadRemindersAsync(bool fromSync = false, bool preserveDetail = false)
     {
-        ShowCompleted.Visibility = _view.Kind == NavKind.Smart && _view.Key == "completed" ? Visibility.Collapsed : Visibility.Visible;
+        ShowCompleted.Visibility = _view.Kind == NavKind.Smart && _view.Key is "completed" or "deleted" ? Visibility.Collapsed : Visibility.Visible;
         if (_demo) { _reminderLoads.Invalidate(); LoadDemoRows(fromSync, preserveDetail); return; }
         try
         {
             var presentation = CurrentReminderQuery;
-            var query = new Dictionary<string, object?> { ["include_completed"] = ShowCompleted.IsOn, ["include_parents"] = true, ["search"] = string.IsNullOrWhiteSpace(SearchBox.Text) ? null : SearchBox.Text.Trim(), ["sort"] = _sort };
+            var query = new Dictionary<string, object?> { ["include_completed"] = IncludesCompleted, ["include_parents"] = true, ["search"] = string.IsNullOrWhiteSpace(SearchBox.Text) ? null : SearchBox.Text.Trim(), ["sort"] = _sort };
             query[_view.Kind switch { NavKind.List => "list_id", NavKind.Tag => "tag", _ => "scope" }] = _view.Key;
             var selectedId = _selected?.Id;
             await _reminderLoads.RunAsync(async () =>
@@ -367,7 +365,7 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { ShowInfo(L10n.Get("CouldntLoadReminders"), L10n.Error(error), InfoBarSeverity.Error); }
     }
     private (NavKind Kind, string Key, string Search, string Sort, bool Completed) CurrentReminderQuery =>
-        (_view.Kind, _view.Key, SearchBox.Text, _sort, ShowCompleted.IsOn);
+        (_view.Kind, _view.Key, SearchBox.Text, _sort, IncludesCompleted);
     private void UpdateRows()
     {
         RebuildReminderSections();
@@ -750,7 +748,7 @@ public sealed partial class MainWindow : Window
         if (_restoringNavigation) return;
         if (args.IsSettingsSelected) { RestoreNavigationSelection(); return; }
         if (args.SelectedItemContainer?.Tag?.ToString() is not string tag) return;
-        if (tag is "sync" or "conflicts" or "sidebar") { RestoreNavigationSelection(); return; }
+        if (tag is "sync" or "conflicts") { RestoreNavigationSelection(); return; }
         var split = tag.Split(':', 2); if (split.Length != 2) return;
         var target = new NavEntry(args.SelectedItemContainer.Content?.ToString() ?? L10n.Get("Reminders"), "", split[0] switch { "list" => NavKind.List, "tag" => NavKind.Tag, _ => NavKind.Smart }, split[1]);
         if (_savingDetail || _detailTransition || _dialogOpen) { RestoreNavigationSelection(); return; }
@@ -797,7 +795,6 @@ public sealed partial class MainWindow : Window
         try
         {
             Navigation.PaneDisplayMode = pinned ? NavigationViewPaneDisplayMode.Left : NavigationViewPaneDisplayMode.LeftCompact;
-            Navigation.IsPaneToggleButtonVisible = true;
             Navigation.IsPaneOpen = pinned;
         }
         finally { _initializingPane = wasInitializing; }
@@ -869,7 +866,8 @@ public sealed partial class MainWindow : Window
         if (sender is not RadioMenuFlyoutItem selected) return;
         _sort = selected.Tag?.ToString() ?? "manual"; await LoadRemindersAsync();
     }
-    private async void ShowCompleted_Toggled(object sender, RoutedEventArgs e) { if (Root.IsLoaded) await LoadRemindersAsync(); }
+    private bool IncludesCompleted => ShowCompleted.IsChecked == true;
+    private async void ShowCompleted_Changed(object sender, RoutedEventArgs e) { if (Root.IsLoaded) await LoadRemindersAsync(); }
     private async void Complete_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not CheckBox checkbox || checkbox.DataContext is not ReminderItem reminder) return;
@@ -927,7 +925,7 @@ public sealed partial class MainWindow : Window
                 DetailDate.Date = local;
                 DetailTime.Time = local.TimeOfDay;
             }
-            else DetailDate.Date = null;
+            else { DetailDate.Date = null; DetailTime.Time = TimeSpan.FromHours(9); }
             DetailAllDay.IsOn = reminder.AllDay; DetailTime.IsEnabled = !reminder.AllDay; DetailFlagged.IsOn = reminder.Flagged;
             var customRepeat = reminder.Recurrence?.Supported == false;
             DetailRepeatChoice.IsEnabled = !customRepeat;
@@ -962,6 +960,7 @@ public sealed partial class MainWindow : Window
         DetailRepeatInterval.Visibility = repeats ? Visibility.Visible : Visibility.Collapsed;
         DetailRepeatInterval.Header = DetailRepeatChoice.SelectedIndex switch { 1 => L10n.Get("EveryDays"), 2 => L10n.Get("EveryWeeks"), 3 => L10n.Get("EveryMonths"), 4 => L10n.Get("EveryYears"), _ => L10n.Get("Every") };
         DetailAllDayRow.Visibility = DetailDate.Date is not null ? Visibility.Visible : Visibility.Collapsed;
+        DetailAddToToday.IsEnabled = _selected is { Deleted: false } && DetailDate.Date?.Date != DateTime.Today;
         DetailTime.IsEnabled = DetailDate.Date is not null && !DetailAllDay.IsOn;
         DetailTime.Visibility = DetailTime.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
         DetailClearSchedule.Visibility = DetailDate.Date is not null ? Visibility.Visible : Visibility.Collapsed;
@@ -988,6 +987,15 @@ public sealed partial class MainWindow : Window
         DetailRepeatChoice.SelectedIndex = 0;
         DetailDate.Date = null;
         DetailDate.Focus(FocusState.Programmatic);
+    }
+
+    private async void DetailAddToToday_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selected is not { Deleted: false } || _savingDetail || _dialogOpen) return;
+        var saveImmediately = !_detailDirty;
+        if (DetailDate.Date is null) DetailAllDay.IsOn = true;
+        DetailDate.Date = LocalScheduleDate();
+        if (saveImmediately && _detailDirty) await SaveDetailAsync(preserveEditor: true);
     }
     private string CaptureDetailValues() => JsonSerializer.Serialize(new
     {
@@ -1020,11 +1028,6 @@ public sealed partial class MainWindow : Window
         finally { _dialogOpen = false; }
     }
     private async void Add_Click(object sender, RoutedEventArgs e) => await ShowNewReminderAsync();
-    private async void QuickAdd_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuFlyoutItem { Tag: string tag } && int.TryParse(tag, out var days))
-            await ShowNewReminderAsync(daysFromToday: days);
-    }
     private async void NewAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) { args.Handled = true; await ShowNewReminderAsync(); }
     private void SearchAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) { args.Handled = true; if (AuthGate.Visibility == Visibility.Collapsed && SetupGuide.Visibility == Visibility.Collapsed) SearchBox.Focus(FocusState.Programmatic); }
     private async void SettingsAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) { args.Handled = true; await ShowSettingsAsync(); }

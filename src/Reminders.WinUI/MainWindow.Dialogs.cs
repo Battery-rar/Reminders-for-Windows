@@ -44,11 +44,6 @@ public sealed partial class MainWindow
                 RestoreNavigationSelection();
                 if (await ConfirmLeaveDetailAsync()) await ResolveConflictsAsync();
             }
-            else if (args.InvokedItemContainer?.Tag?.ToString() == "sidebar")
-            {
-                RestoreNavigationSelection();
-                await ShowSidebarSettingsAsync();
-            }
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntCompleteAction"), L10n.Error(error), InfoBarSeverity.Error); }
     }
@@ -56,30 +51,15 @@ public sealed partial class MainWindow
     private string SidebarSort => _uiPreferences.ListSort is SidebarPresentation.NameAscending or SidebarPresentation.NameDescending
         ? _uiPreferences.ListSort : SidebarPresentation.Manual;
 
-    private async Task ShowSidebarSettingsAsync()
+    private ComboBox CreateSidebarSortPicker()
     {
-        if (_dialogOpen || _savingDetail) return;
-        _dialogOpen = true;
-        try
-        {
-            var order = new ComboBox { Header = L10n.Get("ListOrder"), HorizontalAlignment = HorizontalAlignment.Stretch };
-            var choices = new[] { SidebarPresentation.Manual, SidebarPresentation.NameAscending, SidebarPresentation.NameDescending };
-            foreach (var (mode, label) in choices.Zip(new[] { "SidebarSortManual", "SidebarSortAscending", "SidebarSortDescending" }))
-                order.Items.Add(new ComboBoxItem { Content = L10n.Get(label), Tag = mode });
-            order.SelectedIndex = Array.IndexOf(choices, SidebarSort);
-            var hint = new TextBlock { Text = L10n.Get("SidebarManualOrderHint"), TextWrapping = TextWrapping.Wrap };
-            void UpdateHint() => hint.Visibility = order.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
-            order.SelectionChanged += (_, _) => UpdateHint();
-            UpdateHint();
-            var panel = new StackPanel { Spacing = 12, MinWidth = 280 };
-            panel.Children.Add(order); panel.Children.Add(hint);
-            if (await MakeDialog(L10n.Get("SidebarSettingsItem/Content"), panel, L10n.Get("Save")).ShowAsync() != ContentDialogResult.Primary ||
-                order.SelectedItem is not ComboBoxItem { Tag: string modeSelected } || SidebarSort == modeSelected) return;
-            _uiPreferences.ListSort = modeSelected;
-            SaveUiPreferences();
-            RebuildListNavigation();
-        }
-        finally { _dialogOpen = false; }
+        var order = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
+        var choices = new[] { SidebarPresentation.Manual, SidebarPresentation.NameAscending, SidebarPresentation.NameDescending };
+        foreach (var (mode, label) in choices.Zip(new[] { "SidebarSortManual", "SidebarSortAscending", "SidebarSortDescending" }))
+            order.Items.Add(new ComboBoxItem { Content = L10n.Get(label), Tag = mode });
+        order.SelectedIndex = Array.IndexOf(choices, SidebarSort);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(order, L10n.Get("ListOrder"));
+        return order;
     }
 
     private List<ReminderList> OrderedLists()
@@ -251,7 +231,7 @@ public sealed partial class MainWindow
     private async Task AnimateCompletionAsync(ReminderItem reminder)
     {
         if (!_uiPreferences.CompletionAnimation || !new UISettings().AnimationsEnabled) return;
-        if (ShowCompleted.IsOn || _view.Key == "completed") { await Task.Delay(600); return; }
+        if (IncludesCompleted || _view.Kind == NavKind.Smart && _view.Key == "completed") { await Task.Delay(600); return; }
         var container = ReminderList.ContainerFromItem(reminder) as UIElement;
         if (container is null) return;
         var visual = ElementCompositionPreview.GetElementVisual(container);
@@ -274,12 +254,13 @@ public sealed partial class MainWindow
         if (_view.Kind == NavKind.List) rows = rows.Where(row => row.ListId == _view.Key);
         else if (_view.Kind == NavKind.Smart)
         {
-            if (_view.Key == "today") rows = rows.Where(row => !row.Completed && DateTimeOffset.TryParse(row.DueDate, out var due) && (row.AllDay ? due.Date : due.LocalDateTime.Date) <= DateTime.Today);
-            else if (_view.Key == "upcoming") rows = rows.Where(row => !row.Completed && row.DueDate is not null);
+            if (_view.Key == "today") rows = rows.Where(row => DateTimeOffset.TryParse(row.DueDate, out var due) && (row.AllDay ? due.Date : due.LocalDateTime.Date) <= DateTime.Today);
+            else if (_view.Key == "upcoming") rows = rows.Where(row => row.DueDate is not null);
             else if (_view.Key == "completed") rows = rows.Where(row => row.Completed);
             else if (_view.Key == "deleted") rows = _demoRows.Where(row => row.Deleted);
         }
-        if (!ShowCompleted.IsOn && _view.Key != "completed") rows = rows.Where(row => !row.Completed);
+        if (!IncludesCompleted && !(_view.Kind == NavKind.Smart && _view.Key is "completed" or "deleted"))
+            rows = rows.Where(row => !row.Completed);
         rows = IncludeDemoFamily(rows.ToList());
         if (_view.Kind == NavKind.Tag) rows = rows.Where(row => row.Tags.Contains(_view.Key));
         if (!string.IsNullOrWhiteSpace(SearchBox.Text)) rows = rows.Where(row => (row.Title + " " + row.Description).Contains(SearchBox.Text, StringComparison.OrdinalIgnoreCase));

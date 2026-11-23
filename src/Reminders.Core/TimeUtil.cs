@@ -7,10 +7,14 @@ internal static class TimeUtil
 {
     private const string CalendarDateFormat = "yyyy-MM-dd";
 
-    public static TimeZoneInfo Zone(string? name = null)
+    public static TimeZoneInfo Zone(string? name = null) => FindZone(name) ?? TimeZoneInfo.Local;
+
+    private static TimeZoneInfo? FindZone(string? name)
     {
-        if (name is not null) { try { return TimeZoneInfo.FindSystemTimeZoneById(name); } catch (TimeZoneNotFoundException) { } catch (InvalidTimeZoneException) { } }
-        return TimeZoneInfo.Local;
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        if (TimeZoneInfo.TryFindSystemTimeZoneById(name, out var zone)) return zone;
+        return TimeZoneInfo.TryConvertIanaIdToWindowsId(name, out var windowsId) &&
+            TimeZoneInfo.TryFindSystemTimeZoneById(windowsId, out zone) ? zone : null;
     }
     public static DateTimeOffset Anchor(DateTime wall, TimeZoneInfo zone)
     {
@@ -33,14 +37,19 @@ internal static class TimeUtil
         DateTime.TryParseExact(value, CalendarDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
     public static DateTime AllDayDate(string due, TimeZoneInfo zone) =>
         TryCalendarDate(due, out var date) ? date : TimeZoneInfo.ConvertTime(Parse(due), zone).Date;
-    public static DateTimeOffset FromFloating(long ms, string? zone) => Anchor(DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime, Zone(zone));
-    public static long ToFloating(DateTimeOffset instant, string? zone) => new DateTimeOffset(DateTime.SpecifyKind(TimeZoneInfo.ConvertTime(instant, Zone(zone)).DateTime, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
-    public static string FromCloudDue(long ms, bool allDay, string? zone) => allDay
-        ? CalendarDate(DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime)
-        : Iso(FromFloating(ms, zone));
+    public static string FromCloudDue(long ms, bool allDay, string? zone)
+    {
+        var instant = DateTimeOffset.FromUnixTimeMilliseconds(ms);
+        if (!allDay) return Iso(instant);
+        // Earlier Windows releases stored all-day calendar labels at midnight UTC
+        // even on existing records that still carried a different time zone.
+        if (instant.TimeOfDay == TimeSpan.Zero) return CalendarDate(instant.UtcDateTime);
+        return CalendarDate(TimeZoneInfo.ConvertTime(instant, FindZone(zone) ?? TimeZoneInfo.Utc).Date);
+    }
+
     public static long ToCloudDue(string due, bool allDay, string? zone) => allDay
-        ? new DateTimeOffset(AllDayDate(due, Zone()), TimeSpan.Zero).ToUnixTimeMilliseconds()
-        : ToFloating(Parse(due), zone);
+        ? Anchor(AllDayDate(due, Zone()), FindZone(zone) ?? TimeZoneInfo.Utc).ToUnixTimeMilliseconds()
+        : Parse(due).ToUnixTimeMilliseconds();
     public static string? Normalize(JsonNode? value, bool allDay)
     {
         if (value is null || value.ToString() == "") return null;
