@@ -29,19 +29,33 @@ function New-TaskCardIcon([int]$size) {
     $edge = [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml('#3E5A7C'), 5)
     $graphics.FillPath($cardBrush, $card)
     $graphics.DrawPath($edge, $card)
-    $lineBrush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#EDF4FF'))
-    $colors = @('#55D9D1', '#F3BB54', '#C6A1FC')
-    $lineWidths = @(228, 168, 200)
-    for ($row = 0; $row -lt $colors.Count; $row++) {
-        $centerY = 138 + 118 * $row
-        $marker = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml($colors[$row]))
-        $graphics.FillEllipse($marker, 91, $centerY - 32, 64, 64)
-        $line = New-RoundedRectangle 193 ($centerY - 16) $lineWidths[$row] 32 16
-        $graphics.FillPath($lineBrush, $line)
-        $line.Dispose()
-        $marker.Dispose()
+    $start = [Drawing.PointF]::new(103, 237)
+    $bend = [Drawing.PointF]::new(212, 351)
+    $tip = [Drawing.PointF]::new(406, 149)
+    $stroke = [Drawing.Pen]::new([Drawing.Color]::White, 68)
+    $stroke.StartCap = $stroke.EndCap = [Drawing.Drawing2D.LineCap]::Round
+    $stroke.LineJoin = [Drawing.Drawing2D.LineJoin]::Round
+    $graphics.DrawLines($stroke, [Drawing.PointF[]]@($start, $bend, $tip))
+
+    # Stripe the short arm perpendicular to its stroke, leaving the bend and long arm white.
+    $shortArm = [Drawing.Drawing2D.GraphicsPath]::new()
+    $shortArm.AddLine($start, $bend)
+    $shortArm.Widen($stroke)
+    $state = $graphics.Save()
+    $graphics.SetClip($shortArm, [Drawing.Drawing2D.CombineMode]::Intersect)
+    $graphics.TranslateTransform($start.X, $start.Y)
+    $angle = [Math]::Atan2($bend.Y - $start.Y, $bend.X - $start.X)
+    $graphics.RotateTransform([single]($angle * 180 / [Math]::PI))
+    $cuts = @(-35, 22, 65, 110)
+    $colors = @('#FF453A', '#FFD60A', '#409CFF')
+    for ($band = 0; $band -lt $colors.Count; $band++) {
+        $brush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml($colors[$band]))
+        $graphics.FillRectangle($brush, $cuts[$band], -35, ($cuts[$band + 1] - $cuts[$band]), 70)
+        $brush.Dispose()
     }
-    $card.Dispose(); $cardBrush.Dispose(); $edge.Dispose(); $lineBrush.Dispose()
+    $graphics.Restore($state)
+    $shortArm.Dispose(); $stroke.Dispose()
+    $card.Dispose(); $cardBrush.Dispose(); $edge.Dispose()
     $result = [Drawing.Bitmap]::new($size, $size)
     $output = [Drawing.Graphics]::FromImage($result)
     $output.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
