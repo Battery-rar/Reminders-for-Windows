@@ -33,6 +33,7 @@
     <NavigationViewItemHeader x:Uid="MyListsNavigationViewItemHeader"/>
    </NavigationView.MenuItems>
    <NavigationView.FooterMenuItems>
+    <NavigationViewItem x:Uid="NewListNavigationItem" SelectsOnInvoked="False" Tag="create-list"><NavigationViewItem.Icon><FontIcon Glyph="&#xE710;"/></NavigationViewItem.Icon></NavigationViewItem>
     <NavigationViewItem x:Uid="ConflictItem" x:Name="ConflictItem" SelectsOnInvoked="False" Tag="conflicts" Visibility="Collapsed"><NavigationViewItem.Icon><FontIcon Glyph="&#xE814;"/></NavigationViewItem.Icon></NavigationViewItem>
     <NavigationViewItem x:Uid="SyncNowNavigationViewItem" SelectsOnInvoked="False" Tag="sync"><NavigationViewItem.Icon><FontIcon Glyph="&#xE895;"/></NavigationViewItem.Icon></NavigationViewItem>
    </NavigationView.FooterMenuItems>
@@ -59,7 +60,15 @@
        </Button>
       </Grid>
       <Grid Grid.Row="1" Padding="24,0,24,12" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-       <AutoSuggestBox x:Uid="SearchBox" x:Name="SearchBox" QueryIcon="Find" TextChanged="SearchBox_TextChanged" MinHeight="40" VerticalAlignment="Center"/>
+       <AutoSuggestBox x:Uid="SearchBox" x:Name="SearchBox" QueryIcon="Find" TextChanged="SearchBox_TextChanged" VerticalAlignment="Center">
+        <AutoSuggestBox.TextBoxStyle>
+         <Style TargetType="TextBox" BasedOn="{StaticResource AutoSuggestBoxTextBoxStyle}">
+          <Setter Property="MinHeight" Value="40"/>
+          <Setter Property="VerticalContentAlignment" Value="Center"/>
+          <Setter Property="Padding" Value="10,8,6,8"/>
+         </Style>
+        </AutoSuggestBox.TextBoxStyle>
+       </AutoSuggestBox>
        <Button x:Uid="SortButton" Grid.Column="1" Width="40" Height="40" ToolTipService.Placement="Bottom"><Button.Flyout><MenuFlyout><RadioMenuFlyoutItem x:Uid="ManualRadioMenuFlyoutItem" Tag="manual" GroupName="sort" IsChecked="True" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="DueDateRadioMenuFlyoutItem" Tag="due" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="PriorityRadioMenuFlyoutItem" Tag="priority" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="TitleRadioMenuFlyoutItem" Tag="title" GroupName="sort" Click="Sort_Click"/></MenuFlyout></Button.Flyout><FontIcon Glyph="&#xE8CB;" FontSize="18"/></Button>
       </Grid>
       <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0"
@@ -95,7 +104,8 @@
       <Grid x:Name="ReminderFooter" Grid.Row="3" Padding="24,12,24,16" ColumnSpacing="12">
        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-       <ToggleButton x:Uid="ShowCompleted" x:Name="ShowCompleted" MinWidth="0" VerticalAlignment="Center"
+       <ToggleButton x:Uid="ShowCompleted" x:Name="ShowCompleted" Height="36" MinWidth="0" Padding="12,0"
+                     VerticalAlignment="Center" VerticalContentAlignment="Center"
                      Checked="ShowCompleted_Changed" Unchecked="ShowCompleted_Changed"/>
        <Grid x:Name="SyncIndicator" Grid.Column="1" ColumnSpacing="6" VerticalAlignment="Center" HorizontalAlignment="Right" ToolTipService.Placement="Top" Visibility="Collapsed">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>

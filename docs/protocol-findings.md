@@ -83,8 +83,9 @@ See [tag-sync research](tag-sync-research.md) for evidence and acceptance criter
 
 Old queued tag writes/tag-only conflicts are archived locally and retired from the
 active queue. They do not trigger another repair or delete actual iCloud tags.
-List creation, rename and deletion remain unsupported for the same requirement
-to establish device-side propagation before offering a write feature.
+List creation uses one atomic CloudKit write for the list and the account’s
+mergeable list order. The order update was checked with Apple's public decoder
+and merge engine. Rename and deletion are unsupported.
 
 ## Apple-hosted sign-in
 

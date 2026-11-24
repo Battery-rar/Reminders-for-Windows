@@ -2025,4 +2025,73 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="PrivacyPolicyResource" xml:space="preserve">
     <value>Reminders.Windows.Privacy.md</value>
   </data>
+  <data name="NewListNavigationItem.Content" xml:space="preserve">
+    <value>New list</value>
+  </data>
+  <data name="NewList" xml:space="preserve">
+    <value>New list</value>
+  </data>
+  <data name="NewListName" xml:space="preserve">
+    <value>List name</value>
+  </data>
+  <data name="CreateList" xml:space="preserve">
+    <value>Create list</value>
+  </data>
+  <data name="CouldntCreateList" xml:space="preserve">
+    <value>Couldn't create the list</value>
+  </data>
+  <data name="NewListNameTooLong" xml:space="preserve">
+    <value>The list name is too long.</value>
+  </data>
+  <data name="ErrorInvalidNewList" xml:space="preserve">
+    <value>Enter a valid list name and choose a supported color and icon.</value>
+  </data>
+  <data name="ErrorListOrderingUnavailable" xml:space="preserve">
+    <value>Windows couldn’t update this iCloud list order. Create the list in Apple Reminders, then sync it to Windows.</value>
+  </data>
+  <data name="ErrorListCreateConflict" xml:space="preserve">
+    <value>iCloud may have saved this list already. Sync to check before creating it again.</value>
+  </data>
+  <data name="NewListBookmark" xml:space="preserve">
+    <value>Bookmark</value>
+  </data>
+  <data name="NewListGift" xml:space="preserve">
+    <value>Gift</value>
+  </data>
+  <data name="NewListFinance" xml:space="preserve">
+    <value>Finance</value>
+  </data>
+  <data name="NewListFood" xml:space="preserve">
+    <value>Food</value>
+  </data>
+  <data name="NewListHealth" xml:space="preserve">
+    <value>Health</value>
+  </data>
+  <data name="NewListLocation" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="NewListMusic" xml:space="preserve">
+    <value>Music</value>
+  </data>
+  <data name="NewListNature" xml:space="preserve">
+    <value>Nature</value>
+  </data>
+  <data name="NewListPet" xml:space="preserve">
+    <value>Pets</value>
+  </data>
+  <data name="NewListYellow" xml:space="preserve">
+    <value>Yellow</value>
+  </data>
+  <data name="NewListLightBlue" xml:space="preserve">
+    <value>Light blue</value>
+  </data>
+  <data name="NewListIndigo" xml:space="preserve">
+    <value>Indigo</value>
+  </data>
+  <data name="NewListBrown" xml:space="preserve">
+    <value>Brown</value>
+  </data>
+  <data name="NewListRose" xml:space="preserve">
+    <value>Rose</value>
+  </data>
 </root>

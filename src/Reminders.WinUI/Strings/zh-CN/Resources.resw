@@ -2016,4 +2016,73 @@
   <data name="PrivacyPolicyResource" xml:space="preserve">
     <value>Reminders.Windows.Privacy.zh-CN.md</value>
   </data>
+  <data name="NewListNavigationItem.Content" xml:space="preserve">
+    <value>新建列表</value>
+  </data>
+  <data name="NewList" xml:space="preserve">
+    <value>新建列表</value>
+  </data>
+  <data name="NewListName" xml:space="preserve">
+    <value>列表名称</value>
+  </data>
+  <data name="CreateList" xml:space="preserve">
+    <value>创建列表</value>
+  </data>
+  <data name="CouldntCreateList" xml:space="preserve">
+    <value>无法创建列表</value>
+  </data>
+  <data name="NewListNameTooLong" xml:space="preserve">
+    <value>列表名称太长。</value>
+  </data>
+  <data name="ErrorInvalidNewList" xml:space="preserve">
+    <value>请输入有效的列表名称，并选择支持的颜色和图标。</value>
+  </data>
+  <data name="ErrorListOrderingUnavailable" xml:space="preserve">
+    <value>Windows 无法更新此 iCloud 账户的列表顺序。请在 Apple 提醒事项中创建列表，再同步到 Windows。</value>
+  </data>
+  <data name="ErrorListCreateConflict" xml:space="preserve">
+    <value>iCloud 可能已保存此列表。请先同步确认，再重新创建。</value>
+  </data>
+  <data name="NewListBookmark" xml:space="preserve">
+    <value>书签</value>
+  </data>
+  <data name="NewListGift" xml:space="preserve">
+    <value>礼物</value>
+  </data>
+  <data name="NewListFinance" xml:space="preserve">
+    <value>财务</value>
+  </data>
+  <data name="NewListFood" xml:space="preserve">
+    <value>餐饮</value>
+  </data>
+  <data name="NewListHealth" xml:space="preserve">
+    <value>健康</value>
+  </data>
+  <data name="NewListLocation" xml:space="preserve">
+    <value>地点</value>
+  </data>
+  <data name="NewListMusic" xml:space="preserve">
+    <value>音乐</value>
+  </data>
+  <data name="NewListNature" xml:space="preserve">
+    <value>自然</value>
+  </data>
+  <data name="NewListPet" xml:space="preserve">
+    <value>宠物</value>
+  </data>
+  <data name="NewListYellow" xml:space="preserve">
+    <value>黄色</value>
+  </data>
+  <data name="NewListLightBlue" xml:space="preserve">
+    <value>浅蓝色</value>
+  </data>
+  <data name="NewListIndigo" xml:space="preserve">
+    <value>靛蓝色</value>
+  </data>
+  <data name="NewListBrown" xml:space="preserve">
+    <value>棕色</value>
+  </data>
+  <data name="NewListRose" xml:space="preserve">
+    <value>玫瑰色</value>
+  </data>
 </root>

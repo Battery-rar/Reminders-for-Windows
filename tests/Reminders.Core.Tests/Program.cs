@@ -337,6 +337,7 @@ AppleSignInPolicyChecks.Run(Check);
 RecurrenceWireFormatChecks.Run(Check);
 await RecurrenceAndSyncChecks.RunAsync(Check);
 await NativeReminderWriteChecks.RunAsync(Check);
+await ListCreationChecks.RunAsync(Check);
 await NativeScheduleWriteChecks.RunAsync(Check);
 await RecurrenceEditingChecks.RunAsync(Check);
 await ReadOnlyTagChecks.RunAsync(Check);

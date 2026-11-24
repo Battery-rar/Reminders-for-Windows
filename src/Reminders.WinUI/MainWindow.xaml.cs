@@ -928,7 +928,7 @@ public sealed partial class MainWindow : Window
                 DetailTime.Time = local.TimeOfDay;
             }
             else { DetailDate.Date = null; DetailTime.Time = TimeSpan.FromHours(9); }
-            DetailAllDay.IsOn = reminder.AllDay; DetailTime.IsEnabled = !reminder.AllDay; DetailFlagged.IsOn = reminder.Flagged;
+            DetailAllDay.IsOn = reminder.AllDay; DetailFlagged.IsOn = reminder.Flagged;
             var customRepeat = reminder.Recurrence?.Supported == false;
             DetailRepeatChoice.IsEnabled = !customRepeat;
             DetailRepeatChoice.SelectedIndex = customRepeat ? -1 : (int)(reminder.Recurrence?.Frequency ?? 0);
@@ -957,19 +957,24 @@ public sealed partial class MainWindow : Window
     private void UpdateRepeatControls()
     {
         if (DetailRepeatChoice is null || DetailRepeatInterval is null || DetailRepeatHint is null) return;
+        var hasDate = DetailDate.Date is not null;
+        var hasTime = hasDate && !DetailAllDay.IsOn;
+        var canEditRepeat = _selected?.Recurrence?.Supported != false;
         var repeats = DetailRepeatChoice.SelectedIndex > 0;
-        DetailRepeatInterval.IsEnabled = DetailRepeatChoice.IsEnabled && repeats;
+        // Saving disables the enclosing editor while it refreshes. Inherited
+        // control state must not change which schedule fields are displayed.
+        DetailRepeatInterval.IsEnabled = canEditRepeat && repeats;
         DetailRepeatInterval.Visibility = repeats ? Visibility.Visible : Visibility.Collapsed;
         DetailRepeatInterval.Header = DetailRepeatChoice.SelectedIndex switch { 1 => L10n.Get("EveryDays"), 2 => L10n.Get("EveryWeeks"), 3 => L10n.Get("EveryMonths"), 4 => L10n.Get("EveryYears"), _ => L10n.Get("Every") };
-        DetailAllDayRow.Visibility = DetailDate.Date is not null ? Visibility.Visible : Visibility.Collapsed;
+        DetailAllDayRow.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
         DetailAddToToday.IsEnabled = _selected is { Deleted: false } && DetailDate.Date?.Date != DateTime.Today;
-        DetailTime.IsEnabled = DetailDate.Date is not null && !DetailAllDay.IsOn;
-        DetailTime.Visibility = DetailTime.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
-        DetailClearSchedule.Visibility = DetailDate.Date is not null ? Visibility.Visible : Visibility.Collapsed;
-        DetailClearSchedule.IsEnabled = DetailRepeatChoice.IsEnabled;
+        DetailTime.IsEnabled = hasTime;
+        DetailTime.Visibility = hasTime ? Visibility.Visible : Visibility.Collapsed;
+        DetailClearSchedule.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
+        DetailClearSchedule.IsEnabled = canEditRepeat;
         DetailClearSchedule.Content = L10n.Get(repeats ? "ClearDueDateAndRepeat" : "ClearDueDate");
-        var hint = !DetailRepeatChoice.IsEnabled ? L10n.Get("EditCustomRepeatOnAppleDevice")
-            : repeats && DetailDate.Date is null ? L10n.Get("RepeatNeedsDueDate") : "";
+        var hint = !canEditRepeat ? L10n.Get("EditCustomRepeatOnAppleDevice")
+            : repeats && !hasDate ? L10n.Get("RepeatNeedsDueDate") : "";
         DetailRepeatHint.Text = hint;
         DetailRepeatHint.Visibility = hint.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdatePaneLayout();
