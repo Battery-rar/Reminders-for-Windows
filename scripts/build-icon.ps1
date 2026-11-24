@@ -1,4 +1,4 @@
-# Rebuild the Reminders for Windows task-card artwork and Windows icon sizes.
+# Rebuild the Apple Reminders on Windows artwork and Windows icon sizes.
 # Run on Windows; System.Drawing supplies the vector drawing and PNG encoding.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
@@ -23,35 +23,25 @@ function New-TaskCardIcon([int]$size) {
     $graphics.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $graphics.Clear([Drawing.Color]::Transparent)
     $graphics.ScaleTransform(2, 2)
-    # Draw the approved concept from geometry: flat colors and a transparent
-    # surround keep every shell size free of generated-image edge artifacts.
-    # Equal insets and sides give the card a square footprint in the taskbar.
-    $card = New-RoundedRectangle 24 24 464 464 32
-    $white = [Drawing.SolidBrush]::new([Drawing.Color]::White)
-    $edge = [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml('#D8DEE8'), 1)
-    $graphics.FillPath($white, $card)
+    # Flat shapes with generous weights remain legible in the 16 px shell frame.
+    $card = New-RoundedRectangle 24 24 464 464 88
+    $cardBrush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#192B46'))
+    $edge = [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml('#3E5A7C'), 5)
+    $graphics.FillPath($cardBrush, $card)
     $graphics.DrawPath($edge, $card)
-    $lineBrush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#BAC2CF'))
-    $check = [Drawing.Pen]::new([Drawing.Color]::White, 14)
-    $check.StartCap = $check.EndCap = [Drawing.Drawing2D.LineCap]::Round
-    $check.LineJoin = [Drawing.Drawing2D.LineJoin]::Round
-    $colors = @('#1686F7', '#FF8C28', '#FF535C')
+    $lineBrush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#EDF4FF'))
+    $colors = @('#55D9D1', '#F3BB54', '#C6A1FC')
+    $lineWidths = @(228, 168, 200)
     for ($row = 0; $row -lt $colors.Count; $row++) {
-        $centerY = 140 + 116 * $row
+        $centerY = 138 + 118 * $row
         $marker = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml($colors[$row]))
-        $graphics.FillEllipse($marker, 72, $centerY - 48, 96, 96)
-        $checkPoints = [Drawing.PointF[]]@(
-            [Drawing.PointF]::new(99, $centerY),
-            [Drawing.PointF]::new(116, $centerY + 17),
-            [Drawing.PointF]::new(143, $centerY - 15))
-        $graphics.DrawLines($check, $checkPoints)
-        $line = New-RoundedRectangle 200 ($centerY - 16) 232 32 16
+        $graphics.FillEllipse($marker, 91, $centerY - 32, 64, 64)
+        $line = New-RoundedRectangle 193 ($centerY - 16) $lineWidths[$row] 32 16
         $graphics.FillPath($lineBrush, $line)
         $line.Dispose()
         $marker.Dispose()
     }
-    $card.Dispose(); $white.Dispose(); $edge.Dispose()
-    $check.Dispose(); $lineBrush.Dispose()
+    $card.Dispose(); $cardBrush.Dispose(); $edge.Dispose(); $lineBrush.Dispose()
     $result = [Drawing.Bitmap]::new($size, $size)
     $output = [Drawing.Graphics]::FromImage($result)
     $output.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic

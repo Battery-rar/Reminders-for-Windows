@@ -4,7 +4,7 @@
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap rescap">
   <!-- Existing package identity is required for MSIX upgrades. -->
-  <Identity Name="Battery-rar.RemindersForWindowsGCBD" Publisher="CN=Battery-rar" Version="1.1.14.0" />
+  <Identity Name="Battery-rar.RemindersForWindowsGCBD" Publisher="CN=Battery-rar" Version="1.1.15.0" />
   <Properties>
     <DisplayName>Apple Reminders on Windows</DisplayName>
     <PublisherDisplayName>Battery-rar</PublisherDisplayName>
