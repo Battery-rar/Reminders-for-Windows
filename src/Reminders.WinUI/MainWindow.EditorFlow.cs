@@ -80,9 +80,9 @@ public sealed partial class MainWindow
         if (!SaveButton.IsEnabled) return false;
         var draft = CaptureDetailValues();
         var title = DetailTitle.Text.Trim(); var notes = DetailNotes.Text;
-        var due = ReminderSchedule.Format(DetailDate.Date, DetailAllDay.IsOn, DetailTime.Time);
         var listId = DetailList.SelectedValue as string ?? selected.ListId;
-        var allDay = DetailAllDay.IsOn; var flagged = DetailFlagged.IsOn;
+        var allDay = DetailAllDay.IsChecked == true; var flagged = DetailFlagged.IsOn;
+        var due = ReminderSchedule.Format(DetailDate.Date, allDay, DetailTime.Time);
         var priority = long.Parse(((ComboBoxItem?)DetailPriority.SelectedItem)?.Tag?.ToString() ?? "0");
         var recurrence = DetailRepeatChoice.SelectedIndex <= 0 ? null : new RepeatSchedule { Frequency = DetailRepeatChoice.SelectedIndex, Interval = (long)DetailRepeatInterval.Value };
         var values = new Dictionary<string, object?> { ["title"] = title, ["description"] = notes, ["list_id"] = listId,

@@ -113,7 +113,15 @@
           <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <CheckBox x:Uid="MarkReminderCompleteCheckBox" IsChecked="{x:Bind Completed, Mode=OneWay}" IsEnabled="{x:Bind CanEditRow, Mode=OneWay}" Click="Complete_Click" VerticalAlignment="Top"/>
           <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-           <TextBlock Text="{x:Bind DisplayTitle, Mode=OneWay}" FontWeight="{x:Bind RowTitleWeight, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
+           <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock Text="{x:Bind PriorityMarks, Mode=OneWay}" Visibility="{x:Bind PriorityVisibility, Mode=OneWay}"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center"
+                       AutomationProperties.Name="{x:Bind PriorityLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind PriorityLabel, Mode=OneWay}"/>
+            <TextBlock Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}" FontWeight="{x:Bind RowTitleWeight, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Uid="ReminderRowFlag" Grid.Column="2" Text="🚩" FontFamily="Segoe UI Emoji" Margin="8,0,0,0" VerticalAlignment="Center"
+                       Visibility="{x:Bind FlagVisibility, Mode=OneWay}"/>
+           </Grid>
            <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind MetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
            <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind OverdueMetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
            <TextBlock Text="{x:Bind Description, Mode=OneWay}" Visibility="{x:Bind DescriptionVisibility, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
@@ -193,13 +201,20 @@
             <TextBlock x:Uid="ScheduleTextBlock" VerticalAlignment="Center" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
             <Button x:Name="DetailClearSchedule" Grid.Column="1" Visibility="Collapsed" Click="ClearSchedule_Click"/>
            </Grid>
-           <Grid ColumnSpacing="8">
+           <Grid x:Name="DetailScheduleInputs" ColumnSpacing="8" SizeChanged="DetailScheduleInputs_SizeChanged">
             <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <CalendarDatePicker x:Uid="DetailDate" x:Name="DetailDate" MinWidth="0" HorizontalAlignment="Stretch" DateChanged="Detail_Changed"/>
-            <Button x:Uid="DetailAddToToday" x:Name="DetailAddToToday" Grid.Column="1" VerticalAlignment="Bottom" Click="DetailAddToToday_Click"/>
+            <Grid.RowDefinitions>
+             <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <CalendarDatePicker x:Uid="DetailDate" x:Name="DetailDate" Grid.ColumnSpan="2" MinWidth="0" HorizontalAlignment="Stretch" DateChanged="Detail_Changed"/>
+            <Button x:Uid="DetailAddToToday" x:Name="DetailAddToToday" Grid.Row="1" Grid.Column="1" Height="32"
+                    Margin="0,6,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Click="DetailAddToToday_Click"/>
+            <TimePicker x:Uid="DetailTime" x:Name="DetailTime" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,10,0,0"
+                        MinWidth="0" HorizontalAlignment="Stretch" TimeChanged="Detail_Changed"/>
+            <ToggleButton x:Uid="DetailAllDay" x:Name="DetailAllDay" Grid.Row="3" Grid.Column="1" Height="32"
+                          Margin="0,6,0,0" HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
+                          Checked="Detail_Changed" Unchecked="Detail_Changed"/>
            </Grid>
-           <Grid x:Name="DetailAllDayRow"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Uid="AllDayTextBlock" VerticalAlignment="Center"/><ToggleSwitch x:Uid="DetailAllDay" x:Name="DetailAllDay" Grid.Column="1" OnContent="" OffContent="" MinWidth="0" Toggled="Detail_Changed"/></Grid>
-           <TimePicker x:Uid="DetailTime" x:Name="DetailTime" HorizontalAlignment="Stretch" TimeChanged="Detail_Changed"/>
            <Grid x:Name="DetailRecurrence" ColumnSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><ComboBox x:Uid="DetailRepeatChoice" x:Name="DetailRepeatChoice" HorizontalAlignment="Stretch" SelectionChanged="Detail_Changed"><ComboBoxItem x:Uid="NeverComboBoxItem"/><ComboBoxItem x:Uid="DailyComboBoxItem"/><ComboBoxItem x:Uid="WeeklyComboBoxItem"/><ComboBoxItem x:Uid="MonthlyComboBoxItem"/><ComboBoxItem x:Uid="YearlyComboBoxItem"/></ComboBox><NumberBox x:Uid="DetailRepeatInterval" x:Name="DetailRepeatInterval" Grid.Column="1" Minimum="1" Maximum="999" Value="1" SpinButtonPlacementMode="Compact" ValueChanged="Detail_Changed"/></Grid>
            <TextBlock x:Name="DetailRepeatHint" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="Collapsed"/>
           </StackPanel>
