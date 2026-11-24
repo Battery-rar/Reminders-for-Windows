@@ -2130,6 +2130,12 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="SwipeUndoTodayItem.Text" xml:space="preserve">
     <value>Undo Add to Today</value>
   </data>
+  <data name="RowMoveOutOfToday" xml:space="preserve">
+    <value>Move out of Today</value>
+  </data>
+  <data name="SwipeMoveOutOfTodayItem.Text" xml:space="preserve">
+    <value>Move out of Today</value>
+  </data>
   <data name="SwipeToCompleteItem.Text" xml:space="preserve">
     <value>Complete</value>
   </data>

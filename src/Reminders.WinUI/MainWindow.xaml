@@ -85,7 +85,12 @@
           <SwipeItem.IconSource><FontIconSource Glyph="&#xE7A7;"/></SwipeItem.IconSource>
          </SwipeItem>
         </SwipeItems>
-        <local:TodaySwipeItemsConverter x:Key="TodaySwipeItems" AddItems="{StaticResource SwipeToToday}" UndoItems="{StaticResource SwipeUndoToday}"/>
+        <SwipeItems x:Key="SwipeMoveOutOfToday" Mode="Execute">
+         <SwipeItem x:Uid="SwipeMoveOutOfTodayItem" Invoked="SwipeMoveOutOfToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+          <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
+         </SwipeItem>
+        </SwipeItems>
+        <local:TodaySwipeItemsConverter x:Key="TodaySwipeItems" AddItems="{StaticResource SwipeToToday}" UndoItems="{StaticResource SwipeUndoToday}" ClearItems="{StaticResource SwipeMoveOutOfToday}"/>
         <SwipeItems x:Key="SwipeToComplete" Mode="Execute">
          <SwipeItem x:Uid="SwipeToCompleteItem" Invoked="SwipeToComplete_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
           <SwipeItem.IconSource><FontIconSource Glyph="&#xE73E;"/></SwipeItem.IconSource>

@@ -25,6 +25,8 @@ public sealed partial class MainWindow
             AddAction(L10n.Get("RowAddToToday"), "\uE787", () => AddReminderToTodayAsync(reminder));
         else if (reminder.TodayAction == ReminderTodayAction.Undo)
             AddAction(L10n.Get("RowUndoToday"), "\uE7A7", () => UndoReminderTodayAsync(reminder));
+        else if (reminder.TodayAction == ReminderTodayAction.Clear)
+            AddAction(L10n.Get("RowMoveOutOfToday"), "\uE787", () => MoveReminderOutOfTodayAsync(reminder));
         if (actions.Items.Count > 0) actions.Items.Add(new MenuFlyoutSeparator());
         AddAction(L10n.Get("DeleteReminder"), "\uE74D", () => DeleteReminderAsync(reminder));
 
@@ -54,6 +56,11 @@ public sealed partial class MainWindow
     private async void SwipeUndoToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
     {
         if (args.SwipeControl.DataContext is ReminderItem reminder) await UndoReminderTodayAsync(reminder);
+    }
+
+    private async void SwipeMoveOutOfToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
+    {
+        if (args.SwipeControl.DataContext is ReminderItem reminder) await MoveReminderOutOfTodayAsync(reminder);
     }
 
     private async void Complete_Click(object sender, RoutedEventArgs e)
@@ -96,38 +103,50 @@ public sealed partial class MainWindow
 
     private Task UndoReminderTodayAsync(ReminderItem reminder) => ChangeReminderTodayAsync(reminder, ReminderTodayAction.Undo);
 
+    private Task MoveReminderOutOfTodayAsync(ReminderItem reminder) => ChangeReminderTodayAsync(reminder, ReminderTodayAction.Clear);
+
     private async Task ChangeReminderTodayAsync(ReminderItem reminder, ReminderTodayAction action)
     {
         if (!CanChangeReminderRow(reminder) || reminder.TodayAction != action) return;
         if (_detailDirty && ReferenceEquals(_selected, reminder) && !await ConfirmLeaveDetailAsync()) return;
         if (!CanChangeReminderRow(reminder) || reminder.TodayAction != action) return;
-
         var id = reminder.Id;
-        var undo = action == ReminderTodayAction.Undo;
         _reschedulingRows.Add(id);
         try
         {
             if (_demo)
             {
-                if (undo)
+                switch (action)
                 {
-                    if (reminder.DemoPreviousSchedule is not { } original) return;
-                    (reminder.DueDate, reminder.AllDay) = original;
-                    reminder.DemoPreviousSchedule = null;
+                    case ReminderTodayAction.Add:
+                        if (ReminderSchedule.MoveToToday(reminder.DueDate, reminder.AllDay, DateTimeOffset.Now, TimeZoneInfo.Local) is not { } schedule) return;
+                        reminder.DemoPreviousSchedule = (reminder.DueDate, reminder.AllDay);
+                        (reminder.DueDate, reminder.AllDay) = schedule;
+                        break;
+                    case ReminderTodayAction.Undo:
+                        if (reminder.DemoPreviousSchedule is not { } original) return;
+                        (reminder.DueDate, reminder.AllDay) = original;
+                        reminder.DemoPreviousSchedule = null;
+                        break;
+                    case ReminderTodayAction.Clear:
+                        reminder.DueDate = null;
+                        reminder.AllDay = false;
+                        break;
                 }
-                else
-                {
-                    if (ReminderSchedule.MoveToToday(reminder.DueDate, reminder.AllDay, DateTimeOffset.Now, TimeZoneInfo.Local) is not { } schedule) return;
-                    reminder.DemoPreviousSchedule = (reminder.DueDate, reminder.AllDay);
-                    (reminder.DueDate, reminder.AllDay) = schedule;
-                }
-                reminder.CanUndoToday = !undo;
+                reminder.CanUndoToday = action == ReminderTodayAction.Add;
                 reminder.RefreshTimeMetadata();
                 if (ReferenceEquals(_selected, reminder)) ShowDetail(reminder, animate: false);
             }
             else
             {
-                await _sync.CallAsync(undo ? "undo_reminder_today" : "move_reminder_to_today", new { id, edit_base_tag = reminder.ChangeTag });
+                var method = action switch
+                {
+                    ReminderTodayAction.Add => "move_reminder_to_today",
+                    ReminderTodayAction.Undo => "undo_reminder_today",
+                    ReminderTodayAction.Clear => "clear_reminder_today",
+                    _ => throw new ArgumentOutOfRangeException(nameof(action))
+                };
+                await _sync.CallAsync(method, new { id, edit_base_tag = reminder.ChangeTag });
             }
             await RefreshAllAsync();
         }
@@ -190,11 +209,13 @@ public sealed partial class TodaySwipeItemsConverter : IValueConverter
 {
     public SwipeItems? AddItems { get; set; }
     public SwipeItems? UndoItems { get; set; }
+    public SwipeItems? ClearItems { get; set; }
 
     public object? Convert(object value, Type targetType, object parameter, string language) => value switch
     {
         ReminderTodayAction.Add => AddItems,
         ReminderTodayAction.Undo => UndoItems,
+        ReminderTodayAction.Clear => ClearItems,
         _ => null
     };
 

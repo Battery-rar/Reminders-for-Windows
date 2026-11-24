@@ -22,6 +22,8 @@ internal static class TodayUndoChecks
             Call(service, "move_reminder_to_today", new { id, edit_base_tag = tag });
         Task<JsonNode> Undo(ReminderService service, string id, string tag = "base") =>
             Call(service, "undo_reminder_today", new { id, edit_base_tag = tag });
+        Task<JsonNode> ClearToday(ReminderService service, string id, string tag = "base") =>
+            Call(service, "clear_reminder_today", new { id, edit_base_tag = tag });
         try
         {
             using (var seed = new Cache(path))
@@ -32,6 +34,10 @@ internal static class TodayUndoChecks
                 Add("child", allDayDate, true, "parent");
                 Add("undated", null);
                 Add("native-today", todayDate, true);
+                Add("native-today-timed", moved);
+                Add("native-today-child", todayDate, true, "native-today");
+                seed.Upsert(J.Node(new { id = "repeating-today", due_date = todayDate, all_day = true,
+                    change_tag = "base", title = "Repeats", list_id = "list", recurrence = new { frequency = 1, interval = 1 } }));
                 Add("manual-change", allDayDate, true);
                 Add("remote-change", allDayDate, true);
                 Add("Reminder/wire", original);
@@ -49,6 +55,16 @@ internal static class TodayUndoChecks
                 check(unscheduled.Text("due_date") == todayDate && unscheduled.Flag("all_day") && unscheduled.Flag("can_undo_today"), "an undated reminder moves to an all-day date");
                 check(!(await Undo(service, "native-today")).Flag("can_undo_today"), "an originally due-today reminder has no undo");
                 check((await Read(service, "native-today")).Text("due_date") == todayDate, "undo without history cannot clear an original Today schedule");
+                check((await ClearToday(service, "native-today", "stale")).Text("due_date") == todayDate, "a stale clear does not unschedule the reminder");
+                check((await ClearToday(service, "child")).Text("due_date") == allDayDate, "clear Today cannot unschedule another day");
+                check((await ClearToday(service, "parent")).Flag("can_undo_today"), "fallback clear never overrides available undo");
+                check((await ClearToday(service, "repeating-today")).Text("due_date") == todayDate, "fallback clear preserves a repeating schedule");
+                var oldAllDay = await ClearToday(service, "native-today");
+                check(oldAllDay["due_date"] is null && !oldAllDay.Flag("all_day") &&
+                    (await Read(service, "native-today-child")).Text("due_date") == todayDate, "fallback clears only the chosen all-day reminder");
+                var oldTimed = await ClearToday(service, "native-today-timed");
+                check(oldTimed["due_date"] is null && !oldTimed.Flag("all_day"), "fallback clears both date and time from an old timed reminder");
+                await ClearToday(service, "native-today-timed");
                 await Call(service, "update_reminder", new { id = "parent", description = "retained note" });
                 check((await Read(service, "parent")).Flag("can_undo_today"), "an unrelated edit leaves the saved schedule available");
                 await Move(service, "manual-change");
@@ -114,6 +130,12 @@ internal static class TodayUndoChecks
             var clearedSchedule = J.Parse(durable.Pending().Last(row => row.Text("reminder_id") == "renamed").Text("payload"));
             check(clearedSchedule is JsonObject patch && patch.ContainsKey("due_date") && patch["due_date"] is null &&
                 !patch.Flag("all_day"), "undo enqueues an explicit unschedule operation for Apple");
+            var oldTimedEdit = durable.Pending().Single(row => row.Text("reminder_id") == "native-today-timed");
+            var oldTimedPatch = J.Parse(oldTimedEdit.Text("payload"))!.AsObject();
+            var oldTimedFields = ICloudClient.UpdateFields(new JsonObject(), oldTimedPatch);
+            check(oldTimedPatch.ContainsKey("due_date") && oldTimedPatch["due_date"] is null && !oldTimedPatch.Flag("all_day") &&
+                oldTimedFields.ContainsKey("DueDate") && CloudKit.Field(new JsonObject { ["fields"] = oldTimedFields }, "DueDate") is null,
+                "an old timed reminder is unscheduled once through the normal Apple payload");
             var wireUndo = J.Parse(durable.Pending().Single(row => row.Text("reminder_id") == "Reminder/wire").Text("payload"))!.AsObject();
             var undoFields = ICloudClient.UpdateFields(new JsonObject(), wireUndo);
             check(CloudKit.Field(new JsonObject { ["fields"] = undoFields }, "DueDate")!.GetValue<long>() == originalInstant.ToUnixTimeMilliseconds(),
