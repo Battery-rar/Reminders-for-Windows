@@ -21,8 +21,12 @@ public sealed partial class MainWindow
         var actions = new MenuFlyout();
         if (reminder.CanMarkComplete)
             AddAction(L10n.Get("RowMarkComplete"), "\uE73E", () => SetReminderCompletionAsync(reminder, true));
-        if (reminder.CanAddToToday)
+        if (reminder.TodayAction == ReminderTodayAction.Add)
             AddAction(L10n.Get("RowAddToToday"), "\uE787", () => AddReminderToTodayAsync(reminder));
+        else if (reminder.TodayAction == ReminderTodayAction.Undo)
+            AddAction(L10n.Get("RowUndoToday"), "\uE7A7", () => UndoReminderTodayAsync(reminder));
+        else if (reminder.TodayAction == ReminderTodayAction.Clear)
+            AddAction(L10n.Get("RowMoveOutOfToday"), "\uE787", () => MoveReminderOutOfTodayAsync(reminder));
         if (actions.Items.Count > 0) actions.Items.Add(new MenuFlyoutSeparator());
         AddAction(L10n.Get("DeleteReminder"), "\uE74D", () => DeleteReminderAsync(reminder));
 
@@ -47,6 +51,16 @@ public sealed partial class MainWindow
     private async void SwipeToToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
     {
         if (args.SwipeControl.DataContext is ReminderItem reminder) await AddReminderToTodayAsync(reminder);
+    }
+
+    private async void SwipeUndoToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
+    {
+        if (args.SwipeControl.DataContext is ReminderItem reminder) await UndoReminderTodayAsync(reminder);
+    }
+
+    private async void SwipeMoveOutOfToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
+    {
+        if (args.SwipeControl.DataContext is ReminderItem reminder) await MoveReminderOutOfTodayAsync(reminder);
     }
 
     private async void Complete_Click(object sender, RoutedEventArgs e)
@@ -85,25 +99,55 @@ public sealed partial class MainWindow
 
     }
 
-    private async Task AddReminderToTodayAsync(ReminderItem reminder)
-    {
-        if (!CanChangeReminderRow(reminder) || !reminder.CanAddToToday) return;
-        if (_detailDirty && ReferenceEquals(_selected, reminder) && !await ConfirmLeaveDetailAsync()) return;
-        if (!CanChangeReminderRow(reminder) || !reminder.CanAddToToday ||
-            ReminderSchedule.MoveToToday(reminder.DueDate, reminder.AllDay, DateTimeOffset.Now, TimeZoneInfo.Local) is not { } schedule) return;
+    private Task AddReminderToTodayAsync(ReminderItem reminder) => ChangeReminderTodayAsync(reminder, ReminderTodayAction.Add);
 
+    private Task UndoReminderTodayAsync(ReminderItem reminder) => ChangeReminderTodayAsync(reminder, ReminderTodayAction.Undo);
+
+    private Task MoveReminderOutOfTodayAsync(ReminderItem reminder) => ChangeReminderTodayAsync(reminder, ReminderTodayAction.Clear);
+
+    private async Task ChangeReminderTodayAsync(ReminderItem reminder, ReminderTodayAction action)
+    {
+        if (!CanChangeReminderRow(reminder) || reminder.TodayAction != action) return;
+        if (_detailDirty && ReferenceEquals(_selected, reminder) && !await ConfirmLeaveDetailAsync()) return;
+        if (!CanChangeReminderRow(reminder) || reminder.TodayAction != action) return;
         var id = reminder.Id;
         _reschedulingRows.Add(id);
         try
         {
             if (_demo)
             {
-                reminder.DueDate = schedule.DueDate;
-                reminder.AllDay = schedule.AllDay;
+                switch (action)
+                {
+                    case ReminderTodayAction.Add:
+                        if (ReminderSchedule.MoveToToday(reminder.DueDate, reminder.AllDay, DateTimeOffset.Now, TimeZoneInfo.Local) is not { } schedule) return;
+                        reminder.DemoPreviousSchedule = (reminder.DueDate, reminder.AllDay);
+                        (reminder.DueDate, reminder.AllDay) = schedule;
+                        break;
+                    case ReminderTodayAction.Undo:
+                        if (reminder.DemoPreviousSchedule is not { } original) return;
+                        (reminder.DueDate, reminder.AllDay) = original;
+                        reminder.DemoPreviousSchedule = null;
+                        break;
+                    case ReminderTodayAction.Clear:
+                        reminder.DueDate = null;
+                        reminder.AllDay = false;
+                        break;
+                }
+                reminder.CanUndoToday = action == ReminderTodayAction.Add;
                 reminder.RefreshTimeMetadata();
                 if (ReferenceEquals(_selected, reminder)) ShowDetail(reminder, animate: false);
             }
-            else await _sync.CallAsync("update_reminder", new { id, due_date = schedule.DueDate, all_day = schedule.AllDay, edit_base_tag = reminder.ChangeTag });
+            else
+            {
+                var method = action switch
+                {
+                    ReminderTodayAction.Add => "move_reminder_to_today",
+                    ReminderTodayAction.Undo => "undo_reminder_today",
+                    ReminderTodayAction.Clear => "clear_reminder_today",
+                    _ => throw new ArgumentOutOfRangeException(nameof(action))
+                };
+                await _sync.CallAsync(method, new { id, edit_base_tag = reminder.ChangeTag });
+            }
             await RefreshAllAsync();
         }
         catch (Exception error) { ShowInfo(L10n.Get("CouldntUpdateReminder"), L10n.Error(error), InfoBarSeverity.Error); }
@@ -157,6 +201,23 @@ public sealed partial class MainWindow
 public sealed partial class AvailableSwipeItemsConverter : IValueConverter
 {
     public object? Convert(object value, Type targetType, object parameter, string language) => value is true ? parameter : null;
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) => throw new NotSupportedException();
+}
+
+public sealed partial class TodaySwipeItemsConverter : IValueConverter
+{
+    public SwipeItems? AddItems { get; set; }
+    public SwipeItems? UndoItems { get; set; }
+    public SwipeItems? ClearItems { get; set; }
+
+    public object? Convert(object value, Type targetType, object parameter, string language) => value switch
+    {
+        ReminderTodayAction.Add => AddItems,
+        ReminderTodayAction.Undo => UndoItems,
+        ReminderTodayAction.Clear => ClearItems,
+        _ => null
+    };
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) => throw new NotSupportedException();
 }

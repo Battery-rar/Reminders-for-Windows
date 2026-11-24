@@ -255,11 +255,13 @@ public sealed partial class MainWindow
 
     private async Task AnimateCompletionAsync(ReminderItem reminder)
     {
+        PlayCompletionSound();
         if (!_uiPreferences.CompletionAnimation || !new UISettings().AnimationsEnabled) return;
+        var row = ReminderList.ContainerFromItem(reminder) as FrameworkElement;
+        _ = ShowCompletionRibbonsAsync(row ?? ReminderList);
         if (IncludesCompleted || _view.Kind == NavKind.Smart && _view.Key == "completed") { await Task.Delay(600); return; }
-        var container = ReminderList.ContainerFromItem(reminder) as UIElement;
-        if (container is null) return;
-        var visual = ElementCompositionPreview.GetElementVisual(container);
+        if (row is null) return;
+        var visual = ElementCompositionPreview.GetElementVisual(row);
         try
         {
             // Leave time to see the check mark before gently fading the row.

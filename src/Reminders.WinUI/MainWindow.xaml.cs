@@ -922,7 +922,7 @@ public sealed partial class MainWindow : Window
                 DetailTime.Time = local.TimeOfDay;
             }
             else { DetailDate.Date = null; DetailTime.Time = TimeSpan.FromHours(9); }
-            DetailAllDay.IsOn = reminder.AllDay; DetailFlagged.IsOn = reminder.Flagged;
+            DetailAllDay.IsChecked = reminder.AllDay; DetailFlagged.IsOn = reminder.Flagged;
             var customRepeat = reminder.Recurrence?.Supported == false;
             DetailRepeatChoice.IsEnabled = !customRepeat;
             DetailRepeatChoice.SelectedIndex = customRepeat ? -1 : (int)(reminder.Recurrence?.Frequency ?? 0);
@@ -952,7 +952,7 @@ public sealed partial class MainWindow : Window
     {
         if (DetailRepeatChoice is null || DetailRepeatInterval is null || DetailRepeatHint is null) return;
         var hasDate = DetailDate.Date is not null;
-        var hasTime = hasDate && !DetailAllDay.IsOn;
+        var hasTime = hasDate && DetailAllDay.IsChecked != true;
         var canEditRepeat = _selected?.Recurrence?.Supported != false;
         var repeats = DetailRepeatChoice.SelectedIndex > 0;
         // Saving disables the enclosing editor while it refreshes. Inherited
@@ -960,10 +960,10 @@ public sealed partial class MainWindow : Window
         DetailRepeatInterval.IsEnabled = canEditRepeat && repeats;
         DetailRepeatInterval.Visibility = repeats ? Visibility.Visible : Visibility.Collapsed;
         DetailRepeatInterval.Header = DetailRepeatChoice.SelectedIndex switch { 1 => L10n.Get("EveryDays"), 2 => L10n.Get("EveryWeeks"), 3 => L10n.Get("EveryMonths"), 4 => L10n.Get("EveryYears"), _ => L10n.Get("Every") };
-        DetailAllDayRow.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
+        DetailAllDay.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
         DetailAddToToday.IsEnabled = _selected is { Deleted: false } && DetailDate.Date?.Date != DateTime.Today;
         DetailTime.IsEnabled = hasTime;
-        DetailTime.Visibility = hasTime ? Visibility.Visible : Visibility.Collapsed;
+        DetailTime.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
         DetailClearSchedule.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
         DetailClearSchedule.IsEnabled = canEditRepeat;
         DetailClearSchedule.Content = L10n.Get(repeats ? "ClearDueDateAndRepeat" : "ClearDueDate");
@@ -992,9 +992,14 @@ public sealed partial class MainWindow : Window
 
     private async void DetailAddToToday_Click(object sender, RoutedEventArgs e)
     {
-        if (_selected is not { Deleted: false } || _savingDetail || _dialogOpen) return;
+        if (_selected is not { Deleted: false } reminder || _savingDetail || _dialogOpen) return;
         var saveImmediately = !_detailDirty;
-        if (DetailDate.Date is null) DetailAllDay.IsOn = true;
+        if (saveImmediately && reminder.CanMarkComplete)
+        {
+            await AddReminderToTodayAsync(reminder);
+            return;
+        }
+        if (DetailDate.Date is null) DetailAllDay.IsChecked = true;
         DetailDate.Date = LocalScheduleDate();
         if (saveImmediately && _detailDirty) await SaveDetailAsync(preserveEditor: true);
     }
@@ -1002,8 +1007,8 @@ public sealed partial class MainWindow : Window
     {
         Title = DetailTitle.Text, Notes = DetailNotes.Text, List = DetailList.SelectedValue as string ?? _selected?.ListId,
         Date = DetailDate.Date?.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
-        Time = DetailDate.Date is null || DetailAllDay.IsOn ? null : DetailTime.Time.ToString(),
-        AllDay = DetailAllDay.IsOn, Flagged = DetailFlagged.IsOn, Priority = DetailPriority.SelectedIndex,
+        Time = DetailDate.Date is null || DetailAllDay.IsChecked == true ? null : DetailTime.Time.ToString(),
+        AllDay = DetailAllDay.IsChecked == true, Flagged = DetailFlagged.IsOn, Priority = DetailPriority.SelectedIndex,
         Repeat = DetailRepeatChoice.SelectedIndex,
         Interval = DetailRepeatChoice.SelectedIndex > 0 ? DetailRepeatInterval.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture) : null
     });

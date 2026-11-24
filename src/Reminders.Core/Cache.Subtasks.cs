@@ -25,6 +25,9 @@ internal sealed partial class Cache
 
     private void IncludeParents(JsonArray rows, JsonNode query)
     {
+        var scope = query.Text("scope");
+        var completedOnly = scope == "completed";
+        var includeCompleted = scope == "deleted" || query.Flag("include_completed");
         var included = rows.OfType<JsonObject>().Select(row => row.Required("id")).ToHashSet();
         var children = Query("SELECT id,parent_id FROM reminders WHERE parent_id IS NOT NULL").OfType<JsonObject>().GroupBy(row => row.Required("parent_id"))
             .ToDictionary(group => group.Key, group => group.Select(row => row.Required("id")).ToArray());
@@ -35,7 +38,7 @@ internal sealed partial class Cache
                 if (!included.Add(childId)) continue;
                 var child = Reminder(childId)!;
                 if (child.Flag("deleted") != match.Flag("deleted") || child.Text("list_id") != match.Text("list_id")) continue;
-                if (query.Text("scope") == "completed" ? !child.Flag("completed") : query.Text("scope") != "deleted" && !query.Flag("include_completed") && child.Flag("completed")) continue;
+                if (completedOnly ? !child.Flag("completed") : !includeCompleted && child.Flag("completed")) continue;
                 child["context_only"] = true; rows.Add(child.DeepClone()); pending.Enqueue(child);
             }
         pending = new Queue<JsonObject>(rows.OfType<JsonObject>());
@@ -44,6 +47,7 @@ internal sealed partial class Cache
             if (child.Text("parent_id") is not { } parentId || !included.Add(parentId)) continue;
             var parent = Reminder(parentId);
             if (parent is null || parent.Flag("deleted") != child.Flag("deleted") || parent.Text("list_id") != child.Text("list_id")) continue;
+            if (completedOnly && !parent.Flag("completed")) continue;
             parent["context_only"] = true; rows.Add(parent.DeepClone()); pending.Enqueue(parent);
         }
     }

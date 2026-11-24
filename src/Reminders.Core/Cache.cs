@@ -7,7 +7,7 @@ internal sealed partial class Cache : IDisposable
 {
     private readonly SqliteConnection connection;
     private readonly object gate = new();
-    private static readonly string[] Flags = ["completed", "flagged", "all_day", "deleted", "is_group", "resolved"];
+    private static readonly string[] Flags = ["completed", "flagged", "all_day", "deleted", "is_group", "resolved", "can_undo_today"];
     internal static readonly string[] EditFields = ["title", "description", "due_date", "priority", "completed", "flagged", "list_id", "parent_id", "deleted", "all_day", "recurrence", "recurrence_ids", "time_zone"];
 
     static Cache() => SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
@@ -196,10 +196,16 @@ internal sealed partial class Cache : IDisposable
     });
     public JsonObject? Reminder(string id)
     {
-        lock (gate) { var row = Query("SELECT * FROM reminders WHERE id=@p0", id).FirstOrDefault() as JsonObject; if (row is not null) AttachTags(row); return row; }
+        lock (gate) { var row = Query($"SELECT r.*, {TodayUndoColumn} FROM reminders r WHERE r.id=@p0", id).FirstOrDefault() as JsonObject; if (row is not null) AttachReminderMetadata(row); return row; }
     }
-    private void AttachTags(JsonObject row)
+    private void AttachReminderMetadata(JsonObject row)
     {
+        if (row.Flag("can_undo_today"))
+        {
+            var zone = TimeUtil.Zone();
+            row["can_undo_today"] = TimeUtil.LocalDue(row.Text("due_date"), row.Flag("all_day"), zone)?.Date
+                == TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).Date;
+        }
         row["tags"] = new JsonArray(Query("SELECT name FROM tags WHERE reminder_id=@p0 ORDER BY name", row.Text("id")).Select(t => JsonValue.Create(t.Text("name"))).ToArray());
         row["hashtag_ids"] = new JsonArray(Query("SELECT id FROM tags WHERE reminder_id=@p0 ORDER BY name", row.Text("id")).Select(t => JsonValue.Create(t.Text("id"))).ToArray());
         row["recurrence_ids"] = J.Parse(row.Text("recurrence_ids")) ?? new JsonArray();
@@ -217,7 +223,7 @@ internal sealed partial class Cache : IDisposable
         {
             var scope = p.Text("scope"); var args = new List<object?>();
             string Param(object? v) { args.Add(v); return "@p" + (args.Count - 1); }
-            var sql = "SELECT DISTINCT r.* FROM reminders r ";
+            var sql = $"SELECT DISTINCT r.*, {TodayUndoColumn} FROM reminders r ";
             if (p.Text("tag") is { } tag) sql += "JOIN tags t ON t.reminder_id=r.id AND t.name=" + Param(tag) + " ";
             sql += scope == "deleted" ? "WHERE r.deleted=1 " : "WHERE r.deleted=0 ";
             if (scope == "today")
@@ -240,7 +246,7 @@ internal sealed partial class Cache : IDisposable
                     : $"r.completed,r.due_date IS NULL,{dueOrder},r.all_day DESC,r.title COLLATE NOCASE"
             };
             var rows = Query(sql + "ORDER BY " + order + " LIMIT " + Param(Math.Clamp(p.Number("limit", 1000), 1, scope == "completed" ? 50 : 10000)), args.ToArray());
-            foreach (var row in rows.OfType<JsonObject>()) AttachTags(row);
+            foreach (var row in rows.OfType<JsonObject>()) AttachReminderMetadata(row);
             // Today shows only its own matches. The visible parent IDs are
             // enough to build a tree when both a parent and child qualify.
             if (p.Flag("include_parents") && scope != "today")
