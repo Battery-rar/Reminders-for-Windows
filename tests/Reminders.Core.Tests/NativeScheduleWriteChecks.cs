@@ -57,6 +57,16 @@ internal static class NativeScheduleWriteChecks
             check(body.Flag("atomic"), "date trigger and reminder are written atomically");
             writes++;
             var requestOperations = body.Array("operations");
+            foreach (var create in requestOperations.Where(operation => operation.Text("operationType") == "create"))
+            {
+                var record = create!["record"]!;
+                if (record.Text("recordType") == "Alarm")
+                    check(record["fields"]?["CreationDate"] is null && record["fields"]?["LastModifiedDate"] is null,
+                        "Alarm creation sends only fields supported by CloudKit");
+                if (record.Text("recordType") == "AlarmTrigger")
+                    check(record["parent"] is null && record["fields"]?["Imported"] is null && CloudKit.Field(record, "Alarm") is JsonObject,
+                        "AlarmTrigger uses a validated Alarm reference without a nested record parent");
+            }
             if (requestOperations.Any(operation => operation?["record"].Text("recordName") == noAlarmReminderId))
             {
                 var alarm = requestOperations.Single(operation => operation?["record"].Text("recordType") == "Alarm")!["record"]!;
@@ -112,9 +122,9 @@ internal static class NativeScheduleWriteChecks
         check(CloudKit.Int(records[oldAlarm], "Deleted") == 1 && CloudKit.Int(records[oldTrigger], "Deleted") == 1
             && records[locationAlarm].Text("recordChangeTag") == "old" && records[locationTrigger].Text("recordChangeTag") == "old",
             "only the superseded date alarm and trigger are retired");
-        check(records[newAlarm]["parent"].Text("recordName") == reminderId && records[newTrigger]["parent"].Text("recordName") == newAlarm
+        check(records[newAlarm]["parent"].Text("recordName") == reminderId && records[newTrigger]["parent"] is null
             && CloudKit.Field(records[newTrigger], "Alarm").Text("recordName") == newAlarm,
-            "the linked records use Apple's reminder and alarm hierarchy");
+            "the records link the trigger to the alarm and the alarm to its reminder");
         var components = J.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(CloudKit.Text(records[newTrigger], "DateComponentsData")!)));
         check(components.Number("hour") == 10 && components.Number("minute") == 45 && components.Number("day") == 28
             && components?["timeZone"].Text("identifier") == "Asia/Shanghai", "the trigger stores the precise wall time in the reminder's zone");

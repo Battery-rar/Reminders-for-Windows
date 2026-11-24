@@ -86,7 +86,6 @@ internal sealed partial class ICloudClient
                 year = wall.Year, month = wall.Month, day = wall.Day, hour = wall.Hour,
                 minute = wall.Minute, second = wall.Second, timeZone = new { identifier = zoneId }
             });
-            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var oldToken = DueDateToken(original);
             var modification = oldToken?["modificationTime"] is JsonValue time && time.TryGetValue<double>(out var seconds) ? seconds : 0;
             // CloudKit can infer these field types from the same values sent by Apple's web client.
@@ -94,16 +93,17 @@ internal sealed partial class ICloudClient
             operations.Add(CloudKit.Operation("create", alarmName, null, new()
             {
                 ["AlarmUID"] = CloudKit.String(alarmId), ["Reminder"] = ScheduleReference(reminderId, referenceZone),
-                ["TriggerID"] = CloudKit.String(triggerId), ["CreationDate"] = CloudKit.Timestamp(now),
-                ["LastModifiedDate"] = CloudKit.Timestamp(now), ["Deleted"] = CloudKit.Number(0), ["Imported"] = CloudKit.Number(0),
+                ["TriggerID"] = CloudKit.String(triggerId),
+                ["Deleted"] = CloudKit.Number(0), ["Imported"] = CloudKit.Number(0),
                 ["DueDateResolutionTokenAsNonce"] = new JsonObject { ["value"] = nonce }
             }, "Alarm", reminderId));
+            // CloudKit rejects a nested record parent here; the validated Alarm reference is the link.
             operations.Add(CloudKit.Operation("create", triggerName, null, new()
             {
                 ["Alarm"] = ScheduleReference(alarmName, referenceZone), ["Type"] = new JsonObject { ["value"] = "Date" },
                 ["DateComponentsData"] = new JsonObject { ["value"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(components.ToJsonString())) },
-                ["Deleted"] = CloudKit.Number(0), ["Imported"] = CloudKit.Number(0)
-            }, "AlarmTrigger", alarmName));
+                ["Deleted"] = CloudKit.Number(0)
+            }, "AlarmTrigger"));
             alarmIds.Insert(0, alarmId);
         }
         if (alarmIds.Count != previous.Length || retired.Count > 0)
