@@ -480,10 +480,10 @@
     <value>到期日期</value>
   </data>
   <data name="DueDateAllDay" xml:space="preserve">
-    <value>{0:ddd, MMM d}</value>
+    <value>{0:M月d日 ddd}</value>
   </data>
   <data name="DueDateAndTime" xml:space="preserve">
-    <value>{0:ddd, MMM d} · {0:t}</value>
+    <value>{0:M月d日 ddd} · {0:t}</value>
   </data>
   <data name="DueDateNotifications" xml:space="preserve">
     <value>到期通知</value>
@@ -1119,7 +1119,7 @@
     <value>此处没有提醒事项</value>
   </data>
   <data name="NotifyAllDayDate" xml:space="preserve">
-    <value>{0:ddd dd MMM}</value>
+    <value>{0:M月d日 ddd}</value>
   </data>
   <data name="NotifyDueMany" xml:space="preserve">
     <value>{0} 条提醒事项已到期</value>
@@ -1137,7 +1137,7 @@
     <value>、</value>
   </data>
   <data name="NotifyTimedDate" xml:space="preserve">
-    <value>{0:ddd dd MMM}，{0:t}</value>
+    <value>{0:M月d日 ddd}，{0:t}</value>
   </data>
   <data name="NoUnsyncedChangesOrConflicts" xml:space="preserve">
     <value>没有未同步的更改或冲突。</value>

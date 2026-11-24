@@ -137,6 +137,7 @@ public sealed partial class MainWindow
             {
                 if (_disposed || _task is not null) return;
                 _task = args.Request.CreatePrintTask(_snapshot.Title, request => request.SetSource(_source));
+                _task.Options.DisplayedOptions.Remove(StandardPrintTaskOptions.CustomPageRanges);
                 _task.Completed += PrintTaskCompleted;
             }
         }
