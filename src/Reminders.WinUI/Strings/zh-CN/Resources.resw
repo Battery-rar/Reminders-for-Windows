@@ -1,0 +1,2022 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="About" xml:space="preserve">
+    <value>关于</value>
+  </data>
+  <data name="AboutAppDisclaimer" xml:space="preserve">
+    <value>Apple Reminders on Windows 是一款独立应用，与 Apple Inc. 或 Microsoft Corporation 无关联，也未获得这两家公司认可或赞助。iCloud 是 Apple Inc. 的商标。Windows 是 Microsoft Corporation 的商标。同步功能使用非官方的 iCloud 接口，接口可能在未提前通知的情况下发生变更或停止运行。</value>
+  </data>
+  <data name="AboutSettingsDescription" xml:space="preserve">
+    <value>应用信息与支持。</value>
+  </data>
+  <data name="AboutThisApp" xml:space="preserve">
+    <value>关于此应用</value>
+  </data>
+  <data name="AcceptAndContinue" xml:space="preserve">
+    <value>接受并继续</value>
+  </data>
+  <data name="AcceptingTerms" xml:space="preserve">
+    <value>正在接受条款…</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>账户</value>
+  </data>
+  <data name="AccountFreePopupTest" xml:space="preserve">
+    <value>免账户弹窗测试</value>
+  </data>
+  <data name="AddButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>添加提醒事项</value>
+  </data>
+  <data name="AddButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>添加提醒事项 (Ctrl+N)</value>
+  </data>
+  <data name="AddLabel.Text" xml:space="preserve">
+    <value>添加提醒事项</value>
+  </data>
+  <data name="AddReminder" xml:space="preserve">
+    <value>添加提醒事项</value>
+  </data>
+  <data name="AddSubtask" xml:space="preserve">
+    <value>添加子任务</value>
+  </data>
+  <data name="AddSubtaskButton.Content" xml:space="preserve">
+    <value>添加子任务</value>
+  </data>
+  <data name="AddSubtaskParentChanged" xml:space="preserve">
+    <value>父任务已更改。请重新打开父任务，再添加子任务。</value>
+  </data>
+  <data name="AddSubtaskUnsavedChangesWarning" xml:space="preserve">
+    <value>请先保存当前任务，再添加子任务。</value>
+  </data>
+  <data name="AllDay" xml:space="preserve">
+    <value>全天</value>
+  </data>
+  <data name="AllDayTextBlock.Text" xml:space="preserve">
+    <value>全天</value>
+  </data>
+  <data name="AllNavigationViewItem.Content" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="AnimateRemindersWhenCompleted" xml:space="preserve">
+    <value>完成提醒事项时播放动画。</value>
+  </data>
+  <data name="AppCache" xml:space="preserve">
+    <value>应用缓存</value>
+  </data>
+  <data name="Appearance" xml:space="preserve">
+    <value>外观</value>
+  </data>
+  <data name="AppleAccountServiceUnavailable" xml:space="preserve">
+    <value>Apple 的 iCloud 账户服务返回了 HTTP {0}。请重新加载 Apple 登录页面重试，或取消并改用短信验证。</value>
+  </data>
+  <data name="AppleAccountSettingsDescription" xml:space="preserve">
+    <value>管理用于提醒事项的 Apple 账户。</value>
+  </data>
+  <data name="AppleDeviceSignIn.Content" xml:space="preserve">
+    <value>使用 Apple 设备登录</value>
+  </data>
+  <data name="AppleIdBox.Header" xml:space="preserve">
+    <value>Apple 账户</value>
+  </data>
+  <data name="AppleIdBox.PlaceholderText" xml:space="preserve">
+    <value>you@icloud.com</value>
+  </data>
+  <data name="AppleSignInConnecting" xml:space="preserve">
+    <value>正在将 Apple 登录会话连接到应用…</value>
+  </data>
+  <data name="AppleSignInCouldNotOpen" xml:space="preserve">
+    <value>无法打开 Apple 登录页面。请检查 Microsoft Edge WebView2 Runtime，或取消并改用短信验证。</value>
+  </data>
+  <data name="AppleSignInDialogTitle" xml:space="preserve">
+    <value>Apple 登录 · icloud.com</value>
+  </data>
+  <data name="AppleSignInImportFailed" xml:space="preserve">
+    <value>应用无法读取或保存 Apple 登录会话。请重新加载 Apple 登录页面重试，或取消并改用短信验证。</value>
+  </data>
+  <data name="AppleSignInImportNetwork" xml:space="preserve">
+    <value>Apple 页面已完成验证，但应用无法连接到 iCloud 以保存会话。请重新加载 Apple 登录页面重试，或取消并改用短信验证。</value>
+  </data>
+  <data name="AppleSignInImportPending" xml:space="preserve">
+    <value>Apple 尚未验证此会话。请在 Apple 页面上完成登录，然后选择“在应用中继续”。</value>
+  </data>
+  <data name="AppleSignInImportRejected" xml:space="preserve">
+    <value>iCloud 拒绝了 Apple 页面返回的会话。请重新加载 Apple 登录页面后重试。</value>
+  </data>
+  <data name="AppleSignInImportTerms" xml:space="preserve">
+    <value>Apple 要求接受更新后的 iCloud 条款。请在 Apple 页面上接受条款后重试。</value>
+  </data>
+  <data name="AppleSignInInstructions" xml:space="preserve">
+    <value>请在下方的 Apple 页面上登录。如果系统询问是否信任此电脑，请选择“信任”，以便下次免于再次验证。连接成功后，窗口会自动关闭。如果提醒事项已显示在此处，请选择“在应用中继续”。</value>
+  </data>
+  <data name="AppleSignInNavigationBlocked" xml:space="preserve">
+    <value>无法在 Apple 登录窗口中打开此页面。请返回登录页面，或取消并改用短信验证。</value>
+  </data>
+  <data name="AppleSignInNavigationFailed" xml:space="preserve">
+    <value>无法加载 Apple 登录页面。请重新加载后重试，或取消并改用短信验证。</value>
+  </data>
+  <data name="AppleSignInPopupFailed" xml:space="preserve">
+    <value>无法打开 Apple 登录窗口。请重新加载后重试，或取消并改用短信验证。</value>
+  </data>
+  <data name="AppleSignInRateLimited" xml:space="preserve">
+    <value>Apple 限制了登录请求次数（HTTP 429）。请稍等片刻，再重新加载 Apple 登录页面。</value>
+  </data>
+  <data name="AppleSignInServiceUnavailable" xml:space="preserve">
+    <value>Apple 登录服务返回了 HTTP {0}。请重新加载 Apple 登录页面重试，或取消并改用短信验证。</value>
+  </data>
+  <data name="AppTitle" xml:space="preserve">
+    <value>Apple Reminders on Windows</value>
+  </data>
+  <data name="Automatic" xml:space="preserve">
+    <value>自动</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>返回</value>
+  </data>
+  <data name="BackToReminders.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>返回提醒事项</value>
+  </data>
+  <data name="BackToReminders.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>返回提醒事项</value>
+  </data>
+  <data name="Blue" xml:space="preserve">
+    <value>蓝色</value>
+  </data>
+  <data name="CacheCleared" xml:space="preserve">
+    <value>缓存已清除</value>
+  </data>
+  <data name="CacheClearedSignInPrompt" xml:space="preserve">
+    <value>缓存已清除。请登录以下载提醒事项。</value>
+  </data>
+  <data name="CacheClearPendingChangesWarning" xml:space="preserve">
+    <value>有 {0} 项未同步的更改或冲突。清除缓存前，应用会请你确认是否要丢弃这些内容。</value>
+  </data>
+  <data name="CachedRemindersAvailable" xml:space="preserve">
+    <value>仍可使用已缓存的提醒事项和待同步的更改。</value>
+  </data>
+  <data name="CacheRefreshInProgress" xml:space="preserve">
+    <value>正在从 iCloud 重新下载提醒事项…</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="ChangeIconAndColor" xml:space="preserve">
+    <value>更改图标和颜色</value>
+  </data>
+  <data name="ChangesDiscarded" xml:space="preserve">
+    <value>已丢弃更改</value>
+  </data>
+  <data name="ChangesDiscardedRefreshFailed" xml:space="preserve">
+    <value>已丢弃更改，刷新失败</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>检查更新</value>
+  </data>
+  <data name="Checking" xml:space="preserve">
+    <value>正在检查…</value>
+  </data>
+  <data name="CheckingForUpdates" xml:space="preserve">
+    <value>正在检查更新</value>
+  </data>
+  <data name="CheckingICloudForChanges" xml:space="preserve">
+    <value>正在检查 iCloud 上的更改…</value>
+  </data>
+  <data name="CheckingYourAccount" xml:space="preserve">
+    <value>正在检查你的账户…</value>
+  </data>
+  <data name="ClearAppCache" xml:space="preserve">
+    <value>清除应用缓存？</value>
+  </data>
+  <data name="ClearAppCacheAction" xml:space="preserve">
+    <value>清除应用缓存</value>
+  </data>
+  <data name="ClearCache" xml:space="preserve">
+    <value>清除缓存</value>
+  </data>
+  <data name="ClearCacheDescription" xml:space="preserve">
+    <value>删除此电脑上已下载的提醒事项和同步记录，然后从 iCloud 重新下载。应用会保留登录状态和偏好设置。</value>
+  </data>
+  <data name="ClearCacheLocalChangesWarning" xml:space="preserve">
+    <value>已保存到 iCloud 的提醒事项会保留。仅保存在此电脑上的更改将丢失。</value>
+  </data>
+  <data name="ClearCachePendingChangesDescription" xml:space="preserve">
+    <value>这些内容将被丢弃。请仅在确定不再需要这些内容，或 iCloud 一直拒绝同步时清除缓存。</value>
+  </data>
+  <data name="ClearCacheSettingsDescription" xml:space="preserve">
+    <value>删除已下载的提醒事项和同步记录，然后重新下载。应用会保留登录状态和偏好设置。</value>
+  </data>
+  <data name="ClearCacheUnsavedEditorWarning" xml:space="preserve">
+    <value>当前打开的提醒事项中未保存的更改也将丢弃。</value>
+  </data>
+  <data name="ClearingTheAppCache" xml:space="preserve">
+    <value>正在清除应用缓存…</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>清除选择</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="CodeBox.Header" xml:space="preserve">
+    <value>验证码</value>
+  </data>
+  <data name="CollapseSubtasksOf" xml:space="preserve">
+    <value>折叠“{0}”的子任务</value>
+  </data>
+  <data name="Color" xml:space="preserve">
+    <value>颜色</value>
+  </data>
+  <data name="CompletedNavigationViewItem.Content" xml:space="preserve">
+    <value>已完成</value>
+  </data>
+  <data name="CompleteParentWithRepeatingSubtasks" xml:space="preserve">
+    <value>请逐一完成重复的子任务，再完成父任务。</value>
+  </data>
+  <data name="CompletionAnimation" xml:space="preserve">
+    <value>完成动画</value>
+  </data>
+  <data name="ConflictCountMany" xml:space="preserve">
+    <value>{0} 项冲突</value>
+  </data>
+  <data name="ConflictCountOne" xml:space="preserve">
+    <value>{0} 项冲突</value>
+  </data>
+  <data name="ConflictItem.Content" xml:space="preserve">
+    <value>同步冲突</value>
+  </data>
+  <data name="ContinueInApp" xml:space="preserve">
+    <value>在应用中继续</value>
+  </data>
+  <data name="ContinueOnAppleSSignInTextBlock.Text" xml:space="preserve">
+    <value>请在 Apple 登录页面上继续。</value>
+  </data>
+  <data name="CopiedSignInError" xml:space="preserve">
+    <value>Apple Reminders on Windows {0}
+{1}
+{2}
+{3}</value>
+  </data>
+  <data name="CopyErrorDetailsButton.Content" xml:space="preserve">
+    <value>复制错误详情</value>
+  </data>
+  <data name="CouldNotCheckForUpdates" xml:space="preserve">
+    <value>无法检查更新</value>
+  </data>
+  <data name="CouldNotInstallUpdate" xml:space="preserve">
+    <value>无法安装更新</value>
+  </data>
+  <data name="CouldntAddReminder" xml:space="preserve">
+    <value>无法添加提醒事项</value>
+  </data>
+  <data name="CouldntClearCache" xml:space="preserve">
+    <value>无法清除缓存</value>
+  </data>
+  <data name="CouldntCompleteAction" xml:space="preserve">
+    <value>无法完成操作</value>
+  </data>
+  <data name="CouldntCopyTheError" xml:space="preserve">
+    <value>无法复制错误信息</value>
+  </data>
+  <data name="CouldntCustomizeList" xml:space="preserve">
+    <value>无法自定义列表</value>
+  </data>
+  <data name="CouldntDeleteReminder" xml:space="preserve">
+    <value>无法删除提醒事项</value>
+  </data>
+  <data name="CouldntDiscardChanges" xml:space="preserve">
+    <value>无法丢弃更改</value>
+  </data>
+  <data name="CouldntLeaveTask" xml:space="preserve">
+    <value>无法退出当前任务</value>
+  </data>
+  <data name="CouldntLoadChanges" xml:space="preserve">
+    <value>无法加载更改</value>
+  </data>
+  <data name="CouldntLoadReminders" xml:space="preserve">
+    <value>无法加载提醒事项</value>
+  </data>
+  <data name="CouldntOpenPrivacyPolicy" xml:space="preserve">
+    <value>无法打开隐私政策</value>
+  </data>
+  <data name="CouldntOpenReleases" xml:space="preserve">
+    <value>无法打开发行版本页面</value>
+  </data>
+  <data name="CouldntOpenSettings" xml:space="preserve">
+    <value>无法打开设置</value>
+  </data>
+  <data name="CouldntOpenTheBrowser" xml:space="preserve">
+    <value>无法打开浏览器</value>
+  </data>
+  <data name="CouldntSaveListOrder" xml:space="preserve">
+    <value>无法保存列表顺序</value>
+  </data>
+  <data name="CouldntSaveReminder" xml:space="preserve">
+    <value>无法保存提醒事项</value>
+  </data>
+  <data name="CouldntSignIn" xml:space="preserve">
+    <value>无法登录</value>
+  </data>
+  <data name="CouldntSignOut" xml:space="preserve">
+    <value>无法退出登录</value>
+  </data>
+  <data name="CouldntUpdateReminder" xml:space="preserve">
+    <value>无法更新提醒事项</value>
+  </data>
+  <data name="Custom" xml:space="preserve">
+    <value>自定义</value>
+  </data>
+  <data name="CustomRepeat" xml:space="preserve">
+    <value>自定义重复</value>
+  </data>
+  <data name="Daily" xml:space="preserve">
+    <value>每天</value>
+  </data>
+  <data name="DailyComboBoxItem.Content" xml:space="preserve">
+    <value>每天</value>
+  </data>
+  <data name="Dark" xml:space="preserve">
+    <value>深色</value>
+  </data>
+  <data name="DefaultList" xml:space="preserve">
+    <value>默认列表</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="DeletedNavigationViewItem.Content" xml:space="preserve">
+    <value>已删除</value>
+  </data>
+  <data name="DeleteReminder" xml:space="preserve">
+    <value>删除提醒事项？</value>
+  </data>
+  <data name="DeleteReminderDetails" xml:space="preserve">
+    <value>{0}
+
+其子任务也会一并删除。</value>
+  </data>
+  <data name="DeleteTaskMenuFlyoutItem.Text" xml:space="preserve">
+    <value>删除任务</value>
+  </data>
+  <data name="DemoMode" xml:space="preserve">
+    <value>演示模式</value>
+  </data>
+  <data name="DemoModeDescription" xml:space="preserve">
+    <value>示例数据仅保存在内存中。演示模式不连接 iCloud。</value>
+  </data>
+  <data name="DemoSyncUnavailable" xml:space="preserve">
+    <value>示例提醒事项不会与 iCloud 同步。</value>
+  </data>
+  <data name="DetailAllDay.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>全天</value>
+  </data>
+  <data name="DetailDate.Header" xml:space="preserve">
+    <value>到期日期</value>
+  </data>
+  <data name="DetailDate.PlaceholderText" xml:space="preserve">
+    <value>无日期</value>
+  </data>
+  <data name="DetailFlagged.Header" xml:space="preserve">
+    <value>标记</value>
+  </data>
+  <data name="DetailList.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>任务列表</value>
+  </data>
+  <data name="DetailList.Header" xml:space="preserve">
+    <value>列表</value>
+  </data>
+  <data name="DetailList.PlaceholderText" xml:space="preserve">
+    <value>选择列表</value>
+  </data>
+  <data name="DetailMore.Header" xml:space="preserve">
+    <value>更多选项</value>
+  </data>
+  <data name="DetailNotes.Header" xml:space="preserve">
+    <value>备注</value>
+  </data>
+  <data name="DetailNotes.PlaceholderText" xml:space="preserve">
+    <value>添加备注…</value>
+  </data>
+  <data name="DetailPriority.Header" xml:space="preserve">
+    <value>优先级</value>
+  </data>
+  <data name="DetailRepeatChoice.Header" xml:space="preserve">
+    <value>重复</value>
+  </data>
+  <data name="DetailRepeatChoice.PlaceholderText" xml:space="preserve">
+    <value>自定义重复</value>
+  </data>
+  <data name="DetailRepeatInterval.Header" xml:space="preserve">
+    <value>每隔</value>
+  </data>
+  <data name="DetailsPane" xml:space="preserve">
+    <value>详情窗格</value>
+  </data>
+  <data name="DetailsPaneSizingDescription" xml:space="preserve">
+    <value>分栏时，两栏都会保留足够的阅读空间。将滑块移到任一端后，打开的任务将占满内容区域。选择“返回”可回到列表。</value>
+  </data>
+  <data name="DetailTime.Header" xml:space="preserve">
+    <value>时间</value>
+  </data>
+  <data name="DetailTitle.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>任务标题</value>
+  </data>
+  <data name="DetailTitle.PlaceholderText" xml:space="preserve">
+    <value>任务标题</value>
+  </data>
+  <data name="DiscardCancelled" xml:space="preserve">
+    <value>已取消丢弃</value>
+  </data>
+  <data name="DiscardChanges" xml:space="preserve">
+    <value>丢弃更改</value>
+  </data>
+  <data name="DiscardChangesCheckingICloud" xml:space="preserve">
+    <value>正在检查 iCloud 上的最新版本…</value>
+  </data>
+  <data name="DiscardChangesOpenEditorWarning" xml:space="preserve">
+    <value>如果选中当前打开的提醒事项，其中尚未保存的更改也将丢弃。</value>
+  </data>
+  <data name="DiscardChangesRefreshPrompt" xml:space="preserve">
+    <value>刷新列表以查看已恢复的提醒事项。</value>
+  </data>
+  <data name="DiscardChangesResult" xml:space="preserve">
+    <value>已移除 {0} 项仅存于本机的任务，并从 iCloud 恢复了 {1} 项任务。其他提醒事项和缓存均已保留。</value>
+  </data>
+  <data name="DiscardChangesReviewInstructions" xml:space="preserve">
+    <value>请选择要丢弃的本地更改。仅存在于此电脑上的新任务将被移除。已保存到 iCloud 的任务将恢复为 iCloud 上的最新版本。此操作不会删除 iCloud 上的任务。</value>
+  </data>
+  <data name="DiscardSelected" xml:space="preserve">
+    <value>丢弃所选更改</value>
+  </data>
+  <data name="DiscardSelectedChangesDescription" xml:space="preserve">
+    <value>移除所选的本地任务，或从 iCloud 恢复所选任务，同时保留应用缓存。</value>
+  </data>
+  <data name="DiscardSelectedWithCount" xml:space="preserve">
+    <value>丢弃所选更改（{0}）</value>
+  </data>
+  <data name="DiscardUnsyncedChanges" xml:space="preserve">
+    <value>丢弃未同步的更改</value>
+  </data>
+  <data name="DiscardUnsyncedChangesAndConflicts" xml:space="preserve">
+    <value>丢弃未同步的更改和冲突</value>
+  </data>
+  <data name="Done" xml:space="preserve">
+    <value>完成</value>
+  </data>
+  <data name="DownloadingUpdate" xml:space="preserve">
+    <value>正在下载更新</value>
+  </data>
+  <data name="DueDate" xml:space="preserve">
+    <value>到期日期</value>
+  </data>
+  <data name="DueDateAllDay" xml:space="preserve">
+    <value>{0:ddd, MMM d}</value>
+  </data>
+  <data name="DueDateAndTime" xml:space="preserve">
+    <value>{0:ddd, MMM d} · {0:t}</value>
+  </data>
+  <data name="DueDateNotifications" xml:space="preserve">
+    <value>到期通知</value>
+  </data>
+  <data name="DueDateRadioMenuFlyoutItem.Text" xml:space="preserve">
+    <value>到期日期</value>
+  </data>
+  <data name="DueTodayAt" xml:space="preserve">
+    <value>今天 {0:t}</value>
+  </data>
+  <data name="DueTomorrowAt" xml:space="preserve">
+    <value>明天 {0:t}</value>
+  </data>
+  <data name="EditCustomRepeatOnAppleDevice" xml:space="preserve">
+    <value>请在 Apple 设备上编辑此自定义重复规则，以保留重复安排。</value>
+  </data>
+  <data name="EditorPreviewWindowTitle" xml:space="preserve">
+    <value>Apple Reminders on Windows · 编辑器预览</value>
+  </data>
+  <data name="EditorUnsavedChangesWarning" xml:space="preserve">
+    <value>此任务的更改尚未保存。</value>
+  </data>
+  <data name="EmptyServiceResponse" xml:space="preserve">
+    <value>{0} 返回了空响应。</value>
+  </data>
+  <data name="EmptyStateMessage.Text" xml:space="preserve">
+    <value>添加一条提醒事项即可开始。</value>
+  </data>
+  <data name="EmptyStateTitle.Text" xml:space="preserve">
+    <value>暂无提醒事项</value>
+  </data>
+  <data name="EnterAppleDeviceCode" xml:space="preserve">
+    <value>输入 Apple 设备上显示的验证码</value>
+  </data>
+  <data name="EnterCodeForPhoneNumber" xml:space="preserve">
+    <value>输入通过短信发送至 {0} 的验证码</value>
+  </data>
+  <data name="EnterGenericVerificationCode" xml:space="preserve">
+    <value>输入 Apple 发给你的六位验证码</value>
+  </data>
+  <data name="EnterTextedCode" xml:space="preserve">
+    <value>输入通过短信收到的验证码</value>
+  </data>
+  <data name="ErrorAppleAccountMismatch" xml:space="preserve">
+    <value>Apple 返回了其他账户。请重新登录。</value>
+  </data>
+  <data name="ErrorCacheClearNeedsConfirmation" xml:space="preserve">
+    <value>请先确认丢弃未同步的更改和冲突，再清除缓存。</value>
+  </data>
+  <data name="ErrorCouldNotReachICloud" xml:space="preserve">
+    <value>无法连接到 iCloud</value>
+  </data>
+  <data name="ErrorCredentialTooLarge" xml:space="preserve">
+    <value>凭据超出了 Windows 凭据管理器的大小限制</value>
+  </data>
+  <data name="ErrorCustomRepeatCompletion" xml:space="preserve">
+    <value>此提醒事项使用自定义重复规则。请在 Apple 设备上将其标为完成，以保留重复安排。</value>
+  </data>
+  <data name="ErrorCustomRepeatOnAppleDevice" xml:space="preserve">
+    <value>请在 Apple 设备上将这项自定义重复提醒事项标为完成，以保留重复安排。</value>
+  </data>
+  <data name="ErrorDeviceCodeUnsupported" xml:space="preserve">
+    <value>Apple 不允许通过此应用验证设备验证码。请选择“通过短信发送验证码”。</value>
+  </data>
+  <data name="ErrorDiscardDuplicateSelection" xml:space="preserve">
+    <value>每条提醒事项只能选择一次。</value>
+  </data>
+  <data name="ErrorDiscardNeedsConfirmation" xml:space="preserve">
+    <value>请确认要丢弃哪些未同步的更改。</value>
+  </data>
+  <data name="ErrorDiscardNoSelection" xml:space="preserve">
+    <value>请选择要丢弃的提醒事项。</value>
+  </data>
+  <data name="ErrorDiscardRefreshRequired" xml:space="preserve">
+    <value>请先刷新 iCloud 数据，再丢弃这些更改。</value>
+  </data>
+  <data name="ErrorDiscardReminderIncomplete" xml:space="preserve">
+    <value>iCloud 返回的提醒事项不完整。所有本地更改均已保留。</value>
+  </data>
+  <data name="ErrorDiscardRemindersMissing" xml:space="preserve">
+    <value>iCloud 未返回全部请求的提醒事项。所有本地更改均已保留。</value>
+  </data>
+  <data name="ErrorDiscardSelectionChanged" xml:space="preserve">
+    <value>这些提醒事项在查看期间发生了更改。请刷新列表并重新选择。</value>
+  </data>
+  <data name="ErrorDiscardSelectionSize" xml:space="preserve">
+    <value>请选择 1 至 1,000 条要丢弃的提醒事项。</value>
+  </data>
+  <data name="ErrorDiscardSubtasksRequired" xml:space="preserve">
+    <value>丢弃新建的父任务时，请同时选中其子任务。</value>
+  </data>
+  <data name="ErrorDueDateOutsideRange" xml:space="preserve">
+    <value>到期日期超出支持的范围</value>
+  </data>
+  <data name="ErrorFieldMustBeText" xml:space="preserve">
+    <value>{0} 必须是文本</value>
+  </data>
+  <data name="ErrorFieldTooLong" xml:space="preserve">
+    <value>{0} 超过了 {1} 字节的长度限制</value>
+  </data>
+  <data name="ErrorFinishVerificationInAppleWindow" xml:space="preserve">
+    <value>请在 Apple 登录窗口中完成验证。</value>
+  </data>
+  <data name="ErrorICloudAcknowledgmentIncomplete" xml:space="preserve">
+    <value>iCloud 未确认所有已更改的记录。应用将重试此操作。</value>
+  </data>
+  <data name="ErrorICloudPaginationLimit" xml:space="preserve">
+    <value>iCloud 未返回下一页，或返回的结果超过 1,000 页</value>
+  </data>
+  <data name="ErrorICloudResponseTooLarge" xml:space="preserve">
+    <value>iCloud 响应超出预期大小</value>
+  </data>
+  <data name="ErrorICloudSessionExpired" xml:space="preserve">
+    <value>你的 iCloud 会话已过期。</value>
+  </data>
+  <data name="ErrorICloudSessionExpiredSignIn" xml:space="preserve">
+    <value>你的 iCloud 会话已过期。请重新登录。</value>
+  </data>
+  <data name="ErrorICloudSessionTooLarge" xml:space="preserve">
+    <value>iCloud 会话超出预期大小</value>
+  </data>
+  <data name="ErrorICloudSignInFailed" xml:space="preserve">
+    <value>iCloud 登录失败</value>
+  </data>
+  <data name="ErrorICloudSignInRejected" xml:space="preserve">
+    <value>iCloud 拒绝了登录请求</value>
+  </data>
+  <data name="ErrorICloudTermsNotAccepted" xml:space="preserve">
+    <value>Apple 未确认你已接受更新后的 iCloud 条款。</value>
+  </data>
+  <data name="ErrorICloudUnavailableWillRetry" xml:space="preserve">
+    <value>无法连接到 iCloud。应用很快会重试同步。</value>
+  </data>
+  <data name="ErrorInsecureICloudUrl" xml:space="preserve">
+    <value>已拒绝不安全的 iCloud URL</value>
+  </data>
+  <data name="ErrorInvalidCloudKitResponse" xml:space="preserve">
+    <value>CloudKit 响应无效</value>
+  </data>
+  <data name="ErrorInvalidDueDate" xml:space="preserve">
+    <value>到期日期无效</value>
+  </data>
+  <data name="ErrorInvalidDueDateFormat" xml:space="preserve">
+    <value>到期日期必须采用 ISO-8601 格式或使用毫秒级 Unix 时间戳</value>
+  </data>
+  <data name="ErrorInvalidICloudReminder" xml:space="preserve">
+    <value>iCloud 返回了无效的提醒事项。</value>
+  </data>
+  <data name="ErrorInvalidICloudSignInChallenge" xml:space="preserve">
+    <value>iCloud 返回了无效的登录验证请求</value>
+  </data>
+  <data name="ErrorInvalidICloudSignInParameters" xml:space="preserve">
+    <value>iCloud 返回了无效的登录参数</value>
+  </data>
+  <data name="ErrorInvalidListOrder" xml:space="preserve">
+    <value>列表顺序必须包含列表标识符。</value>
+  </data>
+  <data name="ErrorInvalidLocalCredentials" xml:space="preserve">
+    <value>用户名或密码不正确。</value>
+  </data>
+  <data name="ErrorInvalidRepeatInterval" xml:space="preserve">
+    <value>请选择按天、周、月或年重复，并将间隔设为 1 至 999。</value>
+  </data>
+  <data name="ErrorLocalAccountCannotClearCache" xml:space="preserve">
+    <value>本地账户的提醒事项仅保存在此电脑上，没有可清除的下载缓存。</value>
+  </data>
+  <data name="ErrorLocalAccountCannotRestore" xml:space="preserve">
+    <value>本地账户的提醒事项没有可恢复的 iCloud 副本。</value>
+  </data>
+  <data name="ErrorLocalAccountNoICloud" xml:space="preserve">
+    <value>此账户仅在此电脑上保存提醒事项。</value>
+  </data>
+  <data name="ErrorLocalAccountStillActive" xml:space="preserve">
+    <value>请先退出本地账户，再重新登录。</value>
+  </data>
+  <data name="ErrorLocalSignInRequired" xml:space="preserve">
+    <value>请使用本地登录方式登录此账户。</value>
+  </data>
+  <data name="ErrorMissingAppleSession" xml:space="preserve">
+    <value>缺少 Apple 登录会话。</value>
+  </data>
+  <data name="ErrorMissingConflictId" xml:space="preserve">
+    <value>缺少冲突 ID</value>
+  </data>
+  <data name="ErrorMissingField" xml:space="preserve">
+    <value>缺少 {0}</value>
+  </data>
+  <data name="ErrorMissingSavedICloudCredential" xml:space="preserve">
+    <value>找不到已保存的 iCloud 凭据</value>
+  </data>
+  <data name="ErrorMissingWebAuthToken" xml:space="preserve">
+    <value>Apple 未签发网页身份验证令牌</value>
+  </data>
+  <data name="ErrorNoAppleIDProvided" xml:space="preserve">
+    <value>未提供 Apple 账户</value>
+  </data>
+  <data name="ErrorNoSuchReminder" xml:space="preserve">
+    <value>找不到提醒事项“{0}”</value>
+  </data>
+  <data name="ErrorNotSignedInToICloud" xml:space="preserve">
+    <value>尚未登录 iCloud</value>
+  </data>
+  <data name="ErrorReminderDocumentEditUnsafe" xml:space="preserve">
+    <value>无法安全编辑此提醒事项的文本文档。请先刷新提醒事项，或在 Apple 设备上编辑文本。</value>
+  </data>
+  <data name="ErrorReminderDocumentTooLarge" xml:space="preserve">
+    <value>此提醒事项的文本文档过大，请在 Apple 设备上编辑。</value>
+  </data>
+  <data name="ErrorReminderEditConflict" xml:space="preserve">
+    <value>编辑期间，此提醒事项已在其他设备上被更改。</value>
+  </data>
+  <data name="ErrorReminderListUnavailable" xml:space="preserve">
+    <value>请选择一个现有的提醒事项列表。</value>
+  </data>
+  <data name="ErrorReminderOperationRefused" xml:space="preserve">
+    <value>iCloud 拒绝了一项提醒事项操作。请在“设置”的“同步与存储”中查看未同步的更改。</value>
+  </data>
+  <data name="ErrorReminderOperationRejected" xml:space="preserve">
+    <value>iCloud 拒绝了一项提醒事项操作</value>
+  </data>
+  <data name="ErrorRemindersServiceUnavailable" xml:space="preserve">
+    <value>当前 iCloud 会话无法访问提醒事项服务</value>
+  </data>
+  <data name="ErrorReminderUnavailable" xml:space="preserve">
+    <value>此任务已不可用。</value>
+  </data>
+  <data name="ErrorRepeatCompletionConflict" xml:space="preserve">
+    <value>此重复提醒事项已在其他设备上被更改。</value>
+  </data>
+  <data name="ErrorRepeatCompletionLargeDocument" xml:space="preserve">
+    <value>此提醒事项的文本文档过大，请在 Apple 设备上将其标为完成。</value>
+  </data>
+  <data name="ErrorRepeatCompletionMultipleRules" xml:space="preserve">
+    <value>请在 Apple 设备上将含有多条重复规则的提醒事项标为完成，以保留重复安排。</value>
+  </data>
+  <data name="ErrorRepeatCompletionNeedsDueDate" xml:space="preserve">
+    <value>请先设置到期日期，再将此重复提醒事项标为完成。</value>
+  </data>
+  <data name="ErrorRepeatCompletionRefreshRequired" xml:space="preserve">
+    <value>请先刷新此提醒事项，再将本次重复标为完成。</value>
+  </data>
+  <data name="ErrorRepeatEditConflict" xml:space="preserve">
+    <value>此提醒事项或其重复规则已在其他设备上被更改。请查看冲突后重试。</value>
+  </data>
+  <data name="ErrorRepeatEditRefreshRequired" xml:space="preserve">
+    <value>请先刷新此提醒事项，再更改其重复规则。</value>
+  </data>
+  <data name="ErrorRepeatEditReminderConflict" xml:space="preserve">
+    <value>编辑重复规则期间，此提醒事项已在其他设备上被更改。</value>
+  </data>
+  <data name="ErrorRepeatNeedsDueDate" xml:space="preserve">
+    <value>重复提醒事项必须设置到期日期。</value>
+  </data>
+  <data name="ErrorRepeatOutsideDateRange" xml:space="preserve">
+    <value>下次重复日期超出支持的日期范围。</value>
+  </data>
+  <data name="ErrorRepeatRuleMissing" xml:space="preserve">
+    <value>iCloud 未返回此提醒事项的重复规则。</value>
+  </data>
+  <data name="ErrorRepeatWithSubtasksCompletion" xml:space="preserve">
+    <value>请在 Apple 设备上将带有子任务的重复任务标为完成，以保留重复安排。</value>
+  </data>
+  <data name="ErrorSavedICloudSessionUnreadable" xml:space="preserve">
+    <value>无法读取已保存的 iCloud 会话</value>
+  </data>
+  <data name="ErrorSaveRepeatChangeBeforeCompletion" xml:space="preserve">
+    <value>请先保存对重复规则的更改，再将此提醒事项标为完成。</value>
+  </data>
+  <data name="ErrorSignInAttemptExpired" xml:space="preserve">
+    <value>此次登录尝试已过期。请重新输入密码。</value>
+  </data>
+  <data name="ErrorSubtaskListMismatch" xml:space="preserve">
+    <value>子任务必须与父任务位于同一列表。</value>
+  </data>
+  <data name="ErrorSubtaskParentMustBeUnfinished" xml:space="preserve">
+    <value>请选择一个未完成的父任务。</value>
+  </data>
+  <data name="ErrorSubtaskParentUnavailable" xml:space="preserve">
+    <value>此列表中已找不到父任务。请先刷新，再添加子任务。</value>
+  </data>
+  <data name="ErrorSubtaskReparentingUnsupported" xml:space="preserve">
+    <value>请在父任务中创建子任务。应用不支持更改任务所属的父任务。</value>
+  </data>
+  <data name="ErrorSubtaskUploadAwaitingParent" xml:space="preserve">
+    <value>部分子任务正在等待父任务同步。请在设置中查看未同步的更改。</value>
+  </data>
+  <data name="ErrorSwitchAccountNeedsSync" xml:space="preserve">
+    <value>请先使用当前账户同步待处理的更改，再切换账户。</value>
+  </data>
+  <data name="ErrorSwitchAccountNeedsSyncOrCacheClear" xml:space="preserve">
+    <value>请同步待处理的更改，或退出登录并清除缓存，然后再切换账户。</value>
+  </data>
+  <data name="ErrorSyncConflictNeedsReview" xml:space="preserve">
+    <value>请在设置中查看发生冲突的更改。</value>
+  </data>
+  <data name="ErrorSyncOperationFailed" xml:space="preserve">
+    <value>同步操作失败</value>
+  </data>
+  <data name="ErrorSyncRequestRejected" xml:space="preserve">
+    <value>iCloud 拒绝了同步请求（HTTP {0}）。</value>
+  </data>
+  <data name="ErrorSyncTimedOut" xml:space="preserve">
+    <value>同步已超时（10 分钟）。仍可使用缓存的提醒事项，请重试同步。</value>
+  </data>
+  <data name="ErrorTagEditingUnavailable" xml:space="preserve">
+    <value>请在 Apple 的“提醒事项”应用中管理标签，此处无法编辑标签。</value>
+  </data>
+  <data name="ErrorTrustedPhoneMissing" xml:space="preserve">
+    <value>此 Apple 账户没有受信任的电话号码。请前往 appleid.apple.com 添加。</value>
+  </data>
+  <data name="ErrorTwoFactorAuthenticationRequired" xml:space="preserve">
+    <value>需要双重认证</value>
+  </data>
+  <data name="ErrorUnknownMethod" xml:space="preserve">
+    <value>未知方法“{0}”</value>
+  </data>
+  <data name="ErrorUnsafeICloudServiceUrl" xml:space="preserve">
+    <value>iCloud 返回了不安全的服务 URL</value>
+  </data>
+  <data name="ErrorUnsupportedRepeatFrequency" xml:space="preserve">
+    <value>请选择按天、周、月或年重复。</value>
+  </data>
+  <data name="ErrorUnsupportedRepeatInterval" xml:space="preserve">
+    <value>此提醒事项的重复间隔不受支持。</value>
+  </data>
+  <data name="ErrorUnsupportedUpdateArchitecture" xml:space="preserve">
+    <value>不支持此更新的系统架构。</value>
+  </data>
+  <data name="ErrorUpdateAssetSource" xml:space="preserve">
+    <value>下载的更新文件并非来自此仓库的发行版本。</value>
+  </data>
+  <data name="ErrorUpdateChecksumMissing" xml:space="preserve">
+    <value>此发行版本没有有效的 SHA-256 校验和。请从 GitHub 手动下载。</value>
+  </data>
+  <data name="ErrorUpdatedICloudTermsRequired" xml:space="preserve">
+    <value>Apple 要求你接受更新后的 iCloud 条款。</value>
+  </data>
+  <data name="ErrorUpdatedReminderMissing" xml:space="preserve">
+    <value>iCloud 未返回已更改的提醒事项。</value>
+  </data>
+  <data name="ErrorUpdateInstallationUnavailable" xml:space="preserve">
+    <value>自动安装更新仅适用于通过安装程序安装的版本。</value>
+  </data>
+  <data name="ErrorUpdateInstallerLaunch" xml:space="preserve">
+    <value>Windows 无法启动更新安装程序。</value>
+  </data>
+  <data name="ErrorUpdateInstallerMissing" xml:space="preserve">
+    <value>此发行版本暂未提供 {0} 安装程序。</value>
+  </data>
+  <data name="ErrorUpdateInstallerSize" xml:space="preserve">
+    <value>更新安装程序的文件大小无效。</value>
+  </data>
+  <data name="ErrorUpdateSizeExceeded" xml:space="preserve">
+    <value>下载的更新文件超过预期大小。</value>
+  </data>
+  <data name="ErrorUpdateVerificationFailed" xml:space="preserve">
+    <value>更新验证失败，安装程序未运行。</value>
+  </data>
+  <data name="ErrorVerificationAccepted" xml:space="preserve">
+    <value>Apple 已接受验证码，但 iCloud 账户登录失败{0}。请重试，或登录 iCloud.com 检查账户。</value>
+  </data>
+  <data name="ErrorVerificationAppleReason" xml:space="preserve">
+    <value>{0} 请使用最新一条消息中的验证码。</value>
+  </data>
+  <data name="ErrorVerificationCodeLength" xml:space="preserve">
+    <value>验证码必须为六位数字</value>
+  </data>
+  <data name="ErrorVerificationCodeRequired" xml:space="preserve">
+    <value>请输入验证码以完成登录。</value>
+  </data>
+  <data name="ErrorVerificationIncomplete" xml:space="preserve">
+    <value>Apple 尚未验证此会话。请重新登录。</value>
+  </data>
+  <data name="ErrorVerificationNoAppleReason" xml:space="preserve">
+    <value>Apple 拒绝了此验证码，未说明原因（HTTP {0}）。请使用最新一条消息中的验证码。</value>
+  </data>
+  <data name="ErrorVerificationTrustFailed" xml:space="preserve">
+    <value>Apple 已接受验证码，但未将此会话设为受信任。请重新登录。</value>
+  </data>
+  <data name="ErrorVerificationWrongCode" xml:space="preserve">
+    <value>验证码不正确。请检查六位数字，或请求新的验证码。</value>
+  </data>
+  <data name="Every" xml:space="preserve">
+    <value>每隔</value>
+  </data>
+  <data name="EveryDays" xml:space="preserve">
+    <value>每隔（天）</value>
+  </data>
+  <data name="EveryMonths" xml:space="preserve">
+    <value>每隔（月）</value>
+  </data>
+  <data name="EveryWeeks" xml:space="preserve">
+    <value>每隔（周）</value>
+  </data>
+  <data name="EveryYears" xml:space="preserve">
+    <value>每隔（年）</value>
+  </data>
+  <data name="ExpandSubtasksOf" xml:space="preserve">
+    <value>展开“{0}”的子任务</value>
+  </data>
+  <data name="ExploreTheUIWithSampleDataButton.Content" xml:space="preserve">
+    <value>使用示例数据体验应用</value>
+  </data>
+  <data name="FilteredByTag" xml:space="preserve">
+    <value>已按标签筛选</value>
+  </data>
+  <data name="FirstListInSidebar" xml:space="preserve">
+    <value>边栏中的首个列表</value>
+  </data>
+  <data name="Flagged" xml:space="preserve">
+    <value>已标记</value>
+  </data>
+  <data name="GateStatus.Text" xml:space="preserve">
+    <value>正在启动同步服务…</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>常规</value>
+  </data>
+  <data name="GeneralSettingsDescription" xml:space="preserve">
+    <value>外观和提醒事项的默认设置。</value>
+  </data>
+  <data name="Gray" xml:space="preserve">
+    <value>灰色</value>
+  </data>
+  <data name="Green" xml:space="preserve">
+    <value>绿色</value>
+  </data>
+  <data name="Heart" xml:space="preserve">
+    <value>爱心</value>
+  </data>
+  <data name="High" xml:space="preserve">
+    <value>高</value>
+  </data>
+  <data name="HighComboBoxItem.Content" xml:space="preserve">
+    <value>高</value>
+  </data>
+  <data name="HighPriority" xml:space="preserve">
+    <value>高优先级</value>
+  </data>
+  <data name="Home" xml:space="preserve">
+    <value>主页</value>
+  </data>
+  <data name="ICloudAccount" xml:space="preserve">
+    <value>iCloud 账户</value>
+  </data>
+  <data name="ICloudSetup" xml:space="preserve">
+    <value>iCloud 设置</value>
+  </data>
+  <data name="ICloudSetupAndTroubleshooting" xml:space="preserve">
+    <value>iCloud 设置与故障排除</value>
+  </data>
+  <data name="ICloudSync" xml:space="preserve">
+    <value>iCloud 同步</value>
+  </data>
+  <data name="ICloudTermsDescription" xml:space="preserve">
+    <value>请先接受 Apple 更新后的条款，再进行同步。</value>
+  </data>
+  <data name="Icon" xml:space="preserve">
+    <value>图标</value>
+  </data>
+  <data name="Inbox" xml:space="preserve">
+    <value>收件箱</value>
+  </data>
+  <data name="InstallAndRestart" xml:space="preserve">
+    <value>安装并重启</value>
+  </data>
+  <data name="InstallUpdate" xml:space="preserve">
+    <value>安装更新？</value>
+  </data>
+  <data name="ItsDetailsWillAppearHereTextBlock.Text" xml:space="preserve">
+    <value>详情将显示在此处。</value>
+  </data>
+  <data name="KeepICloud" xml:space="preserve">
+    <value>保留 iCloud 版本</value>
+  </data>
+  <data name="KeepThisPC" xml:space="preserve">
+    <value>保留此电脑上的版本</value>
+  </data>
+  <data name="LastSyncedAt" xml:space="preserve">
+    <value>上次同步于 {0:g}</value>
+  </data>
+  <data name="Later" xml:space="preserve">
+    <value>稍后</value>
+  </data>
+  <data name="Layout" xml:space="preserve">
+    <value>布局</value>
+  </data>
+  <data name="LeaveLocalAccount" xml:space="preserve">
+    <value>退出本地账户</value>
+  </data>
+  <data name="LeaveSampleData" xml:space="preserve">
+    <value>退出示例数据模式</value>
+  </data>
+  <data name="LeaveSessionDescription" xml:space="preserve">
+    <value>退出当前会话，返回登录页面。</value>
+  </data>
+  <data name="Light" xml:space="preserve">
+    <value>浅色</value>
+  </data>
+  <data name="Links" xml:space="preserve">
+    <value>链接</value>
+  </data>
+  <data name="List" xml:space="preserve">
+    <value>列表</value>
+  </data>
+  <data name="ListAppearanceStorageDescription" xml:space="preserve">
+    <value>图标、颜色和列表顺序均保存在此电脑上。</value>
+  </data>
+  <data name="LocalAccount" xml:space="preserve">
+    <value>本地账户</value>
+  </data>
+  <data name="LocalAccountClearCacheUnavailable" xml:space="preserve">
+    <value>这些提醒事项仅保存在此电脑上，没有可清除的下载缓存。</value>
+  </data>
+  <data name="LocalAccountRecoveryDescription" xml:space="preserve">
+    <value>这些提醒事项仅保存在此电脑上，没有可恢复的 iCloud 副本。</value>
+  </data>
+  <data name="LocalAccountSettingsDescription" xml:space="preserve">
+    <value>管理本地会话。</value>
+  </data>
+  <data name="LocalAccountStartedDescription" xml:space="preserve">
+    <value>提醒事项保存在此电脑上。iCloud 同步已关闭。</value>
+  </data>
+  <data name="LocalAccountSyncDisabled" xml:space="preserve">
+    <value>此账户将提醒事项保存在此电脑上。iCloud 同步已关闭。</value>
+  </data>
+  <data name="LocalStorage" xml:space="preserve">
+    <value>本地存储</value>
+  </data>
+  <data name="LogFolder" xml:space="preserve">
+    <value>日志文件夹</value>
+  </data>
+  <data name="Low" xml:space="preserve">
+    <value>低</value>
+  </data>
+  <data name="LowComboBoxItem.Content" xml:space="preserve">
+    <value>低</value>
+  </data>
+  <data name="LowPriority" xml:space="preserve">
+    <value>低优先级</value>
+  </data>
+  <data name="ManageTagsInAppleRemindersTextBlock.Text" xml:space="preserve">
+    <value>在 Apple 的“提醒事项”中管理标签。</value>
+  </data>
+  <data name="ManualRadioMenuFlyoutItem.Text" xml:space="preserve">
+    <value>手动</value>
+  </data>
+  <data name="MarkReminderCompleteCheckBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>将提醒事项标为已完成</value>
+  </data>
+  <data name="MatchingReminderCountMany" xml:space="preserve">
+    <value>{0:N0} 条匹配的提醒事项</value>
+  </data>
+  <data name="MatchingReminderCountOne" xml:space="preserve">
+    <value>{0} 条匹配的提醒事项</value>
+  </data>
+  <data name="MatchWindows" xml:space="preserve">
+    <value>跟随 Windows</value>
+  </data>
+  <data name="Medium" xml:space="preserve">
+    <value>中</value>
+  </data>
+  <data name="MediumComboBoxItem.Content" xml:space="preserve">
+    <value>中</value>
+  </data>
+  <data name="MediumPriority" xml:space="preserve">
+    <value>中优先级</value>
+  </data>
+  <data name="MinutesBetweenAutomaticSyncs" xml:space="preserve">
+    <value>每次自动同步的间隔时间（分钟）。</value>
+  </data>
+  <data name="Monthly" xml:space="preserve">
+    <value>每月</value>
+  </data>
+  <data name="MonthlyComboBoxItem.Content" xml:space="preserve">
+    <value>每月</value>
+  </data>
+  <data name="MoreOptions" xml:space="preserve">
+    <value>更多选项</value>
+  </data>
+  <data name="MoveDown" xml:space="preserve">
+    <value>下移</value>
+  </data>
+  <data name="MoveUp" xml:space="preserve">
+    <value>上移</value>
+  </data>
+  <data name="MyListsNavigationViewItemHeader.Content" xml:space="preserve">
+    <value>我的列表</value>
+  </data>
+  <data name="Navigation.PaneTitle" xml:space="preserve">
+    <value>Apple Reminders on Windows</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>永不</value>
+  </data>
+  <data name="NeverComboBoxItem.Content" xml:space="preserve">
+    <value>永不</value>
+  </data>
+  <data name="NeverSynced" xml:space="preserve">
+    <value>尚未完成过同步</value>
+  </data>
+  <data name="NewReminder" xml:space="preserve">
+    <value>新建提醒事项</value>
+  </data>
+  <data name="NewReminderTitlePlaceholder" xml:space="preserve">
+    <value>要做什么？</value>
+  </data>
+  <data name="NewSubtask" xml:space="preserve">
+    <value>新建子任务</value>
+  </data>
+  <data name="NewTask" xml:space="preserve">
+    <value>新建任务</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>下一步</value>
+  </data>
+  <data name="NoChangesToDiscard" xml:space="preserve">
+    <value>没有可丢弃的未同步更改。</value>
+  </data>
+  <data name="NoChangesWereDiscarded" xml:space="preserve">
+    <value>未丢弃任何更改。</value>
+  </data>
+  <data name="NoMatchingReminders" xml:space="preserve">
+    <value>没有匹配的提醒事项</value>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>无</value>
+  </data>
+  <data name="NoneComboBoxItem.Content" xml:space="preserve">
+    <value>无</value>
+  </data>
+  <data name="NoRemindersHere" xml:space="preserve">
+    <value>此处没有提醒事项</value>
+  </data>
+  <data name="NotifyAllDayDate" xml:space="preserve">
+    <value>{0:ddd dd MMM}</value>
+  </data>
+  <data name="NotifyDueMany" xml:space="preserve">
+    <value>{0} 条提醒事项已到期</value>
+  </data>
+  <data name="NotifyMissedMany" xml:space="preserve">
+    <value>你离开期间有 {0} 条提醒事项到期</value>
+  </data>
+  <data name="NotifyMissedOne" xml:space="preserve">
+    <value>你离开期间有 {0} 条提醒事项到期</value>
+  </data>
+  <data name="NotifyNamesAndMore" xml:space="preserve">
+    <value>{0}，另有 {1} 条</value>
+  </data>
+  <data name="NotifyNameSeparator" xml:space="preserve">
+    <value>、</value>
+  </data>
+  <data name="NotifyTimedDate" xml:space="preserve">
+    <value>{0:ddd dd MMM}，{0:t}</value>
+  </data>
+  <data name="NoUnsyncedChangesOrConflicts" xml:space="preserve">
+    <value>没有未同步的更改或冲突。</value>
+  </data>
+  <data name="NoUpdateAvailable" xml:space="preserve">
+    <value>没有更新的稳定版本。</value>
+  </data>
+  <data name="OpenAddressInBrowser" xml:space="preserve">
+    <value>在浏览器中打开此地址：{0}</value>
+  </data>
+  <data name="OpenDiagnosticLogFolderButton.Content" xml:space="preserve">
+    <value>打开诊断日志文件夹</value>
+  </data>
+  <data name="OpenFolderInExplorer" xml:space="preserve">
+    <value>在文件资源管理器中打开此文件夹：{0}</value>
+  </data>
+  <data name="OpenReleases" xml:space="preserve">
+    <value>打开发行版本页面</value>
+  </data>
+  <data name="OpenYourBrowser" xml:space="preserve">
+    <value>打开浏览器</value>
+  </data>
+  <data name="Orange" xml:space="preserve">
+    <value>橙色</value>
+  </data>
+  <data name="OrEnterYourAccountForTextTextBlock.Text" xml:space="preserve">
+    <value>或输入账户信息以使用短信验证</value>
+  </data>
+  <data name="Overdue" xml:space="preserve">
+    <value>已逾期</value>
+  </data>
+  <data name="PaneDivider.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>调整提醒事项详情窗格的大小</value>
+  </data>
+  <data name="PaneDivider.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>拖动可调整大小。分隔线位于任一边缘时，选择任务会全宽显示详情。双击或按 Home 键可恢复自动调整大小，也可用方向键调整大小。</value>
+  </data>
+  <data name="PasswordBox.Header" xml:space="preserve">
+    <value>密码</value>
+  </data>
+  <data name="PendingChangesOrConflictMany" xml:space="preserve">
+    <value>{0} 项未同步的更改或冲突</value>
+  </data>
+  <data name="PendingChangesOrConflictOne" xml:space="preserve">
+    <value>{0} 项未同步的更改或冲突</value>
+  </data>
+  <data name="Pink" xml:space="preserve">
+    <value>粉色</value>
+  </data>
+  <data name="PreferredDetailsWidth" xml:space="preserve">
+    <value>首选详情窗格宽度（%）</value>
+  </data>
+  <data name="PreparingDownload" xml:space="preserve">
+    <value>正在准备下载…</value>
+  </data>
+  <data name="Priority" xml:space="preserve">
+    <value>优先级</value>
+  </data>
+  <data name="PriorityRadioMenuFlyoutItem.Text" xml:space="preserve">
+    <value>优先级</value>
+  </data>
+  <data name="PrivacyPolicy" xml:space="preserve">
+    <value>隐私政策</value>
+  </data>
+  <data name="PrivacyPolicyHyperlinkButton.Content" xml:space="preserve">
+    <value>隐私政策</value>
+  </data>
+  <data name="PrivacyPolicyMissing" xml:space="preserve">
+    <value>缺少随应用附带的隐私政策。</value>
+  </data>
+  <data name="Purple" xml:space="preserve">
+    <value>紫色</value>
+  </data>
+  <data name="QueuedChangeCountMany" xml:space="preserve">
+    <value>{0} 项排队中的更改</value>
+  </data>
+  <data name="QueuedChangeCountOne" xml:space="preserve">
+    <value>{0} 项排队中的更改</value>
+  </data>
+  <data name="QueuedChangesReviewDescription" xml:space="preserve">
+    <value>有 {0} 项排队中的更改或冲突。请先查看受影响的任务，再决定是否丢弃更改。</value>
+  </data>
+  <data name="RecoveryPreviewWindowTitle" xml:space="preserve">
+    <value>Apple Reminders on Windows · 恢复预览</value>
+  </data>
+  <data name="Red" xml:space="preserve">
+    <value>红色</value>
+  </data>
+  <data name="RefreshList" xml:space="preserve">
+    <value>刷新列表</value>
+  </data>
+  <data name="Reload" xml:space="preserve">
+    <value>重新加载</value>
+  </data>
+  <data name="Reminder" xml:space="preserve">
+    <value>提醒事项</value>
+  </data>
+  <data name="ReminderCountMany" xml:space="preserve">
+    <value>{0:N0} 条提醒事项</value>
+  </data>
+  <data name="ReminderCountOne" xml:space="preserve">
+    <value>{0} 条提醒事项</value>
+  </data>
+  <data name="ReminderListEmptyDescription" xml:space="preserve">
+    <value>有需要时可在这里添加提醒事项。</value>
+  </data>
+  <data name="ReminderMetadataSeparator" xml:space="preserve">
+    <value>  ·  </value>
+  </data>
+  <data name="Reminders" xml:space="preserve">
+    <value>提醒事项</value>
+  </data>
+  <data name="RemindersAppearWhenCompleted" xml:space="preserve">
+    <value>已完成的提醒事项会显示在这里。</value>
+  </data>
+  <data name="RemindersAppearWhenDeleted" xml:space="preserve">
+    <value>已删除的提醒事项会显示在这里。</value>
+  </data>
+  <data name="ReminderSavedRefreshFailed" xml:space="preserve">
+    <value>提醒事项已保存，但刷新失败</value>
+  </data>
+  <data name="ReminderSectionAfternoon" xml:space="preserve">
+    <value>下午</value>
+  </data>
+  <data name="ReminderSectionAllDay" xml:space="preserve">
+    <value>全天</value>
+  </data>
+  <data name="ReminderSectionEvening" xml:space="preserve">
+    <value>晚上</value>
+  </data>
+  <data name="ReminderSectionLater" xml:space="preserve">
+    <value>更晚</value>
+  </data>
+  <data name="ReminderSectionMorning" xml:space="preserve">
+    <value>上午</value>
+  </data>
+  <data name="ReminderSectionNextMonth" xml:space="preserve">
+    <value>下个月</value>
+  </data>
+  <data name="ReminderSectionNextWeek" xml:space="preserve">
+    <value>下周</value>
+  </data>
+  <data name="ReminderSectionNextYear" xml:space="preserve">
+    <value>明年</value>
+  </data>
+  <data name="ReminderSectionNoDate" xml:space="preserve">
+    <value>无日期</value>
+  </data>
+  <data name="ReminderSectionOverdue" xml:space="preserve">
+    <value>已逾期</value>
+  </data>
+  <data name="ReminderSectionThisMonth" xml:space="preserve">
+    <value>本月</value>
+  </data>
+  <data name="ReminderSectionThisWeek" xml:space="preserve">
+    <value>本周</value>
+  </data>
+  <data name="ReminderSectionThisYear" xml:space="preserve">
+    <value>今年</value>
+  </data>
+  <data name="ReminderSectionToday" xml:space="preserve">
+    <value>今天</value>
+  </data>
+  <data name="ReminderSectionTomorrow" xml:space="preserve">
+    <value>明天</value>
+  </data>
+  <data name="RemindersForWindowsIconImage.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Apple Reminders on Windows 图标</value>
+  </data>
+  <data name="RemindersForWindowsTextBlock.Text" xml:space="preserve">
+    <value>Apple Reminders on Windows</value>
+  </data>
+  <data name="RemindersStayOnThisPC" xml:space="preserve">
+    <value>提醒事项仅保存在此电脑上。</value>
+  </data>
+  <data name="Repeat" xml:space="preserve">
+    <value>重复</value>
+  </data>
+  <data name="RepeatEveryDays" xml:space="preserve">
+    <value>每 {0} 天</value>
+  </data>
+  <data name="RepeatEveryIntervals" xml:space="preserve">
+    <value>每隔 {0} 个周期</value>
+  </data>
+  <data name="RepeatEveryMonths" xml:space="preserve">
+    <value>每 {0} 个月</value>
+  </data>
+  <data name="RepeatEveryWeeks" xml:space="preserve">
+    <value>每 {0} 周</value>
+  </data>
+  <data name="RepeatEveryYears" xml:space="preserve">
+    <value>每 {0} 年</value>
+  </data>
+  <data name="RepeatNeedsDueDate" xml:space="preserve">
+    <value>请先设置到期日期，再设置重复。</value>
+  </data>
+  <data name="Repeats" xml:space="preserve">
+    <value>重复</value>
+  </data>
+  <data name="ResendCode.Content" xml:space="preserve">
+    <value>重新发送验证码</value>
+  </data>
+  <data name="ResolveConflictDescription" xml:space="preserve">
+    <value>要保留在此电脑上编辑的版本，还是 iCloud 上的当前版本？</value>
+  </data>
+  <data name="ResolveSyncConflict" xml:space="preserve">
+    <value>解决同步冲突</value>
+  </data>
+  <data name="RestartSignIn.Content" xml:space="preserve">
+    <value>重新登录</value>
+  </data>
+  <data name="RestoringSelectedReminders" xml:space="preserve">
+    <value>正在恢复选中的提醒事项</value>
+  </data>
+  <data name="ReturnToReminders" xml:space="preserve">
+    <value>返回提醒事项</value>
+  </data>
+  <data name="ReturnToSignIn" xml:space="preserve">
+    <value>返回登录</value>
+  </data>
+  <data name="ReviewICloudSetupButton.Content" xml:space="preserve">
+    <value>查看 iCloud 设置指南</value>
+  </data>
+  <data name="ReviewSyncSettings" xml:space="preserve">
+    <value>查看同步设置</value>
+  </data>
+  <data name="SampleData" xml:space="preserve">
+    <value>示例数据</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="SaveButton.Content" xml:space="preserve">
+    <value>保存更改</value>
+  </data>
+  <data name="SaveChanges" xml:space="preserve">
+    <value>保存更改</value>
+  </data>
+  <data name="SaveTaskChanges" xml:space="preserve">
+    <value>要保存对任务的更改吗？</value>
+  </data>
+  <data name="SaveYourChangesFirst" xml:space="preserve">
+    <value>请先保存更改</value>
+  </data>
+  <data name="Schedule" xml:space="preserve">
+    <value>日程</value>
+  </data>
+  <data name="ScheduleTextBlock.Text" xml:space="preserve">
+    <value>日程</value>
+  </data>
+  <data name="School" xml:space="preserve">
+    <value>学习</value>
+  </data>
+  <data name="SearchBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>搜索提醒事项</value>
+  </data>
+  <data name="SearchBox.PlaceholderText" xml:space="preserve">
+    <value>搜索提醒事项</value>
+  </data>
+  <data name="SearchEmptyDescription" xml:space="preserve">
+    <value>请尝试其他搜索词，或清空搜索框。</value>
+  </data>
+  <data name="SelectAll" xml:space="preserve">
+    <value>全选</value>
+  </data>
+  <data name="SelectAReminderTextBlock.Text" xml:space="preserve">
+    <value>选择一条提醒事项</value>
+  </data>
+  <data name="SelectedChangesDiscarded" xml:space="preserve">
+    <value>已丢弃选中的更改</value>
+  </data>
+  <data name="SetADueDate" xml:space="preserve">
+    <value>设置到期日期</value>
+  </data>
+  <data name="SetDueDate" xml:space="preserve">
+    <value>设置到期日期</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="SettingsAndStorageHyperlinkButton.Content" xml:space="preserve">
+    <value>设置与存储</value>
+  </data>
+  <data name="SettingsCategories" xml:space="preserve">
+    <value>设置类别</value>
+  </data>
+  <data name="SettingsCategory" xml:space="preserve">
+    <value>设置类别</value>
+  </data>
+  <data name="SetupAndHelp" xml:space="preserve">
+    <value>设置向导与帮助</value>
+  </data>
+  <data name="SetupBack.Content" xml:space="preserve">
+    <value>上一步</value>
+  </data>
+  <data name="SetupDataProtectionDetails" xml:space="preserve">
+    <value>在 Mac 上，打开“系统设置” → 你的姓名 → iCloud → “高级数据保护”。如果已开启，请先阅读 Apple 的指南，再决定是否关闭。</value>
+  </data>
+  <data name="SetupDataProtectionDetailsHeading" xml:space="preserve">
+    <value>Mac 操作步骤</value>
+  </data>
+  <data name="SetupDataProtectionInstructions" xml:space="preserve">
+    <value>在 iPhone 或 iPad 上
+“设置” → 你的姓名 → iCloud → “高级数据保护”</value>
+  </data>
+  <data name="SetupDataProtectionLink" xml:space="preserve">
+    <value>阅读 Apple 的数据保护指南</value>
+  </data>
+  <data name="SetupDataProtectionNote" xml:space="preserve">
+    <value>关闭此功能会更改整个 iCloud 账户的加密保护。你也可以保持开启，并使用 Apple 的“提醒事项”应用。</value>
+  </data>
+  <data name="SetupDataProtectionSummary" xml:space="preserve">
+    <value>目前使用此应用需要关闭“高级数据保护”。</value>
+  </data>
+  <data name="SetupDataProtectionTitle" xml:space="preserve">
+    <value>检查高级数据保护</value>
+  </data>
+  <data name="SetupDemo.Content" xml:space="preserve">
+    <value>试用示例数据</value>
+  </data>
+  <data name="SetupGuideHeading.Text" xml:space="preserve">
+    <value>iCloud 设置向导</value>
+  </data>
+  <data name="SetupHelpLink.Content" xml:space="preserve">
+    <value>iCloud 设置与故障排除</value>
+  </data>
+  <data name="SetupImportantNote.Title" xml:space="preserve">
+    <value>更改前须知</value>
+  </data>
+  <data name="SetupNext.Content" xml:space="preserve">
+    <value>下一步</value>
+  </data>
+  <data name="SetupRemindersDetails" xml:space="preserve">
+    <value>在 Mac 上，打开“系统设置” → 你的姓名 → iCloud，然后开启“提醒事项”。如果你之前没有使用过 iCloud 提醒事项，请在 Apple 的“提醒事项”应用中找到 iCloud 部分并创建一个列表。</value>
+  </data>
+  <data name="SetupRemindersDetailsHeading" xml:space="preserve">
+    <value>Mac 操作步骤和账户信息</value>
+  </data>
+  <data name="SetupRemindersInstructions" xml:space="preserve">
+    <value>在 iPhone 或 iPad 上
+“设置” → 你的姓名 → iCloud → “查看全部”（或“显示全部”）
+开启“提醒事项”。</value>
+  </data>
+  <data name="SetupRemindersLink" xml:space="preserve">
+    <value>打开 iCloud 提醒事项</value>
+  </data>
+  <data name="SetupRemindersNote" xml:space="preserve">
+    <value>请使用 Apple 账户的常规密码登录。此应用不支持 App 专用密码。</value>
+  </data>
+  <data name="SetupRemindersSummary" xml:space="preserve">
+    <value>请使用存有提醒事项列表的 Apple 账户。</value>
+  </data>
+  <data name="SetupRemindersTitle" xml:space="preserve">
+    <value>开启 iCloud 提醒事项</value>
+  </data>
+  <data name="SetupReturn.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>关闭设置向导</value>
+  </data>
+  <data name="SetupStepCount" xml:space="preserve">
+    <value>第 {0} 步，共 {1} 步</value>
+  </data>
+  <data name="SetupSupportActions.Header" xml:space="preserve">
+    <value>获取此错误的帮助</value>
+  </data>
+  <data name="SetupVerificationDetails" xml:space="preserve">
+    <value>在 Apple 设备上，打开“设置” → 你的姓名 → “登录与安全性” → “双重认证”。开启双重认证，并确认受信任电话号码可以接收短信。你也可以在 account.apple.com 管理受信任号码。</value>
+  </data>
+  <data name="SetupVerificationDetailsHeading" xml:space="preserve">
+    <value>验证选项</value>
+  </data>
+  <data name="SetupVerificationInstructions" xml:space="preserve">
+    <value>请将受信任的 Apple 设备或手机放在手边。
+登录时，你可以选择验证方式。</value>
+  </data>
+  <data name="SetupVerificationLink" xml:space="preserve">
+    <value>管理 Apple 账户</value>
+  </data>
+  <data name="SetupVerificationNote" xml:space="preserve">
+    <value>选择“使用 Apple 设备登录”后，按 Apple 设备上的提示操作。出现“信任”选项时，请选择该选项。如果在应用内使用短信验证，请输入最新一条短信中的六位验证码。此电脑会记住受信任的会话，直至会话过期或被 Apple 撤销。</value>
+  </data>
+  <data name="SetupVerificationSummary" xml:space="preserve">
+    <value>使用 Apple 设备或短信验证身份。</value>
+  </data>
+  <data name="SetupVerificationTitle" xml:space="preserve">
+    <value>选择验证方式</value>
+  </data>
+  <data name="SetupVerifyListsDetails" xml:space="preserve">
+    <value>通过下方链接打开 iCloud 提醒事项。完成账户设置，并接受 Apple 提示的任何新版 iCloud 条款。确认 iCloud 列表已显示后，返回此处登录。请将受信任的 Apple 设备或手机放在手边，以便验证。</value>
+  </data>
+  <data name="SetupVerifyListsDetailsHeading" xml:space="preserve">
+    <value>故障排除</value>
+  </data>
+  <data name="SetupVerifyListsInstructions" xml:space="preserve">
+    <value>打开下方的 iCloud 提醒事项并登录。
+如果有更新的条款，请接受，然后确认列表是否显示。</value>
+  </data>
+  <data name="SetupVerifyListsLink" xml:space="preserve">
+    <value>打开 iCloud 提醒事项</value>
+  </data>
+  <data name="SetupVerifyListsNote" xml:space="preserve">
+    <value>如果在浏览器中可以登录，但此应用登录失败，请查看具体错误和设置指南。应用无法检查这些账户设置，因此仅凭登录失败无法判断设置是否有误。你也可以在故障排除中打开诊断日志文件夹。</value>
+  </data>
+  <data name="SetupVerifyListsSummary" xml:space="preserve">
+    <value>确认可以在 iCloud.com 上查看提醒事项。</value>
+  </data>
+  <data name="SetupVerifyListsTitle" xml:space="preserve">
+    <value>检查列表</value>
+  </data>
+  <data name="SetupWebAccessDetails" xml:space="preserve">
+    <value>在 Apple 设备的 iCloud 设置中，开启“在网页上访问 iCloud 数据”。在较新的系统版本中，请在该设置中打开“iCloud.com”（或“在 iCloud.com 上访问数据”），然后开启“允许访问数据”。</value>
+  </data>
+  <data name="SetupWebAccessDetailsHeading" xml:space="preserve">
+    <value>设置项的其他名称</value>
+  </data>
+  <data name="SetupWebAccessInstructions" xml:space="preserve">
+    <value>在 Apple 设备的 iCloud 设置中，开启“在网页上访问 iCloud 数据”。</value>
+  </data>
+  <data name="SetupWebAccessLink" xml:space="preserve">
+    <value>阅读 Apple 的网页访问指南</value>
+  </data>
+  <data name="SetupWebAccessNote" xml:space="preserve">
+    <value>开启“高级数据保护”通常会关闭网页访问。更改“高级数据保护”后，仍需单独检查网页访问设置。如果通过浏览器访问时需要在设备上额外批准，请在浏览器中完成该流程，此应用无法处理。</value>
+  </data>
+  <data name="SetupWebAccessSummary" xml:space="preserve">
+    <value>允许此应用通过 iCloud 网页服务访问提醒事项。</value>
+  </data>
+  <data name="SetupWebAccessTitle" xml:space="preserve">
+    <value>允许网页访问</value>
+  </data>
+  <data name="ShareTheErrorAndAppTextBlock.Text" xml:space="preserve">
+    <value>请将错误信息和 app.log 提供给技术支持。请勿发送密码或验证码。</value>
+  </data>
+  <data name="Shopping" xml:space="preserve">
+    <value>购物</value>
+  </data>
+  <data name="ShowCompleted.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>显示已完成的提醒事项</value>
+  </data>
+  <data name="ShowCompleted.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>显示已完成的提醒事项</value>
+  </data>
+  <data name="ShowCompleted.Content" xml:space="preserve">
+    <value>显示已完成</value>
+  </data>
+  <data name="SignedIn" xml:space="preserve">
+    <value>已登录</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>登录</value>
+  </data>
+  <data name="SignInCodeAcceptedNext" xml:space="preserve">
+    <value>验证码验证通过。请确认此账户可以打开 iCloud.com 上的“提醒事项”，并在那里完成账户设置或接受更新的条款。检查网页访问设置后，再尝试登录。</value>
+  </data>
+  <data name="SignInCodeAcceptedTitle" xml:space="preserve">
+    <value>验证码验证通过，但账户登录失败</value>
+  </data>
+  <data name="SignInDeliveryNext" xml:space="preserve">
+    <value>请确认受信任电话号码可以接收短信，然后重试。如果收到短信后仍无法完成验证，请参阅设置指南。</value>
+  </data>
+  <data name="SignInDeliveryTitle" xml:space="preserve">
+    <value>无法请求验证码</value>
+  </data>
+  <data name="SignInErrorCopied" xml:space="preserve">
+    <value>已复制错误信息</value>
+  </data>
+  <data name="SignInErrorCopiedDescription" xml:space="preserve">
+    <value>请将错误信息粘贴到发给技术支持的消息中。你也可以附上诊断日志文件夹中的 app.log。</value>
+  </data>
+  <data name="SignInErrorCopyFailedDescription" xml:space="preserve">
+    <value>请选中并复制错误信息，或使用诊断日志文件夹中的 app.log。</value>
+  </data>
+  <data name="SignInFailureDetails" xml:space="preserve">
+    <value>{0}
+
+{1}</value>
+  </data>
+  <data name="SigningIn" xml:space="preserve">
+    <value>正在登录…</value>
+  </data>
+  <data name="SigningOut" xml:space="preserve">
+    <value>正在退出登录…</value>
+  </data>
+  <data name="SigningYouBackIn" xml:space="preserve">
+    <value>正在重新登录…</value>
+  </data>
+  <data name="SignInMissingPhoneNext" xml:space="preserve">
+    <value>选择“使用 Apple 设备验证”，在 Apple 的登录页面完成验证，或在 Apple 账户设置中添加一个能接收短信的受信任电话号码。</value>
+  </data>
+  <data name="SignInMissingPhoneTitle" xml:space="preserve">
+    <value>需要受信任的电话号码</value>
+  </data>
+  <data name="SignInNeeded" xml:space="preserve">
+    <value>需要登录</value>
+  </data>
+  <data name="SignInNetworkNext" xml:space="preserve">
+    <value>请检查网络连接并重试。如果 iCloud.com 可以访问，但此应用仍然失败，请参阅设置指南并打开诊断日志文件夹。此错误本身无法确定密码或账户设置是否有误。</value>
+  </data>
+  <data name="SignInNetworkTitle" xml:space="preserve">
+    <value>无法完成与 iCloud 的连接</value>
+  </data>
+  <data name="SignInReasonUnknown" xml:space="preserve">
+    <value>未能完成登录。</value>
+  </data>
+  <data name="SignInReasonWithHttpStatus" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="SignInRejectedNext" xml:space="preserve">
+    <value>请在 iCloud.com 上检查 Apple 账户和常规密码是否正确。验证会话也可能已过期，可视需要重新登录。重试前，请检查账户设置。</value>
+  </data>
+  <data name="SignInRejectedTitle" xml:space="preserve">
+    <value>Apple 拒绝了本次登录请求</value>
+  </data>
+  <data name="SignInRequestTimedOut" xml:space="preserve">
+    <value>iCloud 请求超时。请重试。</value>
+  </data>
+  <data name="SignInTermsNext" xml:space="preserve">
+    <value>使用同一账户打开 iCloud.com，阅读并接受 Apple 更新的条款，然后返回此处重新登录。</value>
+  </data>
+  <data name="SignInTermsTitle" xml:space="preserve">
+    <value>需要处理更新后的 iCloud 条款</value>
+  </data>
+  <data name="SignInTestWindowTitle" xml:space="preserve">
+    <value>Apple Reminders on Windows · 登录测试</value>
+  </data>
+  <data name="SignInToICloud" xml:space="preserve">
+    <value>登录 iCloud</value>
+  </data>
+  <data name="SignInToResumeSyncing" xml:space="preserve">
+    <value>登录以恢复同步</value>
+  </data>
+  <data name="SignInUnknownNext" xml:space="preserve">
+    <value>应用无法确定具体原因。请使用同一账户登录 iCloud.com 检查，并参阅设置指南。如果问题仍然存在，请查看诊断日志。</value>
+  </data>
+  <data name="SignInUnknownTitle" xml:space="preserve">
+    <value>未能完成登录</value>
+  </data>
+  <data name="SignInVerificationNext" xml:space="preserve">
+    <value>使用短信验证时，请输入最新一条短信中的六位验证码。如果要使用另一台 Apple 设备上的验证码，请选择“使用 Apple 设备验证”，然后在 Apple 页面上完成验证。如果仍无法验证，请参阅设置指南。</value>
+  </data>
+  <data name="SignInVerificationTitle" xml:space="preserve">
+    <value>未能完成验证</value>
+  </data>
+  <data name="SignInWithTextVerificationButton.Content" xml:space="preserve">
+    <value>使用短信验证登录</value>
+  </data>
+  <data name="SignOut" xml:space="preserve">
+    <value>退出登录</value>
+  </data>
+  <data name="SignOutDescription" xml:space="preserve">
+    <value>在此电脑上退出登录。已下载的提醒事项和排队中的编辑将保留，直到你重新登录或清除缓存。</value>
+  </data>
+  <data name="SignOutUnsavedChangesWarning" xml:space="preserve">
+    <value>当前打开的提醒事项有未保存的更改。</value>
+  </data>
+  <data name="SignOutWithoutSaving" xml:space="preserve">
+    <value>要退出登录且不保存更改吗？</value>
+  </data>
+  <data name="SizePanesAutomaticallyMenuFlyoutItem.Text" xml:space="preserve">
+    <value>自动调整窗格大小</value>
+  </data>
+  <data name="SomeChangesHaventSynced" xml:space="preserve">
+    <value>部分更改尚未同步</value>
+  </data>
+  <data name="SortButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>排序</value>
+  </data>
+  <data name="SortButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>为提醒事项排序</value>
+  </data>
+  <data name="Star" xml:space="preserve">
+    <value>星标</value>
+  </data>
+  <data name="SubtaskOf" xml:space="preserve">
+    <value>“{0}”的子任务</value>
+  </data>
+  <data name="SyncConflict" xml:space="preserve">
+    <value>同步冲突</value>
+  </data>
+  <data name="SyncConflictCountMany" xml:space="preserve">
+    <value>{0} 项同步冲突</value>
+  </data>
+  <data name="SyncConflictCountOne" xml:space="preserve">
+    <value>1 项同步冲突</value>
+  </data>
+  <data name="SyncConflictDescription" xml:space="preserve">
+    <value>此提醒事项在 iCloud 中也有更改。请打开同步冲突，选择要保留的版本。</value>
+  </data>
+  <data name="SyncDownloadPreview" xml:space="preserve">
+    <value>正在下载提醒事项、列表、标签和重复安排…</value>
+  </data>
+  <data name="SyncFailed" xml:space="preserve">
+    <value>同步失败</value>
+  </data>
+  <data name="Syncing" xml:space="preserve">
+    <value>正在同步</value>
+  </data>
+  <data name="SyncInterval" xml:space="preserve">
+    <value>同步间隔</value>
+  </data>
+  <data name="SyncNow" xml:space="preserve">
+    <value>立即同步</value>
+  </data>
+  <data name="SyncNowNavigationViewItem.Content" xml:space="preserve">
+    <value>立即同步</value>
+  </data>
+  <data name="SyncProgressDownloadingAll" xml:space="preserve">
+    <value>正在下载提醒事项、列表、标签和重复安排…</value>
+  </data>
+  <data name="SyncProgressDownloadingChanges" xml:space="preserve">
+    <value>正在下载有更改的提醒事项…</value>
+  </data>
+  <data name="SyncProgressFallback" xml:space="preserve">
+    <value>正在处理 {0}…</value>
+  </data>
+  <data name="SyncProgressFallbackReminders" xml:space="preserve">
+    <value>正在处理提醒事项…</value>
+  </data>
+  <data name="SyncProgressUploading" xml:space="preserve">
+    <value>正在上传排队中的更改…</value>
+  </data>
+  <data name="SyncRequestedNotice" xml:space="preserve">
+    <value>已请求同步。应用将在后台检查更改。</value>
+  </data>
+  <data name="SyncServiceNotRunning" xml:space="preserve">
+    <value>同步服务未运行。</value>
+  </data>
+  <data name="SyncServiceStarting" xml:space="preserve">
+    <value>正在启动同步服务…</value>
+  </data>
+  <data name="SyncServiceUnavailable" xml:space="preserve">
+    <value>同步服务不可用。</value>
+  </data>
+  <data name="SyncSettingsDescription" xml:space="preserve">
+    <value>让提醒事项保持最新，并处理同步问题。</value>
+  </data>
+  <data name="SyncStorage" xml:space="preserve">
+    <value>同步与存储</value>
+  </data>
+  <data name="SyncWarningConflictDescription" xml:space="preserve">
+    <value>请查看同步冲突，选择要保留的版本。</value>
+  </data>
+  <data name="SyncWarningRejectedChangeDescription" xml:space="preserve">
+    <value>iCloud 拒绝了一项排队中的更改。你的编辑已保存在此电脑上。请在“同步与存储”中查看详情。</value>
+  </data>
+  <data name="Tags" xml:space="preserve">
+    <value>标签</value>
+  </data>
+  <data name="TagsTextBlock.Text" xml:space="preserve">
+    <value>标签</value>
+  </data>
+  <data name="TaskActionsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>任务操作</value>
+  </data>
+  <data name="TaskActionsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>任务操作</value>
+  </data>
+  <data name="TaskDetailsTextBlock.Text" xml:space="preserve">
+    <value>任务详情</value>
+  </data>
+  <data name="TaskSavedRefreshFailed" xml:space="preserve">
+    <value>任务已保存，但刷新失败</value>
+  </data>
+  <data name="TaskTitle" xml:space="preserve">
+    <value>任务标题</value>
+  </data>
+  <data name="TextCode.Content" xml:space="preserve">
+    <value>通过短信发送验证码</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="ThisPCRemembersYourTrustedSessionTextBlock.Text" xml:space="preserve">
+    <value>此电脑会记住受信任的会话。Apple 有时可能要求重新验证。</value>
+  </data>
+  <data name="ThisSamplePreviewCannotDiscardReminders" xml:space="preserve">
+    <value>无法在此示例预览中丢弃提醒事项。</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>时间</value>
+  </data>
+  <data name="TitleRadioMenuFlyoutItem.Text" xml:space="preserve">
+    <value>标题</value>
+  </data>
+  <data name="Today" xml:space="preserve">
+    <value>今天</value>
+  </data>
+  <data name="TodayNavigationViewItem.Content" xml:space="preserve">
+    <value>今天</value>
+  </data>
+  <data name="Travel" xml:space="preserve">
+    <value>旅行</value>
+  </data>
+  <data name="TryAgainShortly" xml:space="preserve">
+    <value>请稍后重试。</value>
+  </data>
+  <data name="UnsyncedChanges" xml:space="preserve">
+    <value>未同步的更改</value>
+  </data>
+  <data name="UnsyncedRemindersToDiscard" xml:space="preserve">
+    <value>要丢弃的未同步提醒事项</value>
+  </data>
+  <data name="UnsyncedSummarySeparator" xml:space="preserve">
+    <value> · </value>
+  </data>
+  <data name="UntitledReminder" xml:space="preserve">
+    <value>未命名提醒事项</value>
+  </data>
+  <data name="UpcomingNavigationViewItem.Content" xml:space="preserve">
+    <value>即将到期</value>
+  </data>
+  <data name="UpdateAvailableTitle" xml:space="preserve">
+    <value>Apple Reminders on Windows {0} 已发布</value>
+  </data>
+  <data name="UpdateButton.Content" xml:space="preserve">
+    <value>安装并重启</value>
+  </data>
+  <data name="UpdateCheckInProgress" xml:space="preserve">
+    <value>已在检查更新</value>
+  </data>
+  <data name="UpdateCheckTimedOut" xml:space="preserve">
+    <value>检查更新超时。请重试。</value>
+  </data>
+  <data name="UpdatedICloudTerms" xml:space="preserve">
+    <value>更新后的 iCloud 条款</value>
+  </data>
+  <data name="UpdateDownloadProgress" xml:space="preserve">
+    <value>已下载 {0:F0}%</value>
+  </data>
+  <data name="UpdateInstallConfirmation" xml:space="preserve">
+    <value>Apple Reminders on Windows 将在安装更新时关闭，并在安装完成后重新打开。请先保存提醒事项中尚未保存的更改。</value>
+  </data>
+  <data name="UpdateInstallDescription" xml:space="preserve">
+    <value>准备好后即可安装更新并重启。提醒事项和登录状态将保留。</value>
+  </data>
+  <data name="UpdateReleaseLinkDescription" xml:space="preserve">
+    <value>请前往 GitHub 下载适用于当前便携版或打包版的新版本。</value>
+  </data>
+  <data name="UploadFailed" xml:space="preserve">
+    <value>上传失败</value>
+  </data>
+  <data name="UploadRetryDescription" xml:space="preserve">
+    <value>你的更改已保存在本地，应用将重试上传。</value>
+  </data>
+  <data name="UseAppleDeviceVerificationHyperlinkButton.Content" xml:space="preserve">
+    <value>使用 Apple 设备验证</value>
+  </data>
+  <data name="UseICloudListColor" xml:space="preserve">
+    <value>使用 iCloud 列表颜色</value>
+  </data>
+  <data name="VerificationCode" xml:space="preserve">
+    <value>验证码</value>
+  </data>
+  <data name="VerifyCode.Content" xml:space="preserve">
+    <value>验证</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>版本 {0}</value>
+  </data>
+  <data name="ViewSourceOnGitHub" xml:space="preserve">
+    <value>在 GitHub 上查看源代码</value>
+  </data>
+  <data name="ViewTitle.Text" xml:space="preserve">
+    <value>今天</value>
+  </data>
+  <data name="WaitingToSync" xml:space="preserve">
+    <value>等待同步</value>
+  </data>
+  <data name="Weekly" xml:space="preserve">
+    <value>每周</value>
+  </data>
+  <data name="WeeklyComboBoxItem.Content" xml:space="preserve">
+    <value>每周</value>
+  </data>
+  <data name="Work" xml:space="preserve">
+    <value>工作</value>
+  </data>
+  <data name="Yearly" xml:space="preserve">
+    <value>每年</value>
+  </data>
+  <data name="YearlyComboBoxItem.Content" xml:space="preserve">
+    <value>每年</value>
+  </data>
+  <data name="YoureSignedOut" xml:space="preserve">
+    <value>已退出登录</value>
+  </data>
+  <data name="YoureUpToDate" xml:space="preserve">
+    <value>已是最新版本</value>
+  </data>
+  <data name="YourICloudRemindersAtHomeOnTextBlock.Text" xml:space="preserve">
+    <value>在 Windows 上使用你的 iCloud 提醒事项。</value>
+  </data>
+  <data name="ChinaMainlandSignIn.Content" xml:space="preserve">
+    <value>iCloud（云上贵州）</value>
+  </data>
+  <data name="ErrorCacheInUse" xml:space="preserve">
+    <value>提醒事项应用已打开。请关闭另一个实例后重试。</value>
+  </data>
+  <data name="ClearDueDate" xml:space="preserve">
+    <value>清除到期日期</value>
+  </data>
+  <data name="ClearDueDateAndRepeat" xml:space="preserve">
+    <value>清除到期日期和重复设置</value>
+  </data>
+  <data name="ScheduleQuickDates" xml:space="preserve">
+    <value>快速选择日期</value>
+  </data>
+  <data name="ScheduleDayAfterTomorrow" xml:space="preserve">
+    <value>后天</value>
+  </data>
+  <data name="ScheduleInFiveDays" xml:space="preserve">
+    <value>5 天后</value>
+  </data>
+  <data name="DetailAddToToday.Content" xml:space="preserve">
+    <value>添加到“今天”</value>
+  </data>
+  <data name="SidebarSettings" xml:space="preserve">
+    <value>边栏</value>
+  </data>
+  <data name="ListOrder" xml:space="preserve">
+    <value>列表顺序</value>
+  </data>
+  <data name="SidebarSortManual" xml:space="preserve">
+    <value>手动</value>
+  </data>
+  <data name="SidebarSortAscending" xml:space="preserve">
+    <value>名称（A 到 Z）</value>
+  </data>
+  <data name="SidebarSortDescending" xml:space="preserve">
+    <value>名称（Z 到 A）</value>
+  </data>
+  <data name="SidebarManualOrderHint" xml:space="preserve">
+    <value>在手动排序模式下，可通过列表的右键菜单上移或下移该列表。</value>
+  </data>
+  <data name="UseICloudListIcon" xml:space="preserve">
+    <value>使用 iCloud 列表图标</value>
+  </data>
+  <data name="CustomListSymbol" xml:space="preserve">
+    <value>SF 符号或表情符号</value>
+  </data>
+  <data name="ListSymbolPlaceholder" xml:space="preserve">
+    <value>cart.fill 或 🛒</value>
+  </data>
+  <data name="ListSymbolFallback" xml:space="preserve">
+    <value>此符号在 Windows 上会显示为默认列表图标。</value>
+  </data>
+  <data name="MoveReminderToList" xml:space="preserve">
+    <value>移到“{0}”</value>
+  </data>
+  <data name="CouldntMoveReminder" xml:space="preserve">
+    <value>无法移动提醒事项</value>
+  </data>
+  <data name="ReminderAlreadyMoved" xml:space="preserve">
+    <value>拖动期间，此提醒事项已移到其他列表。</value>
+  </data>
+  <data name="ErrorMoveReminderChanged" xml:space="preserve">
+    <value>移动前，此提醒事项已移到其他列表或已被删除。</value>
+  </data>
+  <data name="PrintListButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>打印提醒事项列表</value>
+  </data>
+  <data name="PrintListButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>打印提醒事项列表</value>
+  </data>
+  <data name="PrintListFailed" xml:space="preserve">
+    <value>无法打印提醒事项</value>
+  </data>
+  <data name="PrintListUnavailable" xml:space="preserve">
+    <value>Windows 打印当前不可用。</value>
+  </data>
+  <data name="PrintListJobFailed" xml:space="preserve">
+    <value>Windows 未能完成打印任务。</value>
+  </data>
+  <data name="PrintListSearch" xml:space="preserve">
+    <value>搜索：{0}</value>
+  </data>
+  <data name="PrintListDue" xml:space="preserve">
+    <value>到期：{0}</value>
+  </data>
+  <data name="PrivacyPolicyResource" xml:space="preserve">
+    <value>Reminders.Windows.Privacy.zh-CN.md</value>
+  </data>
+</root>

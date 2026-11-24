@@ -25,14 +25,14 @@ internal sealed class AppUpdater
     public static Version CurrentVersion => typeof(AppUpdater).Assembly.GetName().Version ?? new Version(0, 0, 0);
     // Only the Inno installer writes this marker. Development, portable and MSIX
     // builds must not silently acquire an unrelated Inno installation.
-    public static bool CanInstall => File.Exists(Path.Combine(AppContext.BaseDirectory, "gcbd-installation.ini"))
-        && File.Exists(Path.Combine(AppContext.BaseDirectory, "gcbd-updates.ini"))
+    public static bool CanInstall => File.Exists(Path.Combine(AppContext.BaseDirectory, "reminders-installation.ini"))
+        && File.Exists(Path.Combine(AppContext.BaseDirectory, "reminders-updates.ini"))
         && File.Exists(Path.Combine(AppContext.BaseDirectory, "unins000.exe"));
 
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(15) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Reminders-for-Windows/" + CurrentVersion);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Apple-Reminders-on-Windows/" + CurrentVersion);
         client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
         return client;
     }

@@ -1,4 +1,4 @@
-; Inno Setup script for Reminders for Windows.
+; Inno Setup script for Apple Reminders on Windows.
 ;
 ; The app is built unpackaged and self-contained (WindowsPackageType=None,
 ; WindowsAppSDKSelfContained=true), so installing is genuinely just laying down
@@ -24,11 +24,14 @@
   #error IconFile must be supplied by build-installer.ps1
 #endif
 #define ProductName "Apple Reminders on Windows"
+#define ProductId "Battery-rar.AppleRemindersOnWindows"
+#define UpgradeId "{6E246184-A393-43C8-ADA2-118254DBD91E}"
 #define PreviousProductName "Reminders for Windows"
+#define TrialProductName "Reminders for Windows GCBD"
 
 [Setup]
 ; This fork has its own stable upgrade identity and installation directory.
-AppId={{6E246184-A393-43C8-ADA2-118254DBD91E}
+AppId={{#UpgradeId}
 AppName={#ProductName}
 AppVersion={#AppVersion}
 AppVerName={#ProductName} {#AppVersion}
@@ -40,11 +43,12 @@ VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#ProductName}
 
 ; Per-user install: no UAC prompt, and it matches where the app already keeps
-; its data (%LOCALAPPDATA%\RemindersForWindowsGCBD). A machine-wide install would need
+; its data (%LOCALAPPDATA%\Apple Reminders on Windows). A machine-wide install would need
 ; admin for no benefit, since nothing here is shared between users.
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-DefaultDirName={autopf}\Reminders for Windows GCBD
+DefaultDirName={code:DefaultInstallDirectory}
+UsePreviousAppDir=no
 DefaultGroupName=Battery-rar\{#ProductName}
 UsePreviousGroup=no
 DisableProgramGroupPage=yes
@@ -96,26 +100,16 @@ Name: "startup"; Description: "Start {#ProductName} when I sign in"; GroupDescri
 [Files]
 ; Install the complete self-contained app, including the C# backend library.
 #if Arch == "universal"
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: UseX64Payload
-Source: "{#Arm64SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsArm64
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini,\reminders-installation.ini,\reminders-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: UseX64Payload
+Source: "{#Arm64SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini,\reminders-installation.ini,\reminders-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsArm64
 #else
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "\installer-installation.txt,\gcbd-installation.ini,\gcbd-updates.ini,\reminders-installation.ini,\reminders-updates.ini"; Flags: ignoreversion recursesubdirs createallsubdirs
 #endif
 
 [InstallDelete]
 ; A normal installation turns off a prior opt-in for in-app installation.
-Type: files; Name: "{app}\gcbd-updates.ini"
-; Retire the shortcuts created by the trial builds of this same installation.
-Type: files; Name: "{autoprograms}\Reminders for Windows GCBD\Reminders for Windows GCBD.lnk"; Check: IsForkUpgrade
-Type: files; Name: "{autoprograms}\Reminders for Windows GCBD\{cm:UninstallProgram,Reminders for Windows GCBD}.lnk"; Check: IsForkUpgrade
-Type: dirifempty; Name: "{autoprograms}\Reminders for Windows GCBD"; Check: IsForkUpgrade
-Type: files; Name: "{autodesktop}\Reminders for Windows GCBD.lnk"; Check: IsForkUpgrade
-Type: files; Name: "{userstartup}\Reminders for Windows GCBD.lnk"; Check: IsForkUpgrade
-Type: files; Name: "{autoprograms}\Battery-rar\{#PreviousProductName}\{#PreviousProductName}.lnk"; Check: IsForkUpgrade
-Type: files; Name: "{autoprograms}\Battery-rar\{#PreviousProductName}\{cm:UninstallProgram,{#PreviousProductName}}.lnk"; Check: IsForkUpgrade
-Type: dirifempty; Name: "{autoprograms}\Battery-rar\{#PreviousProductName}"; Check: IsForkUpgrade
-Type: files; Name: "{autodesktop}\{#PreviousProductName}.lnk"; Check: IsPreviousForkShortcut('{autodesktop}')
-Type: files; Name: "{userstartup}\{#PreviousProductName}.lnk"; Check: IsPreviousForkShortcut('{userstartup}')
+Type: files; Name: "{app}\reminders-updates.ini"; Check: IsForkUpgrade
+Type: files; Name: "{app}\gcbd-updates.ini"; Check: IsForkUpgrade
 
 [Icons]
 Name: "{group}\{#ProductName}"; Filename: "{app}\Reminders.exe"
@@ -128,12 +122,18 @@ Filename: "{app}\Reminders.exe"; Description: "{cm:LaunchProgram,{#ProductName}}
 Filename: "{app}\Reminders.exe"; Flags: nowait; Check: IsAppUpdate
 
 [INI]
-Filename: "{app}\gcbd-installation.ini"; Section: "Installation"; Key: "Product"; String: "Battery-rar.RemindersForWindowsGCBD"; Flags: uninsdeleteentry uninsdeletesectionifempty
+Filename: "{app}\reminders-installation.ini"; Section: "Installation"; Key: "Product"; String: "{#ProductId}"; Flags: uninsdeleteentry uninsdeletesectionifempty
 #ifdef EnableForkInstallerUpdates
-Filename: "{app}\gcbd-updates.ini"; Section: "Installation"; Key: "Updates"; String: "Enabled"; Flags: uninsdeleteentry uninsdeletesectionifempty
+Filename: "{app}\reminders-updates.ini"; Section: "Installation"; Key: "Updates"; String: "Enabled"; Flags: uninsdeleteentry uninsdeletesectionifempty
 #endif
 
 [Code]
+const
+  UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#UpgradeId}_is1';
+
+var
+  PreviousDirectory: String;
+
 #if Arch == "universal"
 function UseX64Payload: Boolean;
 begin
@@ -141,30 +141,113 @@ begin
 end;
 #endif
 
+function IsOwnedInstallation(Directory: String): Boolean;
+begin
+  Result := False;
+  if Directory = '' then Exit;
+  Result := (GetIniString('Installation', 'Product', '', AddBackslash(Directory) + 'reminders-installation.ini') = '{#ProductId}') or
+    (GetIniString('Installation', 'Product', '', AddBackslash(Directory) + 'gcbd-installation.ini') = 'Battery-rar.RemindersForWindowsGCBD');
+end;
+
 function IsForkUpgrade: Boolean;
 begin
-  Result := GetIniString('Installation', 'Product', '', ExpandConstant('{app}\gcbd-installation.ini')) = 'Battery-rar.RemindersForWindowsGCBD';
+  Result := IsOwnedInstallation(ExpandConstant('{app}'));
 end;
 
-function ShortcutAvailable(Directory: String): Boolean;
+function RegisteredDirectory: String;
 begin
-  Result := not FileExists(ExpandConstant(Directory) + '\{#ProductName}.lnk');
+  Result := '';
+  if RegQueryStringValue(HKA, UninstallKey, 'Inno Setup: App Path', Result) then
+  begin
+    Result := RemoveBackslashUnlessRoot(Result);
+    if not IsOwnedInstallation(Result) then
+      Result := '';
+  end;
 end;
 
-function IsPreviousForkShortcut(Directory: String): Boolean;
+function RenamedDirectory(Directory: String): String;
+begin
+  Result := Directory;
+  if CompareText(ExtractFileName(Directory), '{#TrialProductName}') = 0 then
+    Result := AddBackslash(ExtractFileDir(Directory)) + '{#ProductName}';
+end;
+
+function DefaultInstallDirectory(Param: String): String;
+begin
+  Result := RegisteredDirectory;
+  if Result = '' then
+    Result := ExpandConstant('{autopf}\{#ProductName}')
+  else
+    Result := RenamedDirectory(Result);
+end;
+
+procedure InitializeWizard;
+begin
+  PreviousDirectory := RegisteredDirectory;
+  { Old in-app updates supply /DIR explicitly. Apply the same rename there. }
+  if (PreviousDirectory <> '') and
+     (CompareText(RemoveBackslashUnlessRoot(WizardDirValue), PreviousDirectory) = 0) then
+    WizardForm.DirEdit.Text := RenamedDirectory(PreviousDirectory);
+end;
+
+procedure RegisterExtraCloseApplicationsResources;
+begin
+  if (PreviousDirectory <> '') and (CompareText(PreviousDirectory, ExpandConstant('{app}')) <> 0) then
+    RegisterExtraCloseApplicationsResource(False, AddBackslash(PreviousDirectory) + 'Reminders.exe');
+end;
+
+function ShortcutTargets(ShortcutPath, TargetPath: String): Boolean;
 var
-  ShortcutPath: String;
   Shell, Shortcut: Variant;
 begin
   Result := False;
-  ShortcutPath := ExpandConstant(Directory) + '\{#PreviousProductName}.lnk';
-  if not IsForkUpgrade or not FileExists(ShortcutPath) then Exit;
+  if not FileExists(ShortcutPath) then Exit;
   try
     Shell := CreateOleObject('WScript.Shell');
     Shortcut := Shell.CreateShortcut(ShortcutPath);
-    Result := CompareText(Shortcut.TargetPath, ExpandConstant('{app}\Reminders.exe')) = 0;
+    Result := CompareText(Shortcut.TargetPath, TargetPath) = 0;
   except
     Log('Leaving the existing shortcut because its target could not be verified.');
+  end;
+end;
+
+function ShortcutAvailable(Directory: String): Boolean;
+var
+  ShortcutPath: String;
+begin
+  ShortcutPath := ExpandConstant(Directory) + '\{#ProductName}.lnk';
+  Result := not FileExists(ShortcutPath);
+  if (not Result) and (PreviousDirectory <> '') then
+    Result := ShortcutTargets(ShortcutPath, AddBackslash(PreviousDirectory) + 'Reminders.exe');
+end;
+
+procedure RemovePreviousLink(Directory, Name, Executable: String);
+var
+  ShortcutPath: String;
+begin
+  ShortcutPath := AddBackslash(Directory) + Name + '.lnk';
+  if ShortcutTargets(ShortcutPath, AddBackslash(PreviousDirectory) + Executable) then
+    DeleteFile(ShortcutPath);
+end;
+
+procedure RemovePreviousShortcuts(Directory, Name: String);
+begin
+  RemovePreviousLink(Directory, Name, 'Reminders.exe');
+  RemovePreviousLink(Directory, 'Uninstall ' + Name, 'unins000.exe');
+  RemoveDir(Directory);
+  RemovePreviousLink(ExpandConstant('{autodesktop}'), Name, 'Reminders.exe');
+  RemovePreviousLink(ExpandConstant('{userstartup}'), Name, 'Reminders.exe');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if (CurStep <> ssPostInstall) or (PreviousDirectory = '') then Exit;
+  RemovePreviousShortcuts(ExpandConstant('{autoprograms}\{#TrialProductName}'), '{#TrialProductName}');
+  RemovePreviousShortcuts(ExpandConstant('{autoprograms}\Battery-rar\{#PreviousProductName}'), '{#PreviousProductName}');
+  if CompareText(PreviousDirectory, ExpandConstant('{app}')) <> 0 then
+  begin
+    { Current shortcuts already point to the new directory if Setup replaced them. }
+    RemovePreviousShortcuts(ExpandConstant('{autoprograms}\Battery-rar\{#ProductName}'), '{#ProductName}');
   end;
 end;
 
@@ -191,7 +274,9 @@ end;
 [UninstallDelete]
 Type: files; Name: "{app}\gcbd-installation.ini"
 Type: files; Name: "{app}\gcbd-updates.ini"
+Type: files; Name: "{app}\reminders-installation.ini"
+Type: files; Name: "{app}\reminders-updates.ini"
 ; Log files the app writes next to its data. Reminder content, settings and the
 ; sync cache are deliberately left in place so reinstalling does not lose them;
 ; credentials live in Windows Credential Manager and are never touched here.
-Type: filesandordirs; Name: "{localappdata}\RemindersForWindowsGCBD\logs"
+Type: filesandordirs; Name: "{localappdata}\{#ProductName}\logs"
