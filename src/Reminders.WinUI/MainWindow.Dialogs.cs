@@ -12,13 +12,6 @@ namespace Reminders.Windows;
 
 public sealed partial class MainWindow
 {
-    private static readonly (string Name, string Glyph)[] ListIcons =
-    [ (L10n.Get("List"), "\uE8FD"), (L10n.Get("Inbox"), "\uE715"), (L10n.Get("Work"), "\uE821"), (L10n.Get("Home"), "\uE80F"),
-      (L10n.Get("School"), "\uE7BE"), (L10n.Get("Shopping"), "\uE7BF"), (L10n.Get("Travel"), "\uE709"), (L10n.Get("Heart"), "\uEB51"), (L10n.Get("Star"), "\uE734") ];
-    private static readonly (string Name, string Hex)[] ListColors =
-    [ (L10n.Get("Blue"), "#0078D4"), (L10n.Get("Red"), "#D13438"), (L10n.Get("Orange"), "#CA5010"), (L10n.Get("Green"), "#107C10"),
-      (L10n.Get("Purple"), "#8764B8"), (L10n.Get("Pink"), "#C239B3"), (L10n.Get("Gray"), "#767676") ];
-
     private void RestoreNavigationSelection()
     {
         _restoringNavigation = true;
@@ -180,64 +173,23 @@ public sealed partial class MainWindow
 
     private async Task CustomizeListAsync(ReminderList list)
     {
-        if (_dialogOpen || _savingDetail) return;
+        if (_dialogOpen || _savingDetail || _accountBusy || _windowClosed) return;
+        var accountEpoch = _accountEpoch;
         _dialogOpen = true;
         try
         {
             _uiPreferences.Lists.TryGetValue(list.Id, out var appearance);
-            const string custom = "custom";
-            var icons = new ComboBox { Header = L10n.Get("Icon"), HorizontalAlignment = HorizontalAlignment.Stretch };
-            icons.Items.Add(new ComboBoxItem { Content = L10n.Get("UseICloudListIcon"), Tag = "" });
-            foreach (var icon in ListIcons)
-            {
-                var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-                row.Children.Add(new FontIcon { Glyph = icon.Glyph, FontSize = 18 }); row.Children.Add(new TextBlock { Text = icon.Name });
-                icons.Items.Add(new ComboBoxItem { Content = row, Tag = icon.Glyph });
-            }
-            icons.Items.Add(new ComboBoxItem { Content = L10n.Get("CustomListSymbol"), Tag = custom });
-            var preset = Array.FindIndex(ListIcons, icon => icon.Glyph == appearance?.Glyph);
-            icons.SelectedIndex = appearance?.Glyph is null ? 0 : preset >= 0 ? preset + 1 : icons.Items.Count - 1;
-            var customIcon = new TextBox { Header = L10n.Get("CustomListSymbol"), PlaceholderText = L10n.Get("ListSymbolPlaceholder"),
-                MaxLength = 64, Text = icons.SelectedIndex == icons.Items.Count - 1 ? appearance?.Glyph ?? "" : "" };
-            var iconPreview = new ContentControl { HorizontalAlignment = HorizontalAlignment.Center };
-            var fallback = new TextBlock { Text = L10n.Get("ListSymbolFallback"), TextWrapping = TextWrapping.Wrap };
-            var colors = new ComboBox { Header = L10n.Get("Color"), HorizontalAlignment = HorizontalAlignment.Stretch };
-            colors.Items.Add(new ComboBoxItem { Content = L10n.Get("UseICloudListColor"), Tag = "" });
-            foreach (var color in ListColors)
-            {
-                var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-                row.Children.Add(new FontIcon { Glyph = "\uEA3B", Foreground = ColorBrush(color.Hex), FontSize = 18 }); row.Children.Add(new TextBlock { Text = color.Name });
-                colors.Items.Add(new ComboBoxItem { Content = row, Tag = color.Hex });
-            }
-            colors.SelectedIndex = Array.FindIndex(ListColors, color => color.Hex == appearance?.Color) + 1;
-            var panel = new StackPanel { Spacing = 16, MinWidth = 320 };
-            panel.Children.Add(iconPreview); panel.Children.Add(icons); panel.Children.Add(customIcon); panel.Children.Add(fallback); panel.Children.Add(colors);
+            var picker = new ListAppearancePicker(list.Title, list, appearance);
+            var panel = new StackPanel { Spacing = 14 };
+            panel.Children.Add(picker.View);
             panel.Children.Add(new TextBlock { Text = L10n.Get("ListAppearanceStorageDescription"), TextWrapping = TextWrapping.Wrap });
-            string? SelectedGlyph() => (icons.SelectedItem as ComboBoxItem)?.Tag?.ToString() switch
-            {
-                custom => customIcon.Text.Trim(),
-                "" => null,
-                var selected => selected
-            };
-            string? SelectedColor() => (colors.SelectedItem as ComboBoxItem)?.Tag?.ToString() is { Length: > 0 } color ? color : null;
-            void UpdatePreview()
-            {
-                var customSelected = (icons.SelectedItem as ComboBoxItem)?.Tag?.ToString() == custom;
-                var glyph = SelectedGlyph();
-                customIcon.Visibility = customSelected ? Visibility.Visible : Visibility.Collapsed;
-                fallback.Visibility = customSelected && glyph is { Length: > 0 } && SidebarPresentation.ResolveIcon(glyph).IsFallback
-                    ? Visibility.Visible : Visibility.Collapsed;
-                iconPreview.Content = MakeSidebarIcon(glyph ?? list.BadgeEmblem, SelectedColor() ?? list.ColorHex);
-            }
-            icons.SelectionChanged += (_, _) => UpdatePreview();
-            colors.SelectionChanged += (_, _) => UpdatePreview();
-            customIcon.TextChanged += (_, _) => UpdatePreview();
-            UpdatePreview();
             var dialog = MakeDialog(list.Title, panel, L10n.Get("Save"));
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-            var glyph = SelectedGlyph();
-            var pickedColor = SelectedColor();
-            if (string.IsNullOrWhiteSpace(glyph)) glyph = null;
+            dialog.IsPrimaryButtonEnabled = picker.IsValid;
+            picker.Changed += (_, _) => dialog.IsPrimaryButtonEnabled = picker.IsValid;
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary ||
+                _windowClosed || _accountBusy || accountEpoch != _accountEpoch) return;
+            var glyph = picker.Badge;
+            var pickedColor = picker.Color;
             if (glyph is null && pickedColor is null) _uiPreferences.Lists.Remove(list.Id);
             else _uiPreferences.Lists[list.Id] = new() { Glyph = glyph, Color = pickedColor };
             SaveUiPreferences(); RebuildListNavigation(list.Id);

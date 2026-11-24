@@ -41,20 +41,13 @@ public sealed partial class MainWindow
             return;
         }
 
-        BeginReminderDrag(reminder, e.Data);
-    }
-
-    private void BeginReminderDrag(ReminderItem reminder, DataPackage data)
-    {
         _reminderDrag = new(reminder, reminder.ListId, _accountEpoch, Guid.NewGuid().ToString("N"), CurrentReminderQuery);
         // Keep titles, account identifiers and reminder IDs inside the app.
-        data.SetData(ReminderDragFormat, _reminderDrag.Token);
-        data.RequestedOperation = DataPackageOperation.Move;
+        e.Data.SetData(ReminderDragFormat, _reminderDrag.Token);
+        e.Data.RequestedOperation = DataPackageOperation.Move;
     }
 
-    private void ReminderList_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args) => EndReminderDrag();
-
-    private void EndReminderDrag()
+    private void ReminderList_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
     {
         _reminderDrag = null;
         ClearReminderDropTarget();

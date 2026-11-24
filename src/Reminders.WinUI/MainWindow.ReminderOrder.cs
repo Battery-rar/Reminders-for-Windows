@@ -1,7 +1,5 @@
-using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Reminders.Windows.Services;
 using Windows.ApplicationModel.DataTransfer;
@@ -110,29 +108,6 @@ public sealed partial class MainWindow
         CanReorderReminders && drag.AccountEpoch == _accountEpoch && drag.Query == CurrentReminderQuery
         && !ReferenceEquals(drag.Reminder, target) && _reminders.Contains(drag.Reminder) && _reminders.Contains(target)
         && ReminderVisibleParent(drag.Reminder, _reminders) == ReminderVisibleParent(target, _reminders);
-
-    private async void ReminderOrderHandle_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        if (!CanReorderReminders || _reminderDrag is not null || sender is not FrameworkElement handle) return;
-        var point = e.GetCurrentPoint(handle);
-        if (!point.IsInContact || point.Properties.IsRightButtonPressed ||
-            (point.PointerDeviceType == PointerDeviceType.Mouse && !point.Properties.IsLeftButtonPressed)) return;
-        e.Handled = true;
-        try { await handle.StartDragAsync(point); }
-        catch (Exception error) { AppLog.Error("Could not start reordering a reminder", error); }
-        finally { EndReminderDrag(); }
-    }
-
-    private void ReminderOrderHandle_DragStarting(UIElement sender, DragStartingEventArgs e)
-    {
-        if (!CanReorderReminders || sender is not FrameworkElement { DataContext: ReminderItem reminder } ||
-            !_reminders.Contains(reminder))
-        {
-            e.Cancel = true;
-            return;
-        }
-        BeginReminderDrag(reminder, e.Data);
-    }
 
     private void ReminderRow_DragOver(object sender, DragEventArgs e)
     {

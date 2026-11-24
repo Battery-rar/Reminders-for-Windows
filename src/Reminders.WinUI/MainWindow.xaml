@@ -107,7 +107,6 @@
        <ListView.ItemTemplate>
         <DataTemplate x:DataType="local:ReminderItem">
          <Grid AllowDrop="True" DragOver="ReminderRow_DragOver" DragLeave="ReminderRow_DragLeave" Drop="ReminderRow_Drop">
-         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
          <SwipeControl HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" ContextRequested="ReminderRow_ContextRequested"
                        LeftItems="{Binding TodayAction, Converter={StaticResource TodaySwipeItems}}"
                        RightItems="{Binding CanMarkComplete, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToComplete}}">
@@ -135,11 +134,6 @@
           </Button>
          </Grid>
          </SwipeControl>
-         <Border x:Uid="ReminderOrderHandle" x:Name="ReminderOrderHandle" Grid.Column="1" Width="28" MinHeight="32"
-                 Background="Transparent" Visibility="{x:Bind OrderHandleVisibility, Mode=OneWay}"
-                 PointerPressed="ReminderOrderHandle_PointerPressed" DragStarting="ReminderOrderHandle_DragStarting">
-          <FontIcon Glyph="&#xE700;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsHitTestVisible="False"/>
-         </Border>
          </Grid>
         </DataTemplate>
        </ListView.ItemTemplate>

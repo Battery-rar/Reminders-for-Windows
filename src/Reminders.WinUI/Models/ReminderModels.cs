@@ -47,16 +47,6 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     private int _depth;
     private bool _hasChildren;
     private bool _expanded = true;
-    private bool _showOrderHandle;
-    [JsonIgnore] public Microsoft.UI.Xaml.Visibility OrderHandleVisibility => _showOrderHandle
-        ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
-    internal void ShowOrderHandle(bool show)
-    {
-        if (_showOrderHandle == show) return;
-        _showOrderHandle = show;
-        PropertyChanged?.Invoke(this, new(nameof(OrderHandleVisibility)));
-    }
-
     [JsonIgnore] public Microsoft.UI.Xaml.Thickness HierarchyIndent => new(Math.Min(_depth, 4) * 24, 0, 0, 0);
     [JsonIgnore] public Microsoft.UI.Xaml.Thickness RowPadding => new(8, _depth > 0 ? 4 : 10, 8, _depth > 0 ? 4 : 10);
     [JsonIgnore] public global::Windows.UI.Text.FontWeight RowTitleWeight => _depth > 0 ? Microsoft.UI.Text.FontWeights.Normal : Microsoft.UI.Text.FontWeights.SemiBold;

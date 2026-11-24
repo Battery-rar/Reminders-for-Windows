@@ -1972,13 +1972,19 @@
     <value>使用 iCloud 列表图标</value>
   </data>
   <data name="CustomListSymbol" xml:space="preserve">
-    <value>SF 符号或表情符号</value>
+    <value>自定义 SF 符号</value>
   </data>
   <data name="ListSymbolPlaceholder" xml:space="preserve">
-    <value>cart.fill 或 🛒</value>
+    <value>cart.fill</value>
   </data>
   <data name="ListSymbolFallback" xml:space="preserve">
     <value>此符号在 Windows 上会显示为默认列表图标。</value>
+  </data>
+  <data name="CustomListEmoji" xml:space="preserve">
+    <value>自定义表情符号</value>
+  </data>
+  <data name="InvalidListEmoji" xml:space="preserve">
+    <value>请输入一个表情符号作为列表图标。</value>
   </data>
   <data name="MoveReminderToList" xml:space="preserve">
     <value>移到“{0}”</value>
@@ -2103,10 +2109,10 @@
   <data name="CouldntRelogin" xml:space="preserve">
     <value>无法打开 iCloud 重新登录</value>
   </data>
-  <data name="NewListWindowsSymbols" xml:space="preserve">
-    <value>Windows 符号</value>
+  <data name="ListSFSymbols" xml:space="preserve">
+    <value>SF Symbols</value>
   </data>
-  <data name="NewListEmoji" xml:space="preserve">
+  <data name="ListEmoji" xml:space="preserve">
     <value>表情符号</value>
   </data>
   <data name="RowMarkComplete" xml:space="preserve">
@@ -2138,8 +2144,5 @@
   </data>
   <data name="ErrorInvalidReminderOrder" xml:space="preserve">
     <value>请刷新列表后重试排序。</value>
-  </data>
-  <data name="ReminderOrderHandle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>拖动排序</value>
   </data>
 </root>

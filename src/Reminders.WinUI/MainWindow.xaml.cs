@@ -483,11 +483,9 @@ public sealed partial class MainWindow : Window
     private void RebuildReminderSections()
     {
         var families = ReminderHierarchy.Build(_reminders, _collapsedSubtasks);
-        var showOrderHandle = ReminderSort == "manual" && string.IsNullOrWhiteSpace(SearchBox.Text);
         IEnumerable<ReminderItem> Visible(ReminderFamily<ReminderItem> family) => family.Rows.Where(row => !row.Hidden).Select(row =>
         {
             row.Item.ConfigureHierarchy(row.Depth, row.HasChildren, !_collapsedSubtasks.Contains(row.Item.Id));
-            row.Item.ShowOrderHandle(showOrderHandle);
             return row.Item;
         });
         _regrouping = true;
