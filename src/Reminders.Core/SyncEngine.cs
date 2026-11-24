@@ -114,6 +114,11 @@ internal sealed class SyncEngine(Cache cache, ICloudClient client, SemaphoreSlim
                 payload["recurrence_id"] = Guid.NewGuid().ToString().ToUpperInvariant();
                 cache.Execute("UPDATE outbox SET payload=@p0 WHERE seq=@p1", payload.ToJsonString(), seq);
             }
+            if (payload.ContainsKey("due_date") && payload.Text("schedule_id") is null)
+            {
+                payload["schedule_id"] = Guid.NewGuid().ToString().ToUpperInvariant();
+                cache.Execute("UPDATE outbox SET payload=@p0 WHERE seq=@p1", payload.ToJsonString(), seq);
+            }
             try
             {
                 JsonObject remote;

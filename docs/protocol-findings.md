@@ -9,6 +9,11 @@ details of private Apple interfaces, not a supported Apple service contract.
   notes use Apple's document encoding. Timed reminders use absolute UTC
   timestamps, and the named time zone preserves their repeat schedule.
   All-day reminders retain the calendar date in the reminder's zone.
+- Apple's web client prefers a linked date trigger when displaying a timed
+  reminder. Schedule writes update the reminder, date alarm and date trigger
+  in one transaction, retaining location and other alarm types. A stable
+  queued edit identity lets the client recognize a committed schedule write
+  after losing its reply.
 - Sync requests Reminder, List, Hashtag and RecurrenceRule records in one paginated
   zone-change stream. Batch application and cursor updates are transactional.
 - Mutations use current revision tags and preserve fields outside the requested
