@@ -15,6 +15,8 @@ public sealed class ReminderList
     [JsonPropertyName("is_group")] public bool IsGroup { get; set; }
 }
 
+public enum ReminderTodayAction { None, Add, Undo }
+
 public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchicalReminder
 {
     private string _title = "";
@@ -36,7 +38,9 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonPropertyName("tags")] public List<string> Tags { get; set; } = [];
     [JsonPropertyName("dirty")] public long Dirty { get; set; }
     [JsonPropertyName("change_tag")] public string? ChangeTag { get; set; }
+    [JsonPropertyName("can_undo_today")] public bool CanUndoToday { get; set; }
     [JsonPropertyName("recurrence")] public RepeatSchedule? Recurrence { get; set; }
+    [JsonIgnore] internal (string? DueDate, bool AllDay)? DemoPreviousSchedule { get; set; }
 
     private int _depth;
     private bool _hasChildren;
@@ -59,7 +63,16 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonIgnore] public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? L10n.Get("UntitledReminder") : Title;
     [JsonIgnore] public bool CanEditRow => !Deleted;
     [JsonIgnore] public bool CanMarkComplete => CanEditRow && !Completed;
-    [JsonIgnore] public bool CanAddToToday => CanMarkComplete && !ReminderSchedule.IsToday(DueDate, AllDay, DateTimeOffset.Now, TimeZoneInfo.Local);
+    [JsonIgnore] public ReminderTodayAction TodayAction
+    {
+        get
+        {
+            if (!CanMarkComplete) return ReminderTodayAction.None;
+            if (!ReminderSchedule.IsToday(DueDate, AllDay, DateTimeOffset.Now, TimeZoneInfo.Local))
+                return ReminderTodayAction.Add;
+            return CanUndoToday ? ReminderTodayAction.Undo : ReminderTodayAction.None;
+        }
+    }
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility MetadataVisibility => IsOverdue || string.IsNullOrWhiteSpace(Metadata)
         ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility OverdueMetadataVisibility => IsOverdue
@@ -96,7 +109,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     }
     public void RefreshTimeMetadata()
     {
-        PropertyChanged?.Invoke(this, new(nameof(CanAddToToday)));
+        PropertyChanged?.Invoke(this, new(nameof(TodayAction)));
         PropertyChanged?.Invoke(this, new(nameof(Metadata)));
         PropertyChanged?.Invoke(this, new(nameof(MetadataVisibility)));
         PropertyChanged?.Invoke(this, new(nameof(OverdueMetadataVisibility)));
@@ -111,7 +124,8 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
             Flagged != snapshot.Flagged || Completed != snapshot.Completed || Deleted != snapshot.Deleted ||
             repeatChanged || !Tags.SequenceEqual(snapshot.Tags);
         ChangeTag = snapshot.ChangeTag;
-        if (!editorChanged && ParentId == snapshot.ParentId && ContextOnly == snapshot.ContextOnly && Dirty == snapshot.Dirty)
+        if (!editorChanged && ParentId == snapshot.ParentId && ContextOnly == snapshot.ContextOnly &&
+            Dirty == snapshot.Dirty && CanUndoToday == snapshot.CanUndoToday)
             return false;
 
         Title = snapshot.Title;
@@ -128,6 +142,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
         ParentId = snapshot.ParentId;
         ContextOnly = snapshot.ContextOnly;
         Dirty = snapshot.Dirty;
+        CanUndoToday = snapshot.CanUndoToday;
         RefreshTimeMetadata();
         return true;
     }
@@ -140,7 +155,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
         {
             PropertyChanged?.Invoke(this, new(nameof(CanEditRow)));
             PropertyChanged?.Invoke(this, new(nameof(CanMarkComplete)));
-            PropertyChanged?.Invoke(this, new(nameof(CanAddToToday)));
+            PropertyChanged?.Invoke(this, new(nameof(TodayAction)));
         }
         PropertyChanged?.Invoke(this, new(nameof(SubtaskToggleLabel)));
         PropertyChanged?.Invoke(this, new(nameof(Metadata))); PropertyChanged?.Invoke(this, new(nameof(OverdueMetadataVisibility)));

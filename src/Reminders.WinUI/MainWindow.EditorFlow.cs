@@ -105,7 +105,13 @@ public sealed partial class MainWindow
                 if (patch.ContainsKey("title")) selected.Title = title;
                 if (patch.ContainsKey("description")) selected.Description = notes;
                 if (patch.ContainsKey("list_id")) MoveDemoFamily(selected, listId);
-                if (patch.ContainsKey("due_date")) { selected.DueDate = due; selected.AllDay = allDay; }
+                if (patch.ContainsKey("due_date"))
+                {
+                    selected.DueDate = due;
+                    selected.AllDay = allDay;
+                    selected.DemoPreviousSchedule = null;
+                    selected.CanUndoToday = false;
+                }
                 if (patch.ContainsKey("flagged")) selected.Flagged = flagged;
                 if (patch.ContainsKey("priority")) selected.Priority = priority;
                 if (patch.ContainsKey("recurrence")) selected.Recurrence = recurrence;

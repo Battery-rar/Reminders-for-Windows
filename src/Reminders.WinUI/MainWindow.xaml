@@ -80,6 +80,12 @@
           <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
          </SwipeItem>
         </SwipeItems>
+        <SwipeItems x:Key="SwipeUndoToday" Mode="Execute">
+         <SwipeItem x:Uid="SwipeUndoTodayItem" Invoked="SwipeUndoToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+          <SwipeItem.IconSource><FontIconSource Glyph="&#xE7A7;"/></SwipeItem.IconSource>
+         </SwipeItem>
+        </SwipeItems>
+        <local:TodaySwipeItemsConverter x:Key="TodaySwipeItems" AddItems="{StaticResource SwipeToToday}" UndoItems="{StaticResource SwipeUndoToday}"/>
         <SwipeItems x:Key="SwipeToComplete" Mode="Execute">
          <SwipeItem x:Uid="SwipeToCompleteItem" Invoked="SwipeToComplete_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
           <SwipeItem.IconSource><FontIconSource Glyph="&#xE73E;"/></SwipeItem.IconSource>
@@ -96,7 +102,7 @@
        <ListView.ItemTemplate>
         <DataTemplate x:DataType="local:ReminderItem">
          <SwipeControl HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" ContextRequested="ReminderRow_ContextRequested"
-                       LeftItems="{Binding CanAddToToday, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToToday}}"
+                       LeftItems="{Binding TodayAction, Converter={StaticResource TodaySwipeItems}}"
                        RightItems="{Binding CanMarkComplete, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToComplete}}">
          <Grid Padding="{x:Bind RowPadding, Mode=OneWay}" Margin="{x:Bind HierarchyIndent, Mode=OneWay}" MinHeight="40">
           <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
