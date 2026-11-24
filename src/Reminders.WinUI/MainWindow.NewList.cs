@@ -1,5 +1,7 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Reminders.Windows.Services;
 
@@ -8,13 +10,19 @@ namespace Reminders.Windows;
 public sealed partial class MainWindow
 {
     private const int ListNameByteLimit = 255;
-    private static readonly (string Label, string Badge)[] NewListIcons =
+    private static readonly (string Label, string Badge)[] NewListSymbols =
     [
         ("List", "default"), ("NewListBookmark", "bookmarks1"), ("NewListGift", "celebration1"),
-        ("School", "education1"), ("NewListFinance", "finance1"), ("NewListFood", "food"),
-        ("NewListHealth", "health1"), ("Home", "lifestyle2"), ("NewListLocation", "location1"),
-        ("NewListMusic", "media2"), ("NewListNature", "nature1"), ("NewListPet", "pet1"),
+        ("School", "education1"), ("NewListFinance", "finance1"), ("NewListHealth", "health1"),
+        ("Home", "lifestyle2"), ("NewListLocation", "location1"), ("NewListMusic", "media2"), ("NewListNature", "nature1"),
         ("Shopping", "shopping2"), ("Travel", "vacation"), ("Work", "work1")
+    ];
+    private static readonly (string Label, string Glyph)[] NewListEmoji =
+    [
+        ("List", "📝"), ("NewListBookmark", "🔖"), ("NewListGift", "🎁"), ("School", "🎓"),
+        ("NewListFinance", "💰"), ("NewListFood", "🍽️"), ("NewListHealth", "🩺"), ("Home", "🏠"),
+        ("NewListLocation", "📍"), ("NewListMusic", "🎵"), ("NewListNature", "🌿"), ("NewListPet", "🐾"),
+        ("Shopping", "🛒"), ("Travel", "✈️"), ("Work", "💼"), ("Heart", "❤️"), ("Star", "⭐")
     ];
     private static readonly (string Label, string Hex)[] NewListColors =
     [
@@ -38,10 +46,18 @@ public sealed partial class MainWindow
             var colors = new ComboBox { Header = L10n.Get("Color"), HorizontalAlignment = HorizontalAlignment.Stretch };
             foreach (var (label, hex) in NewListColors)
                 colors.Items.Add(ListChoice(label, hex, new FontIcon { Glyph = "\uEA3B", Foreground = ColorBrush(hex), FontSize = 16 }));
-            var icons = new ComboBox { Header = L10n.Get("Icon"), HorizontalAlignment = HorizontalAlignment.Stretch };
-            foreach (var (label, badge) in NewListIcons)
-                icons.Items.Add(ListChoice(label, badge, MakeSidebarIcon(badge, null)));
-            colors.SelectedIndex = icons.SelectedIndex = 0;
+            var symbolsLabel = L10n.Get("NewListWindowsSymbols");
+            var emojiLabel = L10n.Get("NewListEmoji");
+            var iconKind = new RadioButtons { Header = L10n.Get("Icon"), MaxColumns = 2, ItemsSource = new[] { symbolsLabel, emojiLabel }, SelectedIndex = 0 };
+            var symbols = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
+            var emoji = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, Visibility = Visibility.Collapsed };
+            AutomationProperties.SetName(symbols, symbolsLabel);
+            AutomationProperties.SetName(emoji, emojiLabel);
+            foreach (var (label, badge) in NewListSymbols)
+                symbols.Items.Add(ListChoice(label, badge, MakeSidebarIcon(badge, null)));
+            foreach (var (label, glyph) in NewListEmoji)
+                emoji.Items.Add(ListChoice(label, JsonSerializer.Serialize(new { Emoji = glyph }), MakeSidebarIcon(glyph, null)));
+            colors.SelectedIndex = symbols.SelectedIndex = emoji.SelectedIndex = 0;
 
             var iconPreview = new ContentControl { VerticalContentAlignment = VerticalAlignment.Center };
             var namePreview = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
@@ -57,14 +73,17 @@ public sealed partial class MainWindow
             panel.Children.Add(preview);
             panel.Children.Add(name);
             panel.Children.Add(colors);
-            panel.Children.Add(icons);
+            panel.Children.Add(iconKind);
+            panel.Children.Add(symbols);
+            panel.Children.Add(emoji);
             panel.Children.Add(error);
             var dialog = MakeDialog(L10n.Get("NewList"), panel, L10n.Get("CreateList"));
             var requestId = Guid.NewGuid().ToString("D");
             var creating = false;
 
             string Color() => ((ComboBoxItem)colors.SelectedItem).Tag!.ToString()!;
-            string Badge() => ((ComboBoxItem)icons.SelectedItem).Tag!.ToString()!;
+            bool UseEmoji() => iconKind.SelectedIndex == 1;
+            string Badge() => ((ComboBoxItem)(UseEmoji() ? emoji : symbols).SelectedItem).Tag!.ToString()!;
             void UpdateForm()
             {
                 var title = name.Text.Trim();
@@ -81,7 +100,14 @@ public sealed partial class MainWindow
             }
             name.TextChanged += (_, _) => UpdateForm();
             colors.SelectionChanged += (_, _) => UpdateForm();
-            icons.SelectionChanged += (_, _) => UpdateForm();
+            symbols.SelectionChanged += (_, _) => UpdateForm();
+            emoji.SelectionChanged += (_, _) => UpdateForm();
+            iconKind.SelectionChanged += (_, _) =>
+            {
+                symbols.Visibility = UseEmoji() ? Visibility.Collapsed : Visibility.Visible;
+                emoji.Visibility = UseEmoji() ? Visibility.Visible : Visibility.Collapsed;
+                UpdateForm();
+            };
             dialog.Opened += (_, _) => name.Focus(FocusState.Programmatic);
             dialog.Closing += (_, args) => { if (creating) args.Cancel = true; };
             dialog.PrimaryButtonClick += async (_, args) =>
@@ -89,7 +115,7 @@ public sealed partial class MainWindow
                 if (creating || !dialog.IsPrimaryButtonEnabled) { args.Cancel = true; return; }
                 var deferral = args.GetDeferral();
                 creating = true;
-                name.IsEnabled = colors.IsEnabled = icons.IsEnabled = false;
+                name.IsEnabled = colors.IsEnabled = iconKind.IsEnabled = symbols.IsEnabled = emoji.IsEnabled = false;
                 dialog.IsPrimaryButtonEnabled = false;
                 try
                 {
@@ -113,7 +139,7 @@ public sealed partial class MainWindow
                 finally
                 {
                     creating = false;
-                    name.IsEnabled = colors.IsEnabled = icons.IsEnabled = true;
+                    name.IsEnabled = colors.IsEnabled = iconKind.IsEnabled = symbols.IsEnabled = emoji.IsEnabled = true;
                     dialog.IsPrimaryButtonEnabled = true;
                     deferral.Complete();
                 }

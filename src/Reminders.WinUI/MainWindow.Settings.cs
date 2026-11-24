@@ -65,6 +65,8 @@ public sealed partial class MainWindow
     {
         if (_dialogOpen || _savingDetail || _accountBusy || _verificationBusy || SetupGuide.Visibility == Visibility.Visible) return;
         _dialogOpen = true;
+        var originalTheme = Root.RequestedTheme;
+        var themePreviewed = false;
         SizeChangedEventHandler? resize = null;
         using var updateCancellation = new CancellationTokenSource();
         Task updateCheck = Task.CompletedTask;
@@ -81,9 +83,14 @@ public sealed partial class MainWindow
                 _settings = await _sync.CallAsync("settings", new { });
             }
             var local = _demo || _sync.IsLocalDemo;
+            var hasICloudAccount = !local && !auth.Flag("signed_out") && !string.IsNullOrWhiteSpace(auth.Text("apple_id"));
             if (IsSyncRecoveryPreview) syncStatus = JsonSerializer.SerializeToElement(new { pending_pushes = 3, conflicts = 1 });
             var choiceStyle = (Style)Application.Current.Resources["SettingsChoiceStyle"];
             var theme = new ComboBox { Style = choiceStyle, ItemsSource = new[] { L10n.Get("MatchWindows"), L10n.Get("Light"), L10n.Get("Dark") }, SelectedIndex = _settings.Text("theme", "system") switch { "light" => 1, "dark" => 2, _ => 0 } };
+            static string ThemeValue(int index) => index switch { 1 => "light", 2 => "dark", _ => "system" };
+            var savedLanguage = UiPreferences.Load().Language;
+            var language = new ComboBox { Style = choiceStyle, ItemsSource = new[] { L10n.Get("MatchWindows"), "简体中文", "English" },
+                SelectedIndex = savedLanguage switch { "zh-CN" => 1, "en-US" => 2, _ => 0 } };
             var paneSizing = new ComboBox { Style = choiceStyle, ItemsSource = new[] { L10n.Get("Automatic"), L10n.Get("Custom") }, SelectedIndex = _uiPreferences.DetailPaneFraction is null ? 0 : 1 };
             var detailWidth = new Slider { Header = L10n.Get("PreferredDetailsWidth"), Minimum = 0, Maximum = 100, StepFrequency = 1, Value = Math.Clamp(_uiPreferences.DetailPaneFraction ?? .5, 0, 1) * 100 };
             var customLayout = new StackPanel { Spacing = 8, Visibility = paneSizing.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed };
@@ -100,7 +107,9 @@ public sealed partial class MainWindow
             sidebarSort.Style = choiceStyle;
 
             var general = SettingsPage(L10n.Get("General"), L10n.Get("GeneralSettingsDescription"));
-            general.Children.Add(SettingsCard(L10n.Get("Appearance"), SettingsRow(L10n.Get("Theme"), null, theme), SettingsRow(L10n.Get("CompletionAnimation"), L10n.Get("AnimateRemindersWhenCompleted"), animation, 60)));
+            general.Children.Add(SettingsCard(L10n.Get("Appearance"), SettingsRow(L10n.Get("Theme"), null, theme),
+                SettingsRow(L10n.Get("AppLanguage"), L10n.Get("AppLanguageDescription"), language),
+                SettingsRow(L10n.Get("CompletionAnimation"), L10n.Get("AnimateRemindersWhenCompleted"), animation, 60)));
             general.Children.Add(SettingsCard(L10n.Get("Layout"), SettingsRow(L10n.Get("DetailsPane"), null, paneSizing), customLayout));
             general.Children.Add(SettingsCard(L10n.Get("SidebarSettings"), SettingsRow(L10n.Get("ListOrder"), L10n.Get("SidebarManualOrderHint"), sidebarSort)));
             general.Children.Add(SettingsCard(L10n.Get("Reminders"), SettingsRow(L10n.Get("DefaultList"), null, defaultList), SettingsRow(L10n.Get("DueDateNotifications"), null, notifications, 60)));
@@ -108,6 +117,7 @@ public sealed partial class MainWindow
             var syncPage = SettingsPage(L10n.Get("SyncStorage"), L10n.Get("SyncSettingsDescription"));
             var syncNow = SettingsAction(L10n.Get("SyncNow")); syncNow.IsEnabled = !local && auth.Flag("authenticated");
             var syncNotice = new InfoBar { IsOpen = false, IsClosable = true };
+            var syncRelogin = SettingsAction(L10n.Get("Relogin"));
             var syncContent = new StackPanel { Spacing = 16 };
             var lastSync = DateTimeOffset.TryParse(syncStatus.Text("last_sync"), out var time) ? L10n.Format("LastSyncedAt", time.ToLocalTime()) : L10n.Get("NeverSynced");
             syncContent.Children.Add(SettingsDescription(local ? L10n.Get("LocalAccountSyncDisabled") : lastSync));
@@ -118,8 +128,13 @@ public sealed partial class MainWindow
             syncNow.Click += async (_, _) =>
             {
                 syncNow.IsEnabled = false;
+                syncNotice.ActionButton = null;
                 try { await _sync.CallAsync("sync", new { }); syncNotice.Severity = InfoBarSeverity.Informational; syncNotice.Message = L10n.Get("SyncRequestedNotice"); }
-                catch (Exception error) { syncNotice.Severity = InfoBarSeverity.Error; syncNotice.Message = L10n.Error(error); }
+                catch (Exception error)
+                {
+                    syncNotice.Severity = InfoBarSeverity.Error; syncNotice.Message = L10n.Error(error);
+                    if (hasICloudAccount) syncNotice.ActionButton = syncRelogin;
+                }
                 finally { syncNotice.IsOpen = true; syncNow.IsEnabled = true; }
             };
             var discardUnsynced = SettingsAction(L10n.Get("DiscardUnsyncedChanges"));
@@ -148,8 +163,14 @@ public sealed partial class MainWindow
             if (string.IsNullOrWhiteSpace(accountName)) accountName = L10n.Get("ICloudAccount");
             var signOut = SettingsAction(_demo ? L10n.Get("LeaveSampleData") : _sync.IsLocalDemo ? L10n.Get("LeaveLocalAccount") : L10n.Get("SignOut"));
             signOut.IsEnabled = !_updateBusy && (local || !auth.Flag("signed_out") && (auth.Flag("authenticated") || auth.Flag("has_cache") || auth.Flag("needs_2fa") || auth.Flag("restoring")));
-            account.Children.Add(SettingsCard(accountName, SettingsDescription(local ? L10n.Get("RemindersStayOnThisPC") : auth.Flag("authenticated") ? L10n.Get("SignedIn") : L10n.Get("SignInNeeded")),
-                SettingsDescription(local ? L10n.Get("LeaveSessionDescription") : L10n.Get("SignOutDescription")), signOut));
+            var accountStatus = SettingsDescription(local ? L10n.Get("RemindersStayOnThisPC") : auth.Flag("authenticated") ? L10n.Get("SignedIn") : L10n.Get("SignInNeeded"));
+            var signOutDescription = SettingsDescription(local ? L10n.Get("LeaveSessionDescription") : L10n.Get("SignOutDescription"));
+            var relogin = SettingsAction(L10n.Get("Relogin"));
+            if (hasICloudAccount)
+                account.Children.Add(SettingsCard(accountName, accountStatus, SettingsRow(L10n.Get("ICloudSession"), L10n.Get("ReloginDescription"), relogin), signOutDescription, signOut));
+            else account.Children.Add(SettingsCard(accountName, accountStatus, signOutDescription, signOut));
+            relogin.IsEnabled = !_updateBusy;
+            AutomationProperties.SetName(relogin, L10n.Get("Relogin"));
 
             var about = SettingsPage(L10n.Get("About"), L10n.Get("AboutSettingsDescription"));
             var updates = SettingsAction(L10n.Get("CheckForUpdates")); updates.IsEnabled = !_demo;
@@ -241,11 +262,19 @@ public sealed partial class MainWindow
             resize = (_, _) => Resize(); Root.SizeChanged += resize; Resize(); SelectCategory(Math.Clamp(initialCategory, 0, pages.Length - 1));
             var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.RequestedTheme, Title = L10n.Get("Settings"), Content = layout,
                 PrimaryButtonText = L10n.Get("SaveChanges"), CloseButtonText = L10n.Get("Cancel"), DefaultButton = ContentDialogButton.Primary };
+            theme.SelectionChanged += (_, _) =>
+            {
+                themePreviewed = true;
+                ApplyTheme(ThemeValue(theme.SelectedIndex));
+                dialog.RequestedTheme = Root.RequestedTheme;
+            };
             dialog.Resources["ContentDialogMaxWidth"] = 1020d;
             dialog.Resources["ContentDialogMinWidth"] = 0d;
             dialog.Resources["ExpanderChevronMargin"] = new Thickness(16, 0, 16, 0);
             string? action = null;
             void Request(string value) { action = value; dialog.Hide(); }
+            relogin.Click += (_, _) => Request("relogin");
+            syncRelogin.Click += (_, _) => Request("relogin");
             signOut.Click += (_, _) => Request("sign_out"); clearCache.Click += (_, _) => Request("clear_cache");
             setup.Click += (_, _) => Request("setup");
             installUpdate.Click += async (_, _) =>
@@ -373,13 +402,20 @@ public sealed partial class MainWindow
             updateCancellation.Cancel();
             await updateCheck;
             await recoveryWork;
+            if (themePreviewed && result != ContentDialogResult.Primary)
+            {
+                Root.RequestedTheme = originalTheme;
+                UpdateTitleBarTheme();
+                themePreviewed = false;
+            }
             _dialogOpen = false;
+            if (action == "relogin") { await ReloginAsync(); return; }
             if (action == "sign_out") { await SignOutAsync(); return; }
             if (action == "clear_cache") { await ClearCacheAsync(); return; }
             if (action == "setup") { ShowSetupGuide(); return; }
             if (action == "install_update") { await InstallUpdateAsync(); return; }
             if (result != ContentDialogResult.Primary || !double.IsFinite(sync.Value)) return;
-            var themeValue = theme.SelectedIndex switch { 1 => "light", 2 => "dark", _ => "system" };
+            var themeValue = ThemeValue(theme.SelectedIndex);
             var values = new { theme = themeValue, sync_minutes = (int)Math.Clamp(sync.Value, 1, 60), notifications_enabled = notifications.IsOn, default_list_id = defaultList.SelectedValue as string };
             _settings = _demo ? JsonSerializer.SerializeToElement(values) : await _sync.CallAsync("set_settings", values);
             _uiPreferences.CompletionAnimation = animation.IsOn; _uiPreferences.DetailPaneFraction = paneSizing.SelectedIndex == 0 ? null : detailWidth.Value / 100;
@@ -387,7 +423,16 @@ public sealed partial class MainWindow
             var sidebarChanged = newSidebarSort != SidebarSort;
             _uiPreferences.ListSort = newSidebarSort;
             SaveUiPreferences(); UpdatePaneLayout(); ApplyTheme(themeValue);
+            themePreviewed = false;
             if (sidebarChanged) RebuildListNavigation();
+            var languageValue = language.SelectedIndex switch { 1 => "zh-CN", 2 => "en-US", _ => "" };
+            if (languageValue != (savedLanguage ?? ""))
+            {
+                UiPreferences.SaveLanguage(languageValue);
+                if (!_sync.IsLocalDemo) _uiPreferences.Language = languageValue;
+                if (languageValue != L10n.Language)
+                    ShowInfo(L10n.Get("AppLanguage"), L10n.Get("AppLanguageDescription"), InfoBarSeverity.Informational);
+            }
         }
         catch (Exception error)
         {
@@ -400,6 +445,11 @@ public sealed partial class MainWindow
             await updateCheck;
             await recoveryWork;
             if (resize is not null) Root.SizeChanged -= resize;
+            if (themePreviewed && !_windowClosed)
+            {
+                Root.RequestedTheme = originalTheme;
+                UpdateTitleBarTheme();
+            }
             _dialogOpen = false;
         }
     }

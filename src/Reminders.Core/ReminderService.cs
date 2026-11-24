@@ -287,12 +287,15 @@ public sealed partial class ReminderService : IAsyncDisposable
             case "browser_login":
                 var browserAccount = p.Optional("apple_id", 320)?.Trim().ToLowerInvariant();
                 var browserState = p["state"] as JsonObject ?? throw CoreException.Bad("Missing Apple session.").WithPresentation("ErrorMissingAppleSession");
+                var renewSession = p.Flag("renew_session");
                 var browserLogin = await WithSignIn(async () =>
                 {
+                    if (renewSession && cache.Meta("signed_out") == "1")
+                        throw new CoreException("AUTH_REQUIRED", "No Apple ID provided").WithPresentation("ErrorNoAppleIDProvided");
                     var chinaMainland = browserState.Flag("china_mainland");
                     var authenticated = await client.ImportBrowserSession(browserAccount, browserState, token, account =>
                         cache.EnsureCanSwitchAccount(client.IsSwitchingAccount(account, chinaMainland)),
-                        (account, saveCredentials) => cache.SaveAccount(account, chinaMainland, client.IsSwitchingAccount(account, chinaMainland), saveCredentials));
+                        (account, saveCredentials) => cache.SaveAccount(account, chinaMainland, client.IsSwitchingAccount(account, chinaMainland), saveCredentials), renewSession);
                     cache.SetMeta("signed_out", null); return authenticated;
                 }, token);
                 QueueSync(cache.Lists.Count == 0); return browserLogin;

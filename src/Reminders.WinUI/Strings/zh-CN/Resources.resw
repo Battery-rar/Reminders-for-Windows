@@ -2085,4 +2085,28 @@
   <data name="NewListRose" xml:space="preserve">
     <value>玫瑰色</value>
   </data>
+  <data name="AppLanguage" xml:space="preserve">
+    <value>界面语言</value>
+  </data>
+  <data name="AppLanguageDescription" xml:space="preserve">
+    <value>保存后重启应用，界面语言才会切换。</value>
+  </data>
+  <data name="ICloudSession" xml:space="preserve">
+    <value>iCloud 登录会话</value>
+  </data>
+  <data name="Relogin" xml:space="preserve">
+    <value>重新登录</value>
+  </data>
+  <data name="ReloginDescription" xml:space="preserve">
+    <value>刷新此账户的 iCloud 登录会话，并保留此电脑上的提醒事项和待同步更改。</value>
+  </data>
+  <data name="CouldntRelogin" xml:space="preserve">
+    <value>无法打开 iCloud 重新登录</value>
+  </data>
+  <data name="NewListWindowsSymbols" xml:space="preserve">
+    <value>Windows 符号</value>
+  </data>
+  <data name="NewListEmoji" xml:space="preserve">
+    <value>表情符号（Emoji）</value>
+  </data>
 </root>

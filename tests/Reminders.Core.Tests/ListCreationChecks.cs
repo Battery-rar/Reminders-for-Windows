@@ -18,6 +18,7 @@ internal static class ListCreationChecks
 
     public static async Task RunAsync(Action<bool, string> check)
     {
+        NewListEmojiChecks(check);
         var updated = AppleDocument.AppendList(NativeOrder, RequestId, out var alreadyPresent);
         check(!alreadyPresent && updated != NativeOrder, "append adds a missing list to Apple’s account order");
         foreach (var id in new[] { FirstList, LastList, RequestId })
@@ -31,6 +32,28 @@ internal static class ListCreationChecks
         }
 
         await CloudChecks(check);
+    }
+
+    private static void NewListEmojiChecks(Action<bool, string> check)
+    {
+        const string family = "👨‍👩‍👧‍👦";
+        var request = new JsonObject { ["title"] = "Family", ["badge_emblem"] = "{ \"Emoji\": \"" + family + "\" }" };
+        ListCreation list;
+        try { list = ListCreation.FromRequest(request); }
+        catch (CoreException) { check(false, "new lists accept a single Apple Emoji badge"); return; }
+        var fields = list.Fields();
+        var badge = CloudKit.Text(new JsonObject { ["fields"] = fields }, "BadgeEmblem");
+        check(J.Parse(badge).Text("Emoji") == family && Reminders.Windows.Services.SidebarPresentation.ResolveIcon(badge).IsEmoji,
+            "new lists send the complete emoji in the Apple badge and render it on Windows");
+        fields["BadgeEmblem"] = CloudKit.String("{ \"Emoji\": \"" + family + "\" }");
+        check(list.Matches(new JsonObject { ["recordName"] = list.Id, ["recordType"] = "List", ["fields"] = fields.DeepClone() }),
+            "an equivalent emoji after CloudKit readback matches the created list");
+        foreach (var invalid in new[] { "{\"Emoji\":\"hello\"}", "{\"Emoji\":\"😃😃\"}", "{\"Emoji\":\"😃\",\"other\":true}", "{\"Emoji\":\"\\uD800\"}", "{\"Emoji\":123}", "{broken" })
+        {
+            request["badge_emblem"] = invalid;
+            try { ListCreation.FromRequest(request); check(false, "invalid Apple emoji badge is rejected"); }
+            catch (CoreException error) { check(error.Code == "BAD_REQUEST", "invalid Apple emoji badge is rejected"); }
+        }
     }
 
     private static async Task CloudChecks(Action<bool, string> check)

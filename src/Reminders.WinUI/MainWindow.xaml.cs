@@ -573,10 +573,15 @@ public sealed partial class MainWindow : Window
 
     private async Task RequestAutoSyncAsync(bool manual = false)
     {
-        if (_demo || _accountBusy || _needsSignIn || AuthGate.Visibility != Visibility.Collapsed || !_sync.IsRunning) return;
+        if (_demo || _accountBusy || AuthGate.Visibility != Visibility.Collapsed || !_sync.IsRunning) return;
+        if (_needsSignIn)
+        {
+            if (manual) ShowCachedSignInNotice();
+            return;
+        }
         _lastSyncRequest = DateTimeOffset.UtcNow;
         try { await _sync.CallAsync("sync", new { automatic = !manual }); }
-        catch (Exception error) { ShowInfo(L10n.Get("SyncFailed"), L10n.Error(error), InfoBarSeverity.Error); }
+        catch (Exception error) { ShowSyncFailure(L10n.Error(error)); }
     }
 
     private async void SignIn_Click(object sender, RoutedEventArgs e)
@@ -1189,8 +1194,7 @@ public sealed partial class MainWindow : Window
                 await CompleteSyncRefreshAsync();
                 break;
             case "sync_error":
-                if (!_needsSignIn)
-                    ShowInfo(L10n.Get("SyncFailed"), L10n.EventMessage(e.Data, L10n.Get("TryAgainShortly")), InfoBarSeverity.Error);
+                ShowSyncFailure(L10n.EventMessage(e.Data, L10n.Get("TryAgainShortly")));
                 await CompleteSyncRefreshAsync();
                 break;
             case "sync_cancelled":
@@ -1235,7 +1239,7 @@ public sealed partial class MainWindow : Window
             var status = await _sync.CallAsync("auth_status", new { });
             if (!_windowClosed && !_accountBusy) await ApplyAuthStatusAsync(status);
         }
-        catch (Exception error) { ShowInfo(L10n.Get("SyncFailed"), L10n.Error(error), InfoBarSeverity.Error); }
+        catch (Exception error) { ShowSyncFailure(L10n.Error(error)); }
     }
 
     private async Task ApplyAuthStatusAsync(JsonElement status)
@@ -1252,23 +1256,23 @@ public sealed partial class MainWindow : Window
         _needsSignIn = needsCode || !status.Flag("restore_retryable");
         if (AuthGate.Visibility == Visibility.Collapsed)
         {
-            if (_needsSignIn) ShowCachedSignInNotice(needsCode ? status.Property("two_factor") : default);
+            if (_needsSignIn) ShowCachedSignInNotice();
         }
         else if (needsCode) await ShowCodeEntryAsync(status.Property("two_factor"));
         else ShowLogin();
     }
 
-    private void ShowCachedSignInNotice(JsonElement twoFactor = default)
+    private void ShowSyncFailure(string message)
+    {
+        ShowInfo(L10n.Get("SyncFailed"), message, InfoBarSeverity.Error);
+        if (!_demo && !_sync.IsLocalDemo && AuthGate.Visibility == Visibility.Collapsed)
+            AppInfoBar.ActionButton = CreateReloginButton();
+    }
+
+    private void ShowCachedSignInNotice()
     {
         ShowInfo(L10n.Get("SignInToResumeSyncing"), L10n.Get("CachedRemindersAvailable"), InfoBarSeverity.Warning);
-        var action = new Button { Content = L10n.Get("SignIn") };
-        action.Click += async (_, _) =>
-        {
-            if (_accountBusy || _savingDetail || _detailDirty && !await ConfirmLeaveDetailAsync()) return;
-            if (twoFactor.ValueKind == JsonValueKind.Object) await ShowCodeEntryAsync(twoFactor);
-            else ShowLogin();
-        };
-        AppInfoBar.ActionButton = action;
+        AppInfoBar.ActionButton = CreateReloginButton();
     }
     private async void MainWindow_Closed(object sender, WindowEventArgs args)
     {
