@@ -19,6 +19,13 @@ CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(due_date)
   WHERE completed = 0 AND deleted = 0;
 CREATE INDEX IF NOT EXISTS idx_reminders_completed ON reminders(completed_date DESC)
   WHERE completed = 1 AND deleted = 0;
+CREATE TABLE IF NOT EXISTS reminder_manual_order (
+  view_key TEXT NOT NULL,
+  reminder_id TEXT NOT NULL REFERENCES reminders(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  PRIMARY KEY(view_key, reminder_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reminder_manual_order_reminder ON reminder_manual_order(reminder_id);
 CREATE TABLE IF NOT EXISTS today_move_history (
   reminder_id TEXT PRIMARY KEY REFERENCES reminders(id) ON UPDATE CASCADE ON DELETE CASCADE,
   original_due_date TEXT, original_all_day INTEGER NOT NULL,

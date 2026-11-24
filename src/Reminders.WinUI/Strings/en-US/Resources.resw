@@ -2142,4 +2142,13 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="SwipeToCompleteItem.Text" xml:space="preserve">
     <value>Complete</value>
   </data>
+  <data name="CouldntReorderReminders" xml:space="preserve">
+    <value>Couldn’t reorder reminders</value>
+  </data>
+  <data name="ErrorInvalidReminderOrder" xml:space="preserve">
+    <value>Refresh the list and try reordering the reminders again.</value>
+  </data>
+  <data name="ReminderOrderHandle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Drag to reorder</value>
+  </data>
 </root>

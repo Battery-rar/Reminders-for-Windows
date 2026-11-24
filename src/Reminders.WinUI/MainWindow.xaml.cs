@@ -47,7 +47,6 @@ public sealed partial class MainWindow : Window
     private readonly HashSet<string> _collapsedSubtasks = [];
     private ReminderItem? _selected;
     private NavEntry _view = new(L10n.Get("Today"), "", NavKind.Smart, "today");
-    private string _sort = "manual";
     private bool _verificationBusy;
     private bool _loadingDetail;
     private bool _detailDirty;
@@ -76,6 +75,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        UpdateReminderSortButton();
         Title = L10n.Get("AppTitle");
         DetailRecurrence.SizeChanged += EditorPair_SizeChanged;
         DetailOptions.SizeChanged += EditorPair_SizeChanged;
@@ -343,13 +343,14 @@ public sealed partial class MainWindow : Window
 
     private async Task LoadRemindersAsync(bool fromSync = false, bool preserveDetail = false)
     {
+        UpdateReminderSortButton();
         ShowCompleted.Visibility = _view.Kind == NavKind.Smart && _view.Key is "completed" or "deleted" ? Visibility.Collapsed : Visibility.Visible;
         if (_demo) { _reminderLoads.Invalidate(); LoadDemoRows(fromSync, preserveDetail); return; }
         try
         {
             var presentation = CurrentReminderQuery;
-            var query = new Dictionary<string, object?> { ["include_completed"] = IncludesCompleted, ["include_parents"] = true, ["search"] = string.IsNullOrWhiteSpace(SearchBox.Text) ? null : SearchBox.Text.Trim(), ["sort"] = _sort };
-            query[_view.Kind switch { NavKind.List => "list_id", NavKind.Tag => "tag", _ => "scope" }] = _view.Key;
+            var query = new Dictionary<string, object?> { ["include_completed"] = IncludesCompleted, ["include_parents"] = true, ["search"] = string.IsNullOrWhiteSpace(SearchBox.Text) ? null : SearchBox.Text.Trim(), ["sort"] = ReminderSort };
+            query[ReminderScopeParameter] = _view.Key;
             var selectedId = _selected?.Id;
             await _reminderLoads.RunAsync(async () =>
             {
@@ -368,7 +369,7 @@ public sealed partial class MainWindow : Window
         catch (Exception error) { ShowInfo(L10n.Get("CouldntLoadReminders"), L10n.Error(error), InfoBarSeverity.Error); }
     }
     private (NavKind Kind, string Key, string Search, string Sort, bool Completed) CurrentReminderQuery =>
-        (_view.Kind, _view.Key, SearchBox.Text, _sort, IncludesCompleted);
+        (_view.Kind, _view.Key, SearchBox.Text, ReminderSort, IncludesCompleted);
     private void UpdateRows()
     {
         RebuildReminderSections();
@@ -482,16 +483,19 @@ public sealed partial class MainWindow : Window
     private void RebuildReminderSections()
     {
         var families = ReminderHierarchy.Build(_reminders, _collapsedSubtasks);
+        var showOrderHandle = ReminderSort == "manual" && string.IsNullOrWhiteSpace(SearchBox.Text);
         IEnumerable<ReminderItem> Visible(ReminderFamily<ReminderItem> family) => family.Rows.Where(row => !row.Hidden).Select(row =>
         {
-            row.Item.ConfigureHierarchy(row.Depth, row.HasChildren, !_collapsedSubtasks.Contains(row.Item.Id)); return row.Item;
+            row.Item.ConfigureHierarchy(row.Depth, row.HasChildren, !_collapsedSubtasks.Contains(row.Item.Id));
+            row.Item.ShowOrderHandle(showOrderHandle);
+            return row.Item;
         });
         _regrouping = true;
         try
         {
-            if (_view.Kind == NavKind.Smart && _view.Key is "today" or "upcoming")
+            if (_view.Kind == NavKind.Smart && (_view.Key is "today" or "upcoming") && (ReminderSort is "due" or "title"))
             {
-                var groups = ReminderGrouping.Group(families, _view.Key, _sort, DateTimeOffset.Now);
+                var groups = ReminderGrouping.Group(families, _view.Key, ReminderSort, DateTimeOffset.Now);
                 var existing = _reminderSections.ToDictionary(section => section.Title);
                 var sections = new List<ReminderSection>();
                 foreach (var group in groups)
@@ -511,7 +515,8 @@ public sealed partial class MainWindow : Window
             }
             else
             {
-                Reconcile(_visibleReminders, families.SelectMany(Visible).ToList());
+                var ordered = ReminderSort == "priority" ? ReminderGrouping.ByPriority(families) : families;
+                Reconcile(_visibleReminders, ordered.SelectMany(Visible).ToList());
                 if (_usingGroupedReminderSource)
                 {
                     ReminderList.ItemsSource = _visibleReminders;
@@ -753,7 +758,7 @@ public sealed partial class MainWindow : Window
         _lists = DemoData.CreateLists();
         _tags = ["errands"];
         RebuildListNavigation();
-        _demoRows.Clear(); _demoRows.AddRange(DemoData.CreateReminders());
+        _demoRows.Clear(); _demoRows.AddRange(DemoData.CreateReminders()); _demoReminderOrder.Clear();
         LoadDemoRows();
         RestoreNavigationSelection();
         ShowInfo(L10n.Get("DemoMode"), L10n.Get("DemoModeDescription"), InfoBarSeverity.Informational);
@@ -877,11 +882,6 @@ public sealed partial class MainWindow : Window
     }
 
     private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args) { if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput) { _searchTimer.Stop(); _searchTimer.Start(); } }
-    private async void Sort_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not RadioMenuFlyoutItem selected) return;
-        _sort = selected.Tag?.ToString() ?? "manual"; await LoadRemindersAsync();
-    }
     private bool IncludesCompleted => ShowCompleted.IsChecked == true;
     private async void ShowCompleted_Changed(object sender, RoutedEventArgs e) { if (Root.IsLoaded) await LoadRemindersAsync(); }
     private async void ReminderList_SelectionChanged(object sender, SelectionChangedEventArgs e)

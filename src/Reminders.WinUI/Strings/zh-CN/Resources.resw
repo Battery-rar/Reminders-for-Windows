@@ -1194,7 +1194,7 @@
     <value>优先级</value>
   </data>
   <data name="PriorityRadioMenuFlyoutItem.Text" xml:space="preserve">
-    <value>优先级</value>
+    <value>重要程度</value>
   </data>
   <data name="PrivacyPolicy" xml:space="preserve">
     <value>隐私政策</value>
@@ -2132,5 +2132,14 @@
   </data>
   <data name="SwipeToCompleteItem.Text" xml:space="preserve">
     <value>完成</value>
+  </data>
+  <data name="CouldntReorderReminders" xml:space="preserve">
+    <value>无法重新排列提醒事项</value>
+  </data>
+  <data name="ErrorInvalidReminderOrder" xml:space="preserve">
+    <value>请刷新列表后重试排序。</value>
+  </data>
+  <data name="ReminderOrderHandle.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>拖动排序</value>
   </data>
 </root>

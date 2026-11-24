@@ -69,7 +69,7 @@
          </Style>
         </AutoSuggestBox.TextBoxStyle>
        </AutoSuggestBox>
-       <Button x:Uid="SortButton" Grid.Column="1" Width="40" Height="40" ToolTipService.Placement="Bottom"><Button.Flyout><MenuFlyout><RadioMenuFlyoutItem x:Uid="ManualRadioMenuFlyoutItem" Tag="manual" GroupName="sort" IsChecked="True" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="DueDateRadioMenuFlyoutItem" Tag="due" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="PriorityRadioMenuFlyoutItem" Tag="priority" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="TitleRadioMenuFlyoutItem" Tag="title" GroupName="sort" Click="Sort_Click"/></MenuFlyout></Button.Flyout><FontIcon Glyph="&#xE8CB;" FontSize="18"/></Button>
+       <Button x:Uid="SortButton" x:Name="ReminderSortButton" Grid.Column="1" Width="40" Height="40" ToolTipService.Placement="Bottom"><Button.Flyout><MenuFlyout><RadioMenuFlyoutItem x:Uid="ManualRadioMenuFlyoutItem" Tag="manual" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="DueDateRadioMenuFlyoutItem" Tag="due" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="PriorityRadioMenuFlyoutItem" Tag="priority" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="TitleRadioMenuFlyoutItem" Tag="title" GroupName="sort" Click="Sort_Click"/></MenuFlyout></Button.Flyout><FontIcon Glyph="&#xE8CB;" FontSize="18"/></Button>
       </Grid>
       <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0"
                 CanDragItems="True" DragItemsStarting="ReminderList_DragItemsStarting" DragItemsCompleted="ReminderList_DragItemsCompleted">
@@ -106,6 +106,8 @@
        <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="4,1"/><Setter Property="MinHeight" Value="0"/><Setter Property="CornerRadius" Value="6"/></Style></ListView.ItemContainerStyle>
        <ListView.ItemTemplate>
         <DataTemplate x:DataType="local:ReminderItem">
+         <Grid AllowDrop="True" DragOver="ReminderRow_DragOver" DragLeave="ReminderRow_DragLeave" Drop="ReminderRow_Drop">
+         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
          <SwipeControl HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" ContextRequested="ReminderRow_ContextRequested"
                        LeftItems="{Binding TodayAction, Converter={StaticResource TodaySwipeItems}}"
                        RightItems="{Binding CanMarkComplete, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToComplete}}">
@@ -133,6 +135,12 @@
           </Button>
          </Grid>
          </SwipeControl>
+         <Border x:Uid="ReminderOrderHandle" x:Name="ReminderOrderHandle" Grid.Column="1" Width="28" MinHeight="32"
+                 Background="Transparent" Visibility="{x:Bind OrderHandleVisibility, Mode=OneWay}"
+                 PointerPressed="ReminderOrderHandle_PointerPressed" DragStarting="ReminderOrderHandle_DragStarting">
+          <FontIcon Glyph="&#xE700;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" IsHitTestVisible="False"/>
+         </Border>
+         </Grid>
         </DataTemplate>
        </ListView.ItemTemplate>
       </ListView>

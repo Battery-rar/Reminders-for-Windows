@@ -222,8 +222,12 @@ internal sealed partial class Cache : IDisposable
         lock (gate)
         {
             var scope = p.Text("scope"); var args = new List<object?>();
+            var sort = p.Text("sort");
+            var manualKey = sort == "manual" ? ManualOrderKey(p) : null;
             string Param(object? v) { args.Add(v); return "@p" + (args.Count - 1); }
             var sql = $"SELECT DISTINCT r.*, {TodayUndoColumn} FROM reminders r ";
+            if (manualKey is not null)
+                sql += "LEFT JOIN reminder_manual_order AS m ON m.reminder_id=r.id AND m.view_key=" + Param(manualKey) + " ";
             if (p.Text("tag") is { } tag) sql += "JOIN tags t ON t.reminder_id=r.id AND t.name=" + Param(tag) + " ";
             sql += scope == "deleted" ? "WHERE r.deleted=1 " : "WHERE r.deleted=0 ";
             if (scope == "today")
@@ -237,15 +241,17 @@ internal sealed partial class Cache : IDisposable
             if (p.Text("list_id") is { } list) sql += "AND r.list_id=" + Param(list) + " ";
             if (p.Optional("search", 4096) is { Length: > 0 } search) sql += "AND (r.title LIKE " + Param("%" + search + "%") + " OR r.description LIKE " + Param("%" + search + "%") + ") ";
             const string dueOrder = "CASE WHEN r.all_day=1 THEN julianday(r.due_date,'utc') ELSE julianday(r.due_date) END";
-            var order = p.Text("sort") switch
+            var order = sort switch
             {
+                "manual" => "m.position IS NULL,m.position,r.created IS NULL,r.created,r.id",
                 "title" => $"r.title COLLATE NOCASE,{dueOrder}", "title_desc" => "r.title COLLATE NOCASE DESC",
                 "due" => $"r.due_date IS NULL,{dueOrder},r.all_day DESC,r.title COLLATE NOCASE", "due_desc" => $"r.due_date IS NULL,{dueOrder} DESC",
-                "priority" => $"CASE r.priority WHEN 1 THEN 0 WHEN 5 THEN 1 WHEN 9 THEN 2 ELSE 3 END,r.due_date IS NULL,{dueOrder}",
+                "priority" => $"CASE r.priority WHEN 1 THEN 0 WHEN 5 THEN 1 WHEN 9 THEN 2 ELSE 3 END,r.due_date IS NULL,{dueOrder},r.all_day DESC,r.title COLLATE NOCASE,r.id",
                 "created" => "r.created DESC", "created_asc" => "r.created", _ => scope == "completed" ? "r.completed_date DESC NULLS LAST,r.modified DESC"
                     : $"r.completed,r.due_date IS NULL,{dueOrder},r.all_day DESC,r.title COLLATE NOCASE"
             };
             var rows = Query(sql + "ORDER BY " + order + " LIMIT " + Param(Math.Clamp(p.Number("limit", 1000), 1, scope == "completed" ? 50 : 10000)), args.ToArray());
+            var matchCount = rows.Count;
             foreach (var row in rows.OfType<JsonObject>()) AttachReminderMetadata(row);
             // Today shows only its own matches. The visible parent IDs are
             // enough to build a tree when both a parent and child qualify.
@@ -268,7 +274,7 @@ internal sealed partial class Cache : IDisposable
                 }
                 IncludeParents(rows, p);
             }
-            return rows;
+            return manualKey is not null && rows.Count > matchCount ? OrderManualContext(rows, manualKey) : rows;
         }
     }
     private static object? Sql(JsonNode? v) => v is null ? null : v is JsonValue x && x.TryGetValue<bool>(out var b) ? b ? 1 : 0 : v is JsonValue y && y.TryGetValue<long>(out var n) ? n : v is JsonValue z && z.TryGetValue<string>(out var s) ? s : v.ToJsonString();

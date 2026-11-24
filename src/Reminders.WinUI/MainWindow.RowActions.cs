@@ -17,18 +17,27 @@ public sealed partial class MainWindow
 
     private void ReminderRow_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
     {
-        if (sender is not SwipeControl { DataContext: ReminderItem reminder } row || !CanChangeReminderRow(reminder)) return;
+        if (sender is not SwipeControl { DataContext: ReminderItem reminder } row) return;
         var actions = new MenuFlyout();
-        if (reminder.CanMarkComplete)
-            AddAction(L10n.Get("RowMarkComplete"), "\uE73E", () => SetReminderCompletionAsync(reminder, true));
-        if (reminder.TodayAction == ReminderTodayAction.Add)
-            AddAction(L10n.Get("RowAddToToday"), "\uE787", () => AddReminderToTodayAsync(reminder));
-        else if (reminder.TodayAction == ReminderTodayAction.Undo)
-            AddAction(L10n.Get("RowUndoToday"), "\uE7A7", () => UndoReminderTodayAsync(reminder));
-        else if (reminder.TodayAction == ReminderTodayAction.Clear)
-            AddAction(L10n.Get("RowMoveOutOfToday"), "\uE787", () => MoveReminderOutOfTodayAsync(reminder));
-        if (actions.Items.Count > 0) actions.Items.Add(new MenuFlyoutSeparator());
-        AddAction(L10n.Get("DeleteReminder"), "\uE74D", () => DeleteReminderAsync(reminder));
+        if (ReminderMoveNeighbor(reminder, -1) is { } above)
+            AddAction(L10n.Get("MoveUp"), "\uE74A", () => MoveReminderRelativeAsync(reminder, above, false));
+        if (ReminderMoveNeighbor(reminder, 1) is { } below)
+            AddAction(L10n.Get("MoveDown"), "\uE74B", () => MoveReminderRelativeAsync(reminder, below, true));
+        if (CanChangeReminderRow(reminder))
+        {
+            if (actions.Items.Count > 0) actions.Items.Add(new MenuFlyoutSeparator());
+            if (reminder.CanMarkComplete)
+                AddAction(L10n.Get("RowMarkComplete"), "\uE73E", () => SetReminderCompletionAsync(reminder, true));
+            if (reminder.TodayAction == ReminderTodayAction.Add)
+                AddAction(L10n.Get("RowAddToToday"), "\uE787", () => AddReminderToTodayAsync(reminder));
+            else if (reminder.TodayAction == ReminderTodayAction.Undo)
+                AddAction(L10n.Get("RowUndoToday"), "\uE7A7", () => UndoReminderTodayAsync(reminder));
+            else if (reminder.TodayAction == ReminderTodayAction.Clear)
+                AddAction(L10n.Get("RowMoveOutOfToday"), "\uE787", () => MoveReminderOutOfTodayAsync(reminder));
+            if (reminder.CanMarkComplete) actions.Items.Add(new MenuFlyoutSeparator());
+            AddAction(L10n.Get("DeleteReminder"), "\uE74D", () => DeleteReminderAsync(reminder));
+        }
+        if (actions.Items.Count == 0) return;
 
         args.Handled = true;
         if (args.TryGetPosition(row, out var position)) actions.ShowAt(row, new FlyoutShowOptions { Position = position });

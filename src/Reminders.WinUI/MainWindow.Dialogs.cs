@@ -295,7 +295,13 @@ public sealed partial class MainWindow
         rows = rows.ToList();
         if (_view.Kind == NavKind.Tag || !string.IsNullOrWhiteSpace(SearchBox.Text))
             foreach (var row in rows) row.ContextOnly = false;
-        rows = _sort switch { "title" => rows.OrderBy(row => row.Title), "priority" => rows.OrderBy(row => row.Priority == 0 ? 10 : row.Priority), _ => rows.OrderBy(row => row.DueDate is null).ThenBy(row => row.DueDate) };
+        rows = ReminderSort switch
+        {
+            "manual" => ApplyDemoReminderOrder(rows),
+            "title" => rows.OrderBy(row => row.Title, StringComparer.CurrentCultureIgnoreCase),
+            "priority" => ReminderGrouping.ByPriority(rows),
+            _ => ReminderGrouping.ByDue(rows)
+        };
         var visible = rows.ToList();
         SetReminderRows(todayView ? visible : IncludeDemoFamily(visible), fromSync, preserveDetail);
         SetBadge("smart:today", _demoRows.Count(row => !row.Completed && !row.Deleted && DateTimeOffset.TryParse(row.DueDate, out var due) && (row.AllDay ? due.Date : due.LocalDateTime.Date) <= DateTime.Today));
