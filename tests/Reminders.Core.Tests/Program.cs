@@ -41,6 +41,12 @@ Equal(new DateTime(2026, 3, 12), Reminders.Windows.Services.ReminderSchedule.Fro
 var shanghaiToday = Reminders.Windows.Services.ReminderSchedule.FromToday(TimeUtil.Parse("2026-07-01T17:00:00Z"), TimeUtil.Zone("Asia/Shanghai"), 0);
 Equal("2026-07-02", Reminders.Windows.Services.ReminderSchedule.Format(shanghaiToday, true, TimeSpan.Zero), "quick today uses the date in Shanghai after local midnight");
 Equal<string?>(null, Reminders.Windows.Services.ReminderSchedule.Format(null, false, TimeSpan.FromHours(9)), "cleared due date has no scheduled instant");
+var asia = TimeUtil.Zone("Asia/Shanghai");
+var todayAfterMidnight = TimeUtil.Parse("2026-07-01T17:00:00Z");
+Equal<(string, bool)?>( ("2026-07-02T20:45:00", false), Reminders.Windows.Services.ReminderSchedule.MoveToToday("2026-06-29T12:45:00Z", false, todayAfterMidnight, asia), "row shortcut moves the calendar date and preserves local wall time");
+Equal<(string, bool)?>( ("2026-07-02", true), Reminders.Windows.Services.ReminderSchedule.MoveToToday(null, false, todayAfterMidnight, asia), "row shortcut makes an unscheduled reminder all-day today");
+Equal<(string, bool)?>(null, Reminders.Windows.Services.ReminderSchedule.MoveToToday("2026-07-01T18:00:00Z", false, todayAfterMidnight, asia), "row shortcut does not reschedule a reminder already due today");
+Equal<(string, bool)?>(null, Reminders.Windows.Services.ReminderSchedule.MoveToToday("2026-07-02", true, todayAfterMidnight, asia), "today's all-day reminders keep their calendar date");
 Equal(TimeUtil.Parse("2026-11-01T05:30:00Z"), TimeUtil.Anchor(new DateTime(2026, 11, 1, 1, 30, 0), ny), "DST overlap chooses first instant");
 Equal(TimeUtil.Parse("2026-03-08T07:00:00Z"), TimeUtil.Anchor(new DateTime(2026, 3, 8, 2, 30, 0), ny), "DST gap advances");
 var shanghaiTimed = TimeUtil.Parse("2026-07-02T00:30:00+08:00");

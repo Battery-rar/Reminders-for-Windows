@@ -241,13 +241,14 @@ internal sealed partial class Cache : IDisposable
             };
             var rows = Query(sql + "ORDER BY " + order + " LIMIT " + Param(Math.Clamp(p.Number("limit", 1000), 1, scope == "completed" ? 50 : 10000)), args.ToArray());
             foreach (var row in rows.OfType<JsonObject>()) AttachTags(row);
-            if (p.Flag("include_parents"))
+            // Today shows only its own matches. The visible parent IDs are
+            // enough to build a tree when both a parent and child qualify.
+            if (p.Flag("include_parents") && scope != "today")
             {
                 var filterText = p.Optional("search", 4096); var filterTag = p.Text("tag");
                 if (!string.IsNullOrEmpty(filterText) || filterTag is not null)
                 {
-                    // Search the family context that was visible before filtering,
-                    // too: an undated child under a task due today is still findable.
+                    // Search the family context that was visible before filtering.
                     var scopeQuery = p.DeepClone().AsObject(); scopeQuery.Remove("search"); scopeQuery.Remove("tag");
                     var included = rows.OfType<JsonObject>().Select(row => row.Required("id")).ToHashSet();
                     foreach (var candidate in Reminders(scopeQuery).OfType<JsonObject>())
