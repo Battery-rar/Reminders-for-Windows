@@ -37,6 +37,8 @@ internal static class TimeUtil
         DateTime.TryParseExact(value, CalendarDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
     public static DateTime AllDayDate(string due, TimeZoneInfo zone) =>
         TryCalendarDate(due, out var date) ? date : TimeZoneInfo.ConvertTime(Parse(due), zone).Date;
+    internal static DateTime? LocalDue(string? due, bool allDay, TimeZoneInfo zone) => due is null ? null
+        : allDay ? AllDayDate(due, zone) : TimeZoneInfo.ConvertTime(Parse(due), zone).DateTime;
     public static string FromCloudDue(long ms, bool allDay, string? zone)
     {
         var instant = DateTimeOffset.FromUnixTimeMilliseconds(ms);

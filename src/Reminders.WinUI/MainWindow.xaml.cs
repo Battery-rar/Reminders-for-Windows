@@ -992,8 +992,13 @@ public sealed partial class MainWindow : Window
 
     private async void DetailAddToToday_Click(object sender, RoutedEventArgs e)
     {
-        if (_selected is not { Deleted: false } || _savingDetail || _dialogOpen) return;
+        if (_selected is not { Deleted: false } reminder || _savingDetail || _dialogOpen) return;
         var saveImmediately = !_detailDirty;
+        if (saveImmediately && reminder.CanMarkComplete)
+        {
+            await AddReminderToTodayAsync(reminder);
+            return;
+        }
         if (DetailDate.Date is null) DetailAllDay.IsOn = true;
         DetailDate.Date = LocalScheduleDate();
         if (saveImmediately && _detailDirty) await SaveDetailAsync(preserveEditor: true);

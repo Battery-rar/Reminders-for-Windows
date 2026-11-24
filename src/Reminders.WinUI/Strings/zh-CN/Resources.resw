@@ -2115,6 +2115,12 @@
   <data name="SwipeToTodayItem.Text" xml:space="preserve">
     <value>添加到“今天”</value>
   </data>
+  <data name="RowUndoToday" xml:space="preserve">
+    <value>撤销添加到“今天”</value>
+  </data>
+  <data name="SwipeUndoTodayItem.Text" xml:space="preserve">
+    <value>撤销添加到“今天”</value>
+  </data>
   <data name="SwipeToCompleteItem.Text" xml:space="preserve">
     <value>完成</value>
   </data>
