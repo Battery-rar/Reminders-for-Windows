@@ -14,7 +14,9 @@ internal static class NativeScheduleWriteChecks
         const string locationTrigger = "AlarmTrigger/location";
         const string scheduleId = "23310000-0000-4000-8000-000000000001";
         const string newAlarm = "Alarm/" + scheduleId;
-        const string newTrigger = "AlarmTrigger/" + scheduleId;
+        const string noAlarmReminderId = "Reminder/previously-unscheduled";
+        const string newScheduleId = "23310000-0000-4000-8000-000000000002";
+        const string zoneOwner = "_native-fixture-owner";
         JsonObject Record(string id, JsonObject fields) =>
             new() { ["recordName"] = id, ["recordType"] = id.Split('/')[0], ["recordChangeTag"] = "old", ["fields"] = fields };
         var records = new Dictionary<string, JsonObject>
@@ -29,10 +31,17 @@ internal static class NativeScheduleWriteChecks
             [oldAlarm] = Record(oldAlarm, new() { ["Reminder"] = CloudKit.Reference(reminderId), ["TriggerID"] = CloudKit.String("old") }),
             [oldTrigger] = Record(oldTrigger, new() { ["Alarm"] = CloudKit.Reference(oldAlarm), ["Type"] = CloudKit.String("Date") }),
             [locationAlarm] = Record(locationAlarm, new() { ["Reminder"] = CloudKit.Reference(reminderId), ["TriggerID"] = CloudKit.String("location") }),
-            [locationTrigger] = Record(locationTrigger, new() { ["Alarm"] = CloudKit.Reference(locationAlarm), ["Type"] = CloudKit.String("Location") })
+            [locationTrigger] = Record(locationTrigger, new() { ["Alarm"] = CloudKit.Reference(locationAlarm), ["Type"] = CloudKit.String("Location") }),
+            [noAlarmReminderId] = Record(noAlarmReminderId, new()
+            {
+                ["List"] = J.Node(new { type = "REFERENCE", value = new { recordName = "List/personal", action = "VALIDATE",
+                    zoneID = new { zoneName = "Reminders", ownerRecordName = zoneOwner, zoneType = "REGULAR_CUSTOM_ZONE" } } }),
+                ["AllDay"] = CloudKit.Number(0), ["TimeZone"] = CloudKit.String("Asia/Shanghai")
+            })
         };
         var writes = 0;
         var loseReply = true;
+        string? attemptedTrigger = null;
         var secrets = new SecretStore(new MemorySecrets());
         secrets.Session("test@example.com", J.Node(new { session_token = "mock" }).ToJsonString());
         static HttpResponseMessage Reply(JsonNode body) => new(HttpStatusCode.OK) { Content = new StringContent(body.ToJsonString()) };
@@ -47,8 +56,28 @@ internal static class NativeScheduleWriteChecks
             if (!path.EndsWith("/records/modify")) throw new InvalidOperationException("Unexpected endpoint");
             check(body.Flag("atomic"), "date trigger and reminder are written atomically");
             writes++;
+            var requestOperations = body.Array("operations");
+            if (requestOperations.Any(operation => operation?["record"].Text("recordName") == noAlarmReminderId))
+            {
+                var alarm = requestOperations.Single(operation => operation?["record"].Text("recordType") == "Alarm")!["record"]!;
+                var trigger = requestOperations.Single(operation => operation?["record"].Text("recordType") == "AlarmTrigger")!["record"]!;
+                var alarmReference = CloudKit.Field(alarm, "Reminder");
+                var triggerReference = CloudKit.Field(trigger, "Alarm");
+                check(new[] { alarmReference, triggerReference }.All(reference => reference.Text("action") == "VALIDATE" &&
+                    reference?["zoneID"] is JsonObject { Count: 2 } zone && zone.Text("zoneName") == "Reminders" && zone.Text("ownerRecordName") == zoneOwner),
+                    "native date-alarm writes explicitly qualify both validated references with the reminder's zone");
+                check(alarmReference.Text("recordName") == noAlarmReminderId && triggerReference.Text("recordName") == "Alarm/" + newScheduleId &&
+                    trigger.Text("recordName") == "AlarmTrigger/" + CloudKit.Text(alarm, "TriggerID"),
+                    "date-alarm relationships and TriggerID address the intended records");
+                if (attemptedTrigger is null)
+                {
+                    attemptedTrigger = trigger.Required("recordName");
+                    throw new HttpRequestException("Schedule request did not reach iCloud");
+                }
+                check(trigger.Text("recordName") == attemptedTrigger, "pre-commit retry uses the identical date trigger identity");
+            }
             var results = new JsonArray();
-            foreach (var operation in body.Array("operations"))
+            foreach (var operation in requestOperations)
             {
                 var supplied = operation!["record"]!;
                 var id = supplied.Required("recordName");
@@ -72,6 +101,9 @@ internal static class NativeScheduleWriteChecks
         var patch = J.Node(new { due_date = "2026-11-28T02:45:00Z", all_day = false, schedule_id = scheduleId }).AsObject();
         try { await client.Update(reminderId, patch, "old", default); check(false, "lost date edit reply is retryable"); }
         catch (CoreException error) { check(error.Code == "NETWORK", "native date edit simulated a lost response"); }
+        var triggerUid = CloudKit.Text(records[newAlarm], "TriggerID");
+        var newTrigger = "AlarmTrigger/" + triggerUid;
+        check(Guid.TryParse(triggerUid, out _) && triggerUid != scheduleId, "native date alarm and trigger use separate UUIDs");
         check(records.ContainsKey(newAlarm) && records.ContainsKey(newTrigger), "same-day edit creates the linked Apple date alarm and trigger");
         var saved = await client.Update(reminderId, patch, "old", default);
         check(writes == 1 && TimeUtil.Parse(saved.Required("due_date")) == TimeUtil.Parse("2026-11-28T02:45:00Z"), "retry recognizes a committed date edit");
@@ -81,7 +113,7 @@ internal static class NativeScheduleWriteChecks
             && records[locationAlarm].Text("recordChangeTag") == "old" && records[locationTrigger].Text("recordChangeTag") == "old",
             "only the superseded date alarm and trigger are retired");
         check(records[newAlarm]["parent"].Text("recordName") == reminderId && records[newTrigger]["parent"].Text("recordName") == newAlarm
-            && CloudKit.Text(records[newAlarm], "TriggerID") == scheduleId && CloudKit.Field(records[newTrigger], "Alarm").Text("recordName") == newAlarm,
+            && CloudKit.Field(records[newTrigger], "Alarm").Text("recordName") == newAlarm,
             "the linked records use Apple's reminder and alarm hierarchy");
         var components = J.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(CloudKit.Text(records[newTrigger], "DateComponentsData")!)));
         check(components.Number("hour") == 10 && components.Number("minute") == 45 && components.Number("day") == 28
@@ -89,5 +121,11 @@ internal static class NativeScheduleWriteChecks
         var cleared = await client.Update(reminderId, J.Node(new { due_date = (string?)null, all_day = true }).AsObject(), saved.Text("change_tag"), default);
         check(cleared.Text("due_date") is null && CloudKit.Int(records[newTrigger], "Deleted") == 1
             && CloudKit.Field(records[reminderId], "AlarmIDs")!.AsArray().Single()!.ToString() == "location", "clearing the date retires its date trigger and keeps the location alarm");
+        var timed = J.Node(new { due_date = "2026-11-28T03:25:00Z", all_day = false, schedule_id = newScheduleId }).AsObject();
+        try { await client.Update(noAlarmReminderId, timed, "old", default); check(false, "an undelivered date write is retryable"); }
+        catch (CoreException error) { check(error.Code == "NETWORK", "native date edit simulated a failed request before commit"); }
+        var firstSchedule = await client.Update(noAlarmReminderId, timed, "old", default);
+        check(TimeUtil.Parse(firstSchedule.Required("due_date")) == TimeUtil.Parse("2026-11-28T03:25:00Z"),
+            "timed edit succeeds on a reminder without prior alarms");
     }
 }

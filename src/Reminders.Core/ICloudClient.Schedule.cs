@@ -70,8 +70,14 @@ internal sealed partial class ICloudClient
         if (!allDay && instantField is JsonValue value && value.TryGetValue<long>(out var milliseconds))
         {
             var alarmId = identity ?? Guid.NewGuid().ToString().ToUpperInvariant();
+            // Move a data bit so the linked record has its own UUID and retries
+            // of the same queued edit still address the same two records.
+            var triggerBytes = Guid.Parse(alarmId).ToByteArray();
+            triggerBytes[^1] ^= 0x80;
+            var triggerId = new Guid(triggerBytes).ToString().ToUpperInvariant();
             var alarmName = AlarmPrefix + alarmId;
-            var triggerName = TriggerPrefix + alarmId;
+            var triggerName = TriggerPrefix + triggerId;
+            var referenceZone = ScheduleReferenceZone(original);
             var zone = TimeUtil.Zone(fields["TimeZone"].Text("value") ?? CloudKit.Text(original, "TimeZone"));
             var zoneId = TimeZoneInfo.TryConvertWindowsIdToIanaId(zone.Id, out var iana) ? iana : zone.Id;
             var wall = TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeMilliseconds(milliseconds), zone);
@@ -87,14 +93,14 @@ internal sealed partial class ICloudClient
             var nonce = oldToken.Number("counter") * 100_000_000_000d + modification;
             operations.Add(CloudKit.Operation("create", alarmName, null, new()
             {
-                ["AlarmUID"] = CloudKit.String(alarmId), ["Reminder"] = CloudKit.Reference(reminderId),
-                ["TriggerID"] = CloudKit.String(alarmId), ["CreationDate"] = CloudKit.Timestamp(now),
+                ["AlarmUID"] = CloudKit.String(alarmId), ["Reminder"] = ScheduleReference(reminderId, referenceZone),
+                ["TriggerID"] = CloudKit.String(triggerId), ["CreationDate"] = CloudKit.Timestamp(now),
                 ["LastModifiedDate"] = CloudKit.Timestamp(now), ["Deleted"] = CloudKit.Number(0), ["Imported"] = CloudKit.Number(0),
                 ["DueDateResolutionTokenAsNonce"] = new JsonObject { ["value"] = nonce }
             }, "Alarm", reminderId));
             operations.Add(CloudKit.Operation("create", triggerName, null, new()
             {
-                ["Alarm"] = CloudKit.Reference(alarmName), ["Type"] = new JsonObject { ["value"] = "Date" },
+                ["Alarm"] = ScheduleReference(alarmName, referenceZone), ["Type"] = new JsonObject { ["value"] = "Date" },
                 ["DateComponentsData"] = new JsonObject { ["value"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(components.ToJsonString())) },
                 ["Deleted"] = CloudKit.Number(0), ["Imported"] = CloudKit.Number(0)
             }, "AlarmTrigger", alarmName));
@@ -103,6 +109,20 @@ internal sealed partial class ICloudClient
         if (alarmIds.Count != previous.Length || retired.Count > 0)
             fields["AlarmIDs"] = J.Node(new { type = "STRING_LIST", value = alarmIds });
     }
+
+    private static JsonNode ScheduleReferenceZone(JsonNode reminder)
+    {
+        var fallback = CloudKit.Zone;
+        var zoneName = fallback.Required("zoneName");
+        var owner = new[] { CloudKit.Field(reminder, "List")?["zoneID"], reminder["zoneID"] }
+            .Where(zone => zone.Text("zoneName") == zoneName)
+            .Select(zone => zone.Text("ownerRecordName"))
+            .FirstOrDefault(name => !string.IsNullOrEmpty(name) && name != "_defaultOwner") ?? fallback.Required("ownerRecordName");
+        return J.Node(new { zoneName, ownerRecordName = owner });
+    }
+
+    private static JsonNode ScheduleReference(string recordName, JsonNode zone) =>
+        J.Node(new { value = new { recordName, zoneID = zone, action = "VALIDATE" } });
 
     private static string? RecordName(string? id, string prefix) => string.IsNullOrEmpty(id) ? null
         : id.StartsWith(prefix, StringComparison.Ordinal) ? id : id.Contains('/') ? null : prefix + id;

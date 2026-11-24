@@ -17,10 +17,12 @@ internal sealed class AppleAuth : IDisposable
     private CookieContainer cookies = new();
     internal HttpClient Http { get; private set; }
     internal event Action<string>? Diagnostic;
-    internal void ReportCloudKitError(string operation, string code)
+    internal void ReportCloudKitError(string operation, string code, string? recordType)
     {
         var safeCode = code.Length is > 0 and <= 64 && code.All(c => c is >= 'A' and <= 'Z' or '_') ? code : "UNKNOWN";
-        Diagnostic?.Invoke($"icloud: {operation} server_error={safeCode}");
+        var type = recordType is "Reminder" or "Alarm" or "AlarmTrigger" or "RecurrenceRule" or "List" or "Account"
+            ? $" record_type={recordType}" : "";
+        Diagnostic?.Invoke($"icloud: {operation} server_error={safeCode}{type}");
     }
     internal JsonObject State { get; private set; }
     internal bool ChinaMainland => State.Flag("china_mainland");
