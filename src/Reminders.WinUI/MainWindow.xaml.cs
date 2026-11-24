@@ -210,11 +210,13 @@ public sealed partial class MainWindow : Window
             SetGateState(L10n.Get("CheckingYourAccount"));
             var status = await _sync.CallAsync("auth_status", new { });
             if (_accountBusy) return;
+            var authenticated = status.Flag("authenticated");
+            if (authenticated) ApplyAuthenticatedSession();
             ChinaMainlandSignIn.IsChecked = status.Flag("china_mainland");
             _settings = await _sync.CallAsync("settings", new { });
             if (_accountBusy) return;
             ApplyTheme(_settings.Text("theme", "system"));
-            if (status.Flag("needs_2fa") && !status.Flag("authenticated"))
+            if (status.Flag("needs_2fa") && !authenticated)
             {
                 // Apple has a code outstanding. Asking for the password again is
                 // both wrong and destructive: signing in afresh makes Apple mint
@@ -222,13 +224,13 @@ public sealed partial class MainWindow : Window
                 await ShowCodeEntryAsync(status.Property("two_factor"));
                 return;
             }
-            if (status.Flag("authenticated") || status.Flag("has_cache"))
+            if (authenticated || status.Flag("has_cache"))
             {
                 AuthGate.Visibility = Visibility.Collapsed;
                 await RefreshAllAsync();
                 if (_accountBusy || AuthGate.Visibility != Visibility.Collapsed) return;
                 _statusTimer.Start(); _notificationTimer.Start(); _syncTimer.Start();
-                _needsSignIn = !status.Flag("authenticated") && !status.Flag("restoring") && !status.Flag("restore_retryable");
+                _needsSignIn = !authenticated && !status.Flag("restoring") && !status.Flag("restore_retryable");
                 if (_needsSignIn) ShowCachedSignInNotice();
                 return;
             }
@@ -377,6 +379,13 @@ public sealed partial class MainWindow : Window
             : _view.Kind == NavKind.Smart && _view.Key is "completed" or "deleted"
                 ? L10n.Get(_view.Key == "completed" ? "RemindersAppearWhenCompleted" : "RemindersAppearWhenDeleted")
                 : L10n.Get("ReminderListEmptyDescription");
+        if (_view.Kind == NavKind.Smart && _view.Key == "completed")
+        {
+            RowCount.Visibility = Visibility.Collapsed;
+            RowCount.Text = "";
+            return;
+        }
+        RowCount.Visibility = Visibility.Visible;
         var count = _reminders.Count(row => !row.ContextOnly);
         var matching = _reminders.Any(row => row.ContextOnly);
         var countKey = matching
@@ -581,7 +590,7 @@ public sealed partial class MainWindow : Window
         }
         _lastSyncRequest = DateTimeOffset.UtcNow;
         try { await _sync.CallAsync("sync", new { automatic = !manual }); }
-        catch (Exception error) { ShowSyncFailure(L10n.Error(error)); }
+        catch (Exception error) { ShowSyncFailure(L10n.Error(error), (error as SyncException)?.Code); }
     }
 
     private async void SignIn_Click(object sender, RoutedEventArgs e)
@@ -875,27 +884,6 @@ public sealed partial class MainWindow : Window
     }
     private bool IncludesCompleted => ShowCompleted.IsChecked == true;
     private async void ShowCompleted_Changed(object sender, RoutedEventArgs e) { if (Root.IsLoaded) await LoadRemindersAsync(); }
-    private async void Complete_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not CheckBox checkbox || checkbox.DataContext is not ReminderItem reminder) return;
-        if (!_completing.Add(reminder.Id)) return;
-        checkbox.IsEnabled = false;
-        var completed = reminder.Completed;
-        var saved = false;
-        try
-        {
-            if (_demo) CompleteDemoFamily(reminder, completed);
-            else await _sync.CallAsync("update_reminder", new { id = reminder.Id, completed });
-            saved = true;
-            if (completed) await AnimateCompletionAsync(reminder);
-            _completing.Remove(reminder.Id);
-            if (_demo) LoadDemoRows(); else await RefreshAllAsync();
-        }
-        catch (Exception error) { if (!saved) reminder.Completed = !completed; ShowInfo(saved ? L10n.Get("ReminderSavedRefreshFailed") : L10n.Get("CouldntUpdateReminder"), L10n.Error(error), InfoBarSeverity.Error); }
-        finally { checkbox.IsEnabled = true; _completing.Remove(reminder.Id); }
-
-    }
-
     private async void ReminderList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_regrouping) return;
@@ -925,6 +913,7 @@ public sealed partial class MainWindow : Window
             DetailList.ItemsSource = OrderedLists();
             DetailList.SelectedValue = reminder.ListId;
             AddSubtaskButton.IsEnabled = !reminder.Completed && !reminder.Deleted;
+            DetailDeleteButton.Visibility = reminder.CanEditRow ? Visibility.Visible : Visibility.Collapsed;
             DetailPriority.SelectedItem = DetailPriority.Items.OfType<ComboBoxItem>().FirstOrDefault(item => item.Tag?.ToString() == reminder.Priority.ToString());
             if (DateTimeOffset.TryParse(reminder.DueDate, out var due))
             {
@@ -1019,26 +1008,6 @@ public sealed partial class MainWindow : Window
         Interval = DetailRepeatChoice.SelectedIndex > 0 ? DetailRepeatInterval.Value.ToString("R", System.Globalization.CultureInfo.InvariantCulture) : null
     });
     private async void Save_Click(object sender, RoutedEventArgs e) => await SaveDetailAsync();
-    private async void Delete_Click(object sender, RoutedEventArgs e)
-    {
-        if (_selected is not { } target || _dialogOpen || _savingDetail || _detailTransition) return;
-        _dialogOpen = true;
-        try
-        {
-            var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, Title = L10n.Get("DeleteReminder"), Content = L10n.Format("DeleteReminderDetails", target.DisplayTitle), PrimaryButtonText = L10n.Get("Delete"), CloseButtonText = L10n.Get("Cancel"), DefaultButton = ContentDialogButton.Close };
-            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-            if (_demo)
-            {
-                var children = DemoDescendants(target.Id); target.Deleted = true;
-                foreach (var child in children) child.Deleted = true;
-            }
-            else await _sync.CallAsync("delete_reminder", new { id = target.Id });
-            if (_selected?.Id == target.Id) ShowDetail(null);
-            await LoadRemindersAsync();
-        }
-        catch (Exception error) { ShowInfo(L10n.Get("CouldntDeleteReminder"), L10n.Error(error), InfoBarSeverity.Error); }
-        finally { _dialogOpen = false; }
-    }
     private async void Add_Click(object sender, RoutedEventArgs e) => await ShowNewReminderAsync();
     private async void NewAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) { args.Handled = true; await ShowNewReminderAsync(); }
     private void SearchAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) { args.Handled = true; if (AuthGate.Visibility == Visibility.Collapsed && SetupGuide.Visibility == Visibility.Collapsed) SearchBox.Focus(FocusState.Programmatic); }
@@ -1162,7 +1131,26 @@ public sealed partial class MainWindow : Window
     {
         _sync.EventReceived += Sync_EventReceived;
     }
-    private void ShowInfo(string title, string message, InfoBarSeverity severity) { AppInfoBar.ActionButton = null; AppInfoBar.Title = title; AppInfoBar.Message = message; AppInfoBar.Severity = severity; AppInfoBar.IsOpen = true; }
+
+    private enum NoticeKind { General, SignIn, Sync }
+    private NoticeKind _noticeKind;
+
+    private void ShowInfo(string title, string message, InfoBarSeverity severity, NoticeKind kind = NoticeKind.General)
+    {
+        _noticeKind = kind;
+        AppInfoBar.ActionButton = null;
+        AppInfoBar.Title = title;
+        AppInfoBar.Message = message;
+        AppInfoBar.Severity = severity;
+        AppInfoBar.IsOpen = true;
+    }
+
+    private void DismissAppNotice()
+    {
+        _noticeKind = NoticeKind.General;
+        AppInfoBar.IsOpen = false;
+        AppInfoBar.ActionButton = null;
+    }
 
     private void Sync_EventReceived(object? sender, SyncEventArgs e) => DispatcherQueue.TryEnqueue(async () =>
     {
@@ -1183,24 +1171,26 @@ public sealed partial class MainWindow : Window
                 ToolTipService.SetToolTip(SyncIndicator, L10n.EventMessage(e.Data, progressFallback));
                 break;
             case "sync_finished":
-                if (AppInfoBar.Title == L10n.Get("SyncFailed")) AppInfoBar.IsOpen = false;
+                if (_noticeKind is NoticeKind.Sync or NoticeKind.SignIn) DismissAppNotice();
                 await CompleteSyncRefreshAsync();
                 break;
             case "sync_warning":
-                ShowInfo(L10n.Get("SomeChangesHaventSynced"), e.Data.Text("code", "") == "CONFLICT" ? L10n.Get("SyncWarningConflictDescription") : L10n.Get("SyncWarningRejectedChangeDescription"), InfoBarSeverity.Warning);
+                ShowInfo(L10n.Get("SomeChangesHaventSynced"), e.Data.Text("code", "") == "CONFLICT" ? L10n.Get("SyncWarningConflictDescription") : L10n.Get("SyncWarningRejectedChangeDescription"), InfoBarSeverity.Warning, NoticeKind.Sync);
                 var recovery = new Button { Content = L10n.Get("ReviewSyncSettings") };
                 recovery.Click += async (_, _) => await ShowSettingsAsync(1);
                 AppInfoBar.ActionButton = recovery;
                 await CompleteSyncRefreshAsync();
                 break;
             case "sync_error":
-                ShowSyncFailure(L10n.EventMessage(e.Data, L10n.Get("TryAgainShortly")));
+                ShowSyncFailure(L10n.EventMessage(e.Data, L10n.Get("TryAgainShortly")), e.Data.Text("code"));
                 await CompleteSyncRefreshAsync();
                 break;
             case "sync_cancelled":
                 SetSyncIndicator(false);
                 break;
-            case "push_failed": ShowInfo(L10n.Get("UploadFailed"), L10n.EventMessage(e.Data.Property("error"), L10n.Get("UploadRetryDescription")), InfoBarSeverity.Error); break;
+            case "push_failed":
+                ShowInfo(L10n.Get("UploadFailed"), L10n.EventMessage(e.Data.Property("error"), L10n.Get("UploadRetryDescription")), InfoBarSeverity.Error, NoticeKind.Sync);
+                break;
         }
     });
 
@@ -1239,15 +1229,20 @@ public sealed partial class MainWindow : Window
             var status = await _sync.CallAsync("auth_status", new { });
             if (!_windowClosed && !_accountBusy) await ApplyAuthStatusAsync(status);
         }
-        catch (Exception error) { ShowSyncFailure(L10n.Error(error)); }
+        catch (Exception error) { ShowSyncFailure(L10n.Error(error), (error as SyncException)?.Code); }
+    }
+
+    private void ApplyAuthenticatedSession()
+    {
+        _needsSignIn = false;
+        if (_noticeKind == NoticeKind.SignIn) DismissAppNotice();
     }
 
     private async Task ApplyAuthStatusAsync(JsonElement status)
     {
         if (status.Flag("authenticated"))
         {
-            _needsSignIn = false;
-            if (AppInfoBar.Title == L10n.Get("SignInToResumeSyncing")) AppInfoBar.IsOpen = false;
+            ApplyAuthenticatedSession();
             if (AuthGate.Visibility != Visibility.Collapsed) await BootAsync();
             return;
         }
@@ -1262,16 +1257,17 @@ public sealed partial class MainWindow : Window
         else ShowLogin();
     }
 
-    private void ShowSyncFailure(string message)
+    private void ShowSyncFailure(string message, string? code)
     {
-        ShowInfo(L10n.Get("SyncFailed"), message, InfoBarSeverity.Error);
+        var kind = code is "AUTH_REQUIRED" or "2FA_REQUIRED" or "TERMS_REQUIRED" ? NoticeKind.SignIn : NoticeKind.Sync;
+        ShowInfo(L10n.Get("SyncFailed"), message, InfoBarSeverity.Error, kind);
         if (!_demo && !_sync.IsLocalDemo && AuthGate.Visibility == Visibility.Collapsed)
             AppInfoBar.ActionButton = CreateReloginButton();
     }
 
     private void ShowCachedSignInNotice()
     {
-        ShowInfo(L10n.Get("SignInToResumeSyncing"), L10n.Get("CachedRemindersAvailable"), InfoBarSeverity.Warning);
+        ShowInfo(L10n.Get("SignInToResumeSyncing"), L10n.Get("CachedRemindersAvailable"), InfoBarSeverity.Warning, NoticeKind.SignIn);
         AppInfoBar.ActionButton = CreateReloginButton();
     }
     private async void MainWindow_Closed(object sender, WindowEventArgs args)

@@ -73,6 +73,19 @@
       </Grid>
       <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0"
                 CanDragItems="True" DragItemsStarting="ReminderList_DragItemsStarting" DragItemsCompleted="ReminderList_DragItemsCompleted">
+       <ListView.Resources>
+        <local:AvailableSwipeItemsConverter x:Key="AvailableSwipeItems"/>
+        <SwipeItems x:Key="SwipeToToday" Mode="Execute">
+         <SwipeItem x:Uid="SwipeToTodayItem" Invoked="SwipeToToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+          <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
+         </SwipeItem>
+        </SwipeItems>
+        <SwipeItems x:Key="SwipeToComplete" Mode="Execute">
+         <SwipeItem x:Uid="SwipeToCompleteItem" Invoked="SwipeToComplete_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+          <SwipeItem.IconSource><FontIconSource Glyph="&#xE73E;"/></SwipeItem.IconSource>
+         </SwipeItem>
+        </SwipeItems>
+       </ListView.Resources>
        <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView"/></ItemsPanelTemplate></ListView.ItemsPanel>
        <ListView.GroupStyle><GroupStyle HidesIfEmpty="True">
         <GroupStyle.HeaderContainerStyle><Style TargetType="ListViewHeaderItem"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,2"/></Style></GroupStyle.HeaderContainerStyle>
@@ -82,9 +95,12 @@
        <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="4,1"/><Setter Property="MinHeight" Value="0"/><Setter Property="CornerRadius" Value="6"/></Style></ListView.ItemContainerStyle>
        <ListView.ItemTemplate>
         <DataTemplate x:DataType="local:ReminderItem">
+         <SwipeControl HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" ContextRequested="ReminderRow_ContextRequested"
+                       LeftItems="{Binding CanAddToToday, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToToday}}"
+                       RightItems="{Binding CanMarkComplete, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToComplete}}">
          <Grid Padding="{x:Bind RowPadding, Mode=OneWay}" Margin="{x:Bind HierarchyIndent, Mode=OneWay}" MinHeight="40">
           <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <CheckBox x:Uid="MarkReminderCompleteCheckBox" IsChecked="{x:Bind Completed, Mode=TwoWay}" Click="Complete_Click" VerticalAlignment="Top"/>
+          <CheckBox x:Uid="MarkReminderCompleteCheckBox" IsChecked="{x:Bind Completed, Mode=OneWay}" IsEnabled="{x:Bind CanEditRow, Mode=OneWay}" Click="Complete_Click" VerticalAlignment="Top"/>
           <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
            <TextBlock Text="{x:Bind DisplayTitle, Mode=OneWay}" FontWeight="{x:Bind RowTitleWeight, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
            <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind MetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
@@ -97,6 +113,7 @@
            <FontIcon Glyph="&#xE70D;" FontSize="12" Width="16" Height="16" Rotation="{x:Bind SubtaskChevronRotation, Mode=OneWay}" Loaded="SubtaskChevron_Loaded"/>
           </Button>
          </Grid>
+         </SwipeControl>
         </DataTemplate>
        </ListView.ItemTemplate>
       </ListView>
@@ -149,7 +166,7 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <Button x:Uid="BackToReminders" x:Name="BackToReminders" Margin="0,0,12,0" Click="BackToReminders_Click" Visibility="Collapsed" VerticalAlignment="Center"><FontIcon Glyph="&#xE72B;" FontSize="14"/></Button>
         <StackPanel Grid.Column="1" Spacing="2"><TextBlock x:Uid="TaskDetailsTextBlock" Style="{ThemeResource BodyStrongTextBlockStyle}"/><TextBlock x:Name="DetailListName" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/></StackPanel>
-        <Button x:Uid="TaskActionsButton" Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center"><FontIcon Glyph="&#xE712;" FontSize="16"/><Button.Flyout><MenuFlyout><MenuFlyoutItem x:Uid="DeleteTaskMenuFlyoutItem" Click="Delete_Click"><MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;"/></MenuFlyoutItem.Icon></MenuFlyoutItem></MenuFlyout></Button.Flyout></Button>
+        <Button x:Uid="DetailDeleteButton" x:Name="DetailDeleteButton" Grid.Column="2" Margin="12,0,0,0" Style="{ThemeResource SubtleButtonStyle}" VerticalAlignment="Center" Click="Delete_Click"><FontIcon Glyph="&#xE74D;" FontSize="16"/></Button>
        </Grid>
        <ScrollViewer x:Name="DetailScroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Stretch">
         <Grid>

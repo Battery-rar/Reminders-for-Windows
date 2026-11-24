@@ -367,9 +367,6 @@
 Any subtasks will also be deleted.</value>
     <comment>{0} is the user-entered reminder title.</comment>
   </data>
-  <data name="DeleteTaskMenuFlyoutItem.Text" xml:space="preserve">
-    <value>Delete task</value>
-  </data>
   <data name="DemoMode" xml:space="preserve">
     <value>Demo mode</value>
   </data>
@@ -1794,11 +1791,11 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="TagsTextBlock.Text" xml:space="preserve">
     <value>Tags</value>
   </data>
-  <data name="TaskActionsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>Task actions</value>
+  <data name="DetailDeleteButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Delete reminder</value>
   </data>
-  <data name="TaskActionsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>Task actions</value>
+  <data name="DetailDeleteButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Delete reminder</value>
   </data>
   <data name="TaskDetailsTextBlock.Text" xml:space="preserve">
     <value>Task details</value>
@@ -2117,5 +2114,17 @@ Accept any updated terms, then check that your lists appear.</value>
   </data>
   <data name="NewListEmoji" xml:space="preserve">
     <value>Emoji</value>
+  </data>
+  <data name="RowMarkComplete" xml:space="preserve">
+    <value>Complete</value>
+  </data>
+  <data name="RowAddToToday" xml:space="preserve">
+    <value>Add to Today</value>
+  </data>
+  <data name="SwipeToTodayItem.Text" xml:space="preserve">
+    <value>Add to Today</value>
+  </data>
+  <data name="SwipeToCompleteItem.Text" xml:space="preserve">
+    <value>Complete</value>
   </data>
 </root>
