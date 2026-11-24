@@ -1073,9 +1073,6 @@
   <data name="MyListsNavigationViewItemHeader.Content" xml:space="preserve">
     <value>我的列表</value>
   </data>
-  <data name="Navigation.PaneTitle" xml:space="preserve">
-    <value>Apple Reminders on Windows</value>
-  </data>
   <data name="Never" xml:space="preserve">
     <value>永不</value>
   </data>

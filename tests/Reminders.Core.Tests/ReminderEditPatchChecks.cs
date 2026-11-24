@@ -35,6 +35,25 @@ internal static class ReminderEditPatchChecks
             saved = await Call(service, "reminder", new { id });
             check(!saved.Flag("all_day") && DateTimeOffset.Parse(saved.Required("due_date"), System.Globalization.CultureInfo.InvariantCulture) ==
                 new DateTimeOffset(2026, 11, 3, 14, 0, 0, TimeSpan.Zero), "an explicit timed-date edit sends its all-day state with the date");
+
+            var date = new DateTimeOffset(2026, 11, 3, 0, 0, 0, TimeSpan.Zero);
+            var newTime = new TimeSpan(10, 45, 0);
+            var timeOnly = dated.DeepClone().AsObject();
+            timeOnly["Time"] = "10:45:00";
+            values["due_date"] = ReminderSchedule.Format(date, allDay: false, newTime);
+            var patch = ReminderEditPatch.Build(id, dated.ToJsonString(), timeOnly.ToJsonString(), values);
+            check(patch.ContainsKey("due_date") && patch.Count == 3, "changing the clock on the same date creates only a schedule patch");
+            saved = await Call(service, "update_reminder", patch);
+            var wall = date.Date.Add(newTime);
+            var expectedTimestamp = new DateTimeOffset(wall, TimeZoneInfo.Local.GetUtcOffset(wall)).ToUnixTimeMilliseconds();
+            var record = new JsonObject { ["fields"] = new JsonObject
+            {
+                ["DueDate"] = CloudKit.Timestamp(new DateTimeOffset(wall.AddHours(-1), TimeZoneInfo.Local.GetUtcOffset(wall)).ToUnixTimeMilliseconds()),
+                ["AllDay"] = CloudKit.Number(0), ["TimeZone"] = CloudKit.String("Asia/Shanghai")
+            } };
+            var fields = ICloudClient.UpdateFields(record, J.Node(new { due_date = saved.Required("due_date"), all_day = saved.Flag("all_day") }).AsObject());
+            check(CloudKit.Field(new JsonObject { ["fields"] = fields }, "DueDate")!.GetValue<long>() == expectedTimestamp,
+                "a same-day time edit reaches the outgoing CloudKit timestamp as the selected local time");
         }
         finally { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
