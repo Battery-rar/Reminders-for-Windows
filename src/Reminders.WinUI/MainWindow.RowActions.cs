@@ -15,6 +15,12 @@ public sealed partial class MainWindow
         && !_savingDetail && !_detailTransition && reminder.CanEditRow && !_reschedulingRows.Contains(reminder.Id)
         && !_completing.Contains(reminder.Id) && (ReferenceEquals(_selected, reminder) || _reminders.Contains(reminder));
 
+    private void ReminderRow_Holding(object sender, HoldingRoutedEventArgs args)
+    {
+        if (args.HoldingState == Microsoft.UI.Input.HoldingState.Started && sender is SwipeControl row)
+            row.Close();
+    }
+
     private void ReminderRow_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
     {
         if (sender is not SwipeControl { DataContext: ReminderItem reminder } row) return;
@@ -40,6 +46,7 @@ public sealed partial class MainWindow
         if (actions.Items.Count == 0) return;
 
         args.Handled = true;
+        row.Close();
         if (args.TryGetPosition(row, out var position)) actions.ShowAt(row, new FlyoutShowOptions { Position = position });
         else actions.ShowAt(row);
 
@@ -51,25 +58,28 @@ public sealed partial class MainWindow
         }
     }
 
+    private ReminderItem? GetSwipeReminder(SwipeItemInvokedEventArgs args) =>
+        _reminderDrag is null ? args.SwipeControl.DataContext as ReminderItem : null;
+
     private async void SwipeToComplete_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
     {
-        if (args.SwipeControl.DataContext is ReminderItem { CanMarkComplete: true } reminder)
+        if (GetSwipeReminder(args) is { CanMarkComplete: true } reminder)
             await SetReminderCompletionAsync(reminder, true);
     }
 
     private async void SwipeToToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
     {
-        if (args.SwipeControl.DataContext is ReminderItem reminder) await AddReminderToTodayAsync(reminder);
+        if (GetSwipeReminder(args) is { } reminder) await AddReminderToTodayAsync(reminder);
     }
 
     private async void SwipeUndoToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
     {
-        if (args.SwipeControl.DataContext is ReminderItem reminder) await UndoReminderTodayAsync(reminder);
+        if (GetSwipeReminder(args) is { } reminder) await UndoReminderTodayAsync(reminder);
     }
 
     private async void SwipeMoveOutOfToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
     {
-        if (args.SwipeControl.DataContext is ReminderItem reminder) await MoveReminderOutOfTodayAsync(reminder);
+        if (GetSwipeReminder(args) is { } reminder) await MoveReminderOutOfTodayAsync(reminder);
     }
 
     private async void Complete_Click(object sender, RoutedEventArgs e)

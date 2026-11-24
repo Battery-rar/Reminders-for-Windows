@@ -3,7 +3,8 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:local="using:Reminders.Windows"
  xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
- <Grid x:Name="Root" SizeChanged="Root_SizeChanged" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+ <Grid x:Name="Root" SizeChanged="Root_SizeChanged" KeyboardAcceleratorPlacementMode="Hidden"
+       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Grid.KeyboardAccelerators>
    <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewAccelerator_Invoked"/>
@@ -75,23 +76,23 @@
                 CanDragItems="True" DragItemsStarting="ReminderList_DragItemsStarting" DragItemsCompleted="ReminderList_DragItemsCompleted">
        <ListView.Resources>
         <local:AvailableSwipeItemsConverter x:Key="AvailableSwipeItems"/>
-        <SwipeItems x:Key="SwipeToToday" Mode="Execute">
+        <SwipeItems x:Key="SwipeToToday" Mode="Reveal">
          <SwipeItem x:Uid="SwipeToTodayItem" Invoked="SwipeToToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
           <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
          </SwipeItem>
         </SwipeItems>
-        <SwipeItems x:Key="SwipeUndoToday" Mode="Execute">
+        <SwipeItems x:Key="SwipeUndoToday" Mode="Reveal">
          <SwipeItem x:Uid="SwipeUndoTodayItem" Invoked="SwipeUndoToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
           <SwipeItem.IconSource><FontIconSource Glyph="&#xE7A7;"/></SwipeItem.IconSource>
          </SwipeItem>
         </SwipeItems>
-        <SwipeItems x:Key="SwipeMoveOutOfToday" Mode="Execute">
+        <SwipeItems x:Key="SwipeMoveOutOfToday" Mode="Reveal">
          <SwipeItem x:Uid="SwipeMoveOutOfTodayItem" Invoked="SwipeMoveOutOfToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
           <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
          </SwipeItem>
         </SwipeItems>
         <local:TodaySwipeItemsConverter x:Key="TodaySwipeItems" AddItems="{StaticResource SwipeToToday}" UndoItems="{StaticResource SwipeUndoToday}" ClearItems="{StaticResource SwipeMoveOutOfToday}"/>
-        <SwipeItems x:Key="SwipeToComplete" Mode="Execute">
+        <SwipeItems x:Key="SwipeToComplete" Mode="Reveal">
          <SwipeItem x:Uid="SwipeToCompleteItem" Invoked="SwipeToComplete_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
           <SwipeItem.IconSource><FontIconSource Glyph="&#xE73E;"/></SwipeItem.IconSource>
          </SwipeItem>
@@ -107,7 +108,8 @@
        <ListView.ItemTemplate>
         <DataTemplate x:DataType="local:ReminderItem">
          <Grid AllowDrop="True" DragOver="ReminderRow_DragOver" DragLeave="ReminderRow_DragLeave" Drop="ReminderRow_Drop">
-         <SwipeControl HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" ContextRequested="ReminderRow_ContextRequested"
+         <SwipeControl HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent"
+                       Holding="ReminderRow_Holding" ContextRequested="ReminderRow_ContextRequested"
                        LeftItems="{Binding TodayAction, Converter={StaticResource TodaySwipeItems}}"
                        RightItems="{Binding CanMarkComplete, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToComplete}}">
          <Grid Padding="{x:Bind RowPadding, Mode=OneWay}" Margin="{x:Bind HierarchyIndent, Mode=OneWay}" MinHeight="40">

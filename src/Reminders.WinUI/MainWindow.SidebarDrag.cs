@@ -42,6 +42,8 @@ public sealed partial class MainWindow
         }
 
         _reminderDrag = new(reminder, reminder.ListId, _accountEpoch, Guid.NewGuid().ToString("N"), CurrentReminderQuery);
+        if (ReminderList.ContainerFromItem(reminder) is ListViewItem { ContentTemplateRoot: Grid row })
+            row.Children.OfType<SwipeControl>().FirstOrDefault()?.Close();
         // Keep titles, account identifiers and reminder IDs inside the app.
         e.Data.SetData(ReminderDragFormat, _reminderDrag.Token);
         e.Data.RequestedOperation = DataPackageOperation.Move;

@@ -15,8 +15,17 @@ internal static class EnglishUiResourceChecks
     internal static void Run(Action<bool, string> check)
     {
         const string xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var uids = Load("MainWindow.xaml").Root!.DescendantsAndSelf().Attributes(XName.Get("Uid", xaml))
+        var window = Load("MainWindow.xaml").Root!;
+        var uids = window.DescendantsAndSelf().Attributes(XName.Get("Uid", xaml))
             .Select(attribute => attribute.Value).ToHashSet(StringComparer.Ordinal);
+        var swipeMenus = window.Descendants().Where(element => element.Name.LocalName == "SwipeItems").ToArray();
+        check(swipeMenus.Length > 0 && swipeMenus.All(menu => (string?)menu.Attribute("Mode") == "Reveal"),
+            "reminder swipe commands require a separate activation after being revealed");
+        var newShortcut = window.Descendants().Single(element =>
+            element.Name.LocalName == "KeyboardAccelerator" && (string?)element.Attribute("Key") == "N");
+        check((string?)newShortcut.Attribute("Modifiers") == "Control" &&
+            (string?)newShortcut.Parent?.Parent?.Attribute("KeyboardAcceleratorPlacementMode") == "Hidden",
+            "Ctrl+N remains available with its automatic hover tooltip hidden");
         foreach (var uid in uids)
             check(Strings.Keys.Any(key => key.StartsWith(uid + ".", StringComparison.Ordinal)), $"XAML resource for {uid}");
         foreach (var key in Strings.Keys.Where(key => key.Contains('.')))
