@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Windows.ApplicationModel.Resources;
+using Microsoft.Windows.Globalization;
 using Reminders.Core;
 
 namespace Reminders.Windows.Services;
@@ -11,6 +12,15 @@ internal static class L10n
     private const int AppModelErrorNoPackage = 15700;
     private static readonly Lazy<ResourceManager> Manager = new(CreateManager);
     private static readonly Lazy<ResourceMap> Strings = new(() => Manager.Value.MainResourceMap.GetSubtree("Resources"));
+
+    internal static string Language { get; private set; } = "";
+
+    internal static void InitializeLanguage(string? preference)
+    {
+        Language = preference is "zh-CN" or "en-US" ? preference : "";
+        if (ApplicationLanguages.PrimaryLanguageOverride != Language)
+            ApplicationLanguages.PrimaryLanguageOverride = Language;
+    }
 
     internal static string Get(string key) => Strings.Value.GetValue(key).ValueAsString;
 

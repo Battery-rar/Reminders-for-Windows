@@ -37,6 +37,7 @@ internal static class DemoAccountChecks
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             var realBefore = File.ReadAllBytes(Path.Combine(root, "cache.db"));
             string id;
+            var newListRequest = new { title = "本地列表", color_hex = "#5856D6", badge_emblem = "{\"Emoji\":\"🎓\"}", request_id = "A0000000-0000-4000-8000-000000000007" };
             await using (var demo = ReminderService.OpenDemo(root, password))
             {
                 await demo.StartAsync();
@@ -45,6 +46,13 @@ internal static class DemoAccountChecks
                 check((await Call(demo, "lists")).AsArray().Count == 3, "demo seeds three lists");
                 try { await Call(demo, "clear_cache", new { discard_pending = true }); check(false, "local-only data cannot be cleared as a cache"); }
                 catch (CoreException error) { check(error.Code == "BAD_REQUEST" && (await Call(demo, "lists")).AsArray().Count == 3, "cache reset refuses to erase a local-only account"); }
+                var createdList = await Call(demo, "create_list", newListRequest);
+                var listRetry = await Call(demo, "create_list", newListRequest);
+                check(createdList.Text("id") == "List/" + newListRequest.request_id && createdList.Text("id") == listRetry.Text("id") &&
+                    createdList.Text("color_hex") == newListRequest.color_hex && J.Parse(createdList.Text("badge_emblem")).Text("Emoji") == "🎓",
+                    "local list creation recovers the same stable identifier with the selected color and icon");
+                var localLists = (await Call(demo, "lists")).AsArray();
+                check(localLists.Count == 4 && localLists[^1].Text("id") == createdList.Text("id"), "the new list appends after existing lists");
                 check(await Call(demo, "reminder", new { id = "real" }) is null, "demo cannot read cloud reminders");
                 foreach (var scope in new[] { "today", "upcoming", "completed", "deleted" })
                     check((await Call(demo, "reminders", new { scope })).AsArray().Count > 0, "sample data covers " + scope);
@@ -77,6 +85,8 @@ internal static class DemoAccountChecks
                 check((await Call(reopened, "reminder", new { id })).Text("title") == "Edited flight plan", "local edits persist across sessions");
                 check((await Call(reopened, "reminder", new { id })).Text("list_id") == "demo-personal", "local list moves persist across sessions");
                 check((await Call(reopened, "settings")).Text("theme") == "dark", "local settings persist across sessions");
+                check((await Call(reopened, "lists")).AsArray().Any(list => list.Text("title") == newListRequest.title &&
+                    J.Parse(list.Text("badge_emblem")).Text("Emoji") == "🎓"), "new local list retains its emoji after restart");
                 check((await Call(reopened, "reminders", new { include_completed = true })).AsArray().Count == 6, "reopening does not duplicate or reset samples");
             }
             check(realBefore.SequenceEqual(File.ReadAllBytes(Path.Combine(root, "cache.db"))), "demo leaves cloud database byte-for-byte unchanged");

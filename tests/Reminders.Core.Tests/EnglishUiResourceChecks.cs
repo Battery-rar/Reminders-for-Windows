@@ -1,13 +1,13 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Reminders.Core;
 using Reminders.Windows.Services;
 
 internal static class EnglishUiResourceChecks
 {
-    private static readonly Dictionary<string, string> Strings = Load("EnglishUiResources.resw").Root!.Elements("data")
-        .ToDictionary(entry => (string)entry.Attribute("name")!, entry => (string)entry.Element("value")!, StringComparer.Ordinal);
+    private static readonly Dictionary<string, string> Strings = LoadStrings("EnglishUiResources.resw");
 
     internal static string Format(PresentationMessage message) =>
         string.Format(CultureInfo.GetCultureInfo("en-US"), Strings[message.Key], message.Arguments);
@@ -26,9 +26,21 @@ internal static class EnglishUiResourceChecks
         foreach (var value in Strings.Values)
             _ = CompositeFormat.Parse(value);
 
+        var simplifiedChinese = LoadStrings("ChineseUiResources.resw");
+        check(Strings.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(simplifiedChinese.Keys), "Simplified Chinese resource coverage");
+        foreach (var (key, english) in Strings)
+        {
+            var chinese = simplifiedChinese[key];
+            check(!string.IsNullOrWhiteSpace(chinese) && FormatArguments(english).SequenceEqual(FormatArguments(chinese)),
+                $"Simplified Chinese formatting for {key}");
+        }
+        check(simplifiedChinese["ChinaMainlandSignIn.Content"] == "iCloud（云上贵州）", "China mainland sign-in label");
+
         check(Format(new("ReminderCountMany", 1200)) == "1,200 reminders", "count retains English number formatting");
         check(Format(new("NotifyNamesAndMore", "One, Two, Three", 2)) == "One, Two, Three, and 2 more", "notification names and count placeholders");
         var due = new DateTime(2026, 10, 12, 15, 30, 0);
+        check(string.Format(CultureInfo.GetCultureInfo("zh-CN"), simplifiedChinese["DueDateAllDay"], due) == "10月12日 周一",
+            "Simplified Chinese date uses month-day-weekday order");
         check(Format(new("DueDateAndTime", due)) == "Mon, Oct 12 · " + due.ToString("t", CultureInfo.GetCultureInfo("en-US")),
             "date template retains English rendering");
         var timedDue = new DateTimeOffset(due, TimeSpan.Zero);
@@ -48,6 +60,16 @@ internal static class EnglishUiResourceChecks
         check(exception.Body.Text("message") == "diagnostic message" && presentation.Text("Key") == "SignInReasonWithHttpStatus"
             && presentation.Array("Arguments").Count == 2 && !presentation!.ToJsonString().Contains("private detail"), "event carries display metadata alongside unmodified diagnostics");
     }
+
+    private static IEnumerable<string> FormatArguments(string value)
+    {
+        _ = CompositeFormat.Parse(value);
+        return Regex.Matches(value, @"\{(\d+)(?:[:,][^{}]+)?\}")
+            .Select(match => match.Groups[1].Value).Order(StringComparer.Ordinal);
+    }
+
+    private static Dictionary<string, string> LoadStrings(string name) => Load(name).Root!.Elements("data")
+        .ToDictionary(entry => (string)entry.Attribute("name")!, entry => (string)entry.Element("value")!, StringComparer.Ordinal);
 
     private static XDocument Load(string name)
     {

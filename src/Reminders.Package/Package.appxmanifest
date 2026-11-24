@@ -3,14 +3,18 @@
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
          IgnorableNamespaces="uap rescap">
-  <Identity Name="Battery-rar.RemindersForWindowsGCBD" Publisher="CN=Battery-rar" Version="1.1.1.0" />
+  <!-- Existing package identity is required for MSIX upgrades. -->
+  <Identity Name="Battery-rar.RemindersForWindowsGCBD" Publisher="CN=Battery-rar" Version="1.1.7.0" />
   <Properties>
     <DisplayName>Apple Reminders on Windows</DisplayName>
     <PublisherDisplayName>Battery-rar</PublisherDisplayName>
     <Description>A native Windows client for iCloud Reminders.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
-  <Resources><Resource Language="en-us" /></Resources>
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="zh-cn" />
+  </Resources>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>

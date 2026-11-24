@@ -34,13 +34,13 @@ internal sealed class CloudKit(AppleAuth auth)
         foreach (var name in names.Distinct()) map[name] = J.Node(new { counter = map[name].Number("counter") + 1, modificationTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0 - 978307200, replicaID = Guid.NewGuid().ToString().ToUpperInvariant() });
         return String(new JsonObject { ["map"] = map }.ToJsonString());
     }
-    internal static void Reject(IEnumerable<JsonNode?> items)
+    internal static void Reject(IEnumerable<JsonNode?> items, bool recordWrite = false)
     {
         var error = items.FirstOrDefault(v => v?["serverErrorCode"] is not null); if (error is null) return;
         var code = error.Text("serverErrorCode");
         if (code is "CONFLICT" or "SERVER_RECORD_CHANGED") throw new CoreException("CONFLICT", "This reminder changed on another device while you were editing it.", error.ToJsonString()).WithPresentation("ErrorReminderEditConflict");
         if (code is "AUTHENTICATION_FAILED" or "AUTHENTICATION_REQUIRED") throw new CoreException("AUTH_REQUIRED", "Your iCloud session expired.").WithPresentation("ErrorICloudSessionExpired");
-        if (code is "UNKNOWN_ITEM" or "NOT_FOUND" or "INVALID_ARGUMENTS" or "ACCESS_DENIED" or "PERMISSION_FAILURE" or "VALIDATION_FAILED" or "ZONE_NOT_FOUND" or "QUOTA_EXCEEDED")
+        if ((recordWrite && code == "BAD_REQUEST") || code is "UNKNOWN_ITEM" or "NOT_FOUND" or "INVALID_ARGUMENTS" or "ACCESS_DENIED" or "PERMISSION_FAILURE" or "VALIDATION_FAILED" or "ZONE_NOT_FOUND" or "QUOTA_EXCEEDED")
             throw new CoreException("OPERATION_REJECTED", "iCloud refused a reminder operation. Review unsynced changes under Sync & storage in Settings.", code + ": " + error.Text("reason")).WithPresentation("ErrorReminderOperationRefused");
         // Keep transient/unknown service failures retryable, including during
         // restoration. They do not establish a rejected local edit.
@@ -65,13 +65,17 @@ internal sealed class CloudKit(AppleAuth auth)
             throw new CoreException("NETWORK", "Could not reach iCloud", $"HTTP {response.Status}: {AppleAuth.Detail(J.Parse(response.Text))}").WithPresentation("ErrorCouldNotReachICloud");
         }
         var result = JsonNode.Parse(response.Text) ?? throw new CoreException("ERROR", "Invalid CloudKit response").WithPresentation("ErrorInvalidCloudKitResponse");
-        // HTTP 200 can still carry a per-record CloudKit failure. Log only the
-        // endpoint and bounded error enum, never the record or server reason.
+        // HTTP 200 can still carry a per-record CloudKit failure.
         var statuses = new[] { result }.Concat(result.Array("records"))
             .Concat(result.Array("zones")).Concat(result.Array("zones").SelectMany(z => z.Array("records")));
         foreach (var status in statuses)
-            if (status.Text("serverErrorCode") is { } code) auth.ReportCloudKitError(operation, code);
-        Reject([result]);
+        {
+            if (status.Text("serverErrorCode") is not { } code) continue;
+            var type = operation == "records/modify" ? status.Text("recordName")?.Split('/', 2)[0] : null;
+            auth.ReportCloudKitError(operation, code, type);
+        }
+        // Let Modify resolve the atomic summary to the record that caused it.
+        if (operation != "records/modify" || result.Text("serverErrorCode") != "ATOMIC_ERROR") Reject([result]);
         return result;
     }
     private static void Advance(HashSet<string> seen, string? next)
@@ -134,7 +138,12 @@ internal sealed class CloudKit(AppleAuth auth)
     public async Task<JsonArray> Modify(JsonNode operation, CancellationToken token)
     {
         var operations = operation as JsonArray ?? new JsonArray(operation);
-        var response = await Post("records/modify", new JsonObject { ["operations"] = operations, ["zoneID"] = Zone, ["atomic"] = true }, token); var rows = response.Array("records"); Reject(rows);
+        var response = await Post("records/modify", new JsonObject { ["operations"] = operations, ["zoneID"] = Zone, ["atomic"] = true }, token);
+        var rows = response.Array("records");
+        Reject(rows.Where(row => row.Text("serverErrorCode") is "AUTHENTICATION_REQUIRED" or "AUTHENTICATION_FAILED"));
+        Reject(rows.Where(row => row.Text("serverErrorCode") != "ATOMIC_ERROR"), recordWrite: true);
+        Reject([response]);
+        Reject(rows);
         if (operations.Any(op => !rows.Any(r => r.Text("recordName") == op?["record"].Text("recordName"))))
             throw new CoreException("NETWORK", "iCloud did not acknowledge every changed record. The operation will be retried.").WithPresentation("ErrorICloudAcknowledgmentIncomplete");
         return rows;

@@ -46,6 +46,32 @@ internal static class WriteCompatibilityChecks
         }
         check(diagnostics.Last() == "icloud: records/lookup server_error=UNKNOWN", "unexpected error codes cannot inject private text into diagnostics");
 
+        var writeFailures = new (string Summary, string Record, string Expected)[]
+        {
+            ("ATOMIC_ERROR", "BAD_REQUEST", "OPERATION_REJECTED"),
+            ("", "BAD_REQUEST", "OPERATION_REJECTED"),
+            ("ATOMIC_ERROR", "AUTHENTICATION_REQUIRED", "AUTH_REQUIRED"),
+            ("ATOMIC_ERROR", "CONFLICT", "CONFLICT"),
+            ("ATOMIC_ERROR", "ATOMIC_ERROR", "NETWORK")
+        };
+        foreach (var failure in writeFailures)
+        {
+            var body = J.Node(new { records = new[]
+            {
+                new { recordName = "Reminder/test", serverErrorCode = "ATOMIC_ERROR" },
+                new { recordName = "Alarm/test", serverErrorCode = failure.Record }
+            } }).AsObject();
+            if (failure.Summary.Length > 0) body["serverErrorCode"] = failure.Summary;
+            using var auth = new AppleAuth(J.Node(new { webservices = new { ckdatabasews = new { url = "https://p01.icloud.com" } } }).AsObject(),
+                () => new ResponseHandler(() => Reply(body)));
+            auth.Diagnostic += diagnostics.Add;
+            var operation = CloudKit.Operation("update", "Reminder/test", "current", new());
+            try { await new CloudKit(auth).Modify(operation, default); check(false, "atomic batch never acknowledges a rolled back write"); }
+            catch (CoreException error) { check(error.Code == failure.Expected, "atomic wrapper retains the underlying " + failure.Record + " outcome"); }
+        }
+        check(diagnostics.Contains("icloud: records/modify server_error=BAD_REQUEST record_type=Alarm") &&
+            !diagnostics.Any(line => line.Contains("Alarm/test")), "write diagnostics distinguish record types without logging record identifiers");
+
         var root = Path.Combine(Path.GetTempPath(), "reminders-write-compatibility-" + Guid.NewGuid().ToString("N"));
         try
         {
@@ -54,6 +80,7 @@ internal static class WriteCompatibilityChecks
             var records = new Dictionary<string, JsonObject>(); var writes = 0; var rejectedLookups = 0;
             JsonObject Record(string id) => J.Node(new { recordName = id, recordType = "Reminder", recordChangeTag = "old", fields = new { List = new { type = "REFERENCE", value = new { recordName = "List/test" } }, Completed = new { type = "INT64", value = 0 } } }).AsObject();
             records["Reminder/good"] = Record("Reminder/good");
+            records["Reminder/rejected"] = Record("Reminder/rejected");
             using var client = new ICloudClient("test@example.com", secrets, () => new ScriptHandler(async request =>
             {
                 var path = request.RequestUri!.AbsolutePath; var body = J.Parse(await request.Content!.ReadAsStringAsync())!;
@@ -71,6 +98,13 @@ internal static class WriteCompatibilityChecks
                 }
                 if (path.EndsWith("/records/modify"))
                 {
+                    if (body.Array("operations")[0]?["record"].Text("recordName") == "Reminder/rejected")
+                        return Reply(J.Node(new { serverErrorCode = "ATOMIC_ERROR", records = new[]
+                        {
+                            new { recordName = "Reminder/rejected", serverErrorCode = "ATOMIC_ERROR" },
+                            new { recordName = "Alarm/test", serverErrorCode = "BAD_REQUEST" },
+                            new { recordName = "AlarmTrigger/test", serverErrorCode = "BAD_REQUEST" }
+                        } }));
                     writes++; var results = new JsonArray();
                     foreach (var operation in body.Array("operations"))
                     {
@@ -86,7 +120,7 @@ internal static class WriteCompatibilityChecks
             }));
             check(await client.Restore(default), "write compatibility account restores");
             cache.Upsert(ICloudClient.ToReminder(Record("Reminder/rejected"))!, true);
-            cache.Enqueue("Reminder/rejected", "update", J.Node(new { title = "Rejected edit" }), "old");
+            cache.Enqueue("Reminder/rejected", "update", J.Node(new { due_date = "2026-11-23T15:00:00Z", all_day = false }), "old");
             cache.Enqueue("Reminder/rejected", "update", J.Node(new { completed = true }), "old");
             for (var i = 0; i < 120; i++) cache.Enqueue("Reminder/rejected", "update", J.Node(new { flagged = true }), "old");
             cache.Upsert(ICloudClient.ToReminder(records["Reminder/good"])!, true);

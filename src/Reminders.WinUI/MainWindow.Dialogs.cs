@@ -33,6 +33,11 @@ public sealed partial class MainWindow
         try
         {
             if (args.IsSettingsInvoked) { RestoreNavigationSelection(); await ShowSettingsAsync(); }
+            else if (args.InvokedItemContainer?.Tag?.ToString() == "create-list")
+            {
+                RestoreNavigationSelection();
+                await ShowNewListAsync();
+            }
             else if (args.InvokedItemContainer?.Tag?.ToString() == "sync")
             {
                 RestoreNavigationSelection();
@@ -140,17 +145,37 @@ public sealed partial class MainWindow
 
     private async Task MoveListAsync(string id, int direction)
     {
-        if (SidebarSort != SidebarPresentation.Manual) return;
+        if (!CanReorderSidebar) return;
         var order = OrderedLists().Select(list => list.Id).ToList();
         var index = order.IndexOf(id); var target = index + direction;
         if (index < 0 || target < 0 || target >= order.Count) return;
         (order[index], order[target]) = (order[target], order[index]);
+        await SaveListOrderAsync(id, order);
+    }
+
+    private async Task<bool> SaveListOrderAsync(string id, List<string> order)
+    {
+        if (!CanReorderSidebar) return false;
+        _sidebarOrderBusy = true;
+        var accountEpoch = _accountEpoch;
         try
         {
-            if (!_demo) _settings = await _sync.CallAsync("set_settings", new { list_order = order });
+            if (!_demo)
+            {
+                var settings = await _sync.CallAsync("set_settings", new { list_order = order });
+                if (_windowClosed || accountEpoch != _accountEpoch) return false;
+                _settings = settings;
+            }
             _uiPreferences.ListOrder = order; SaveUiPreferences(); RebuildListNavigation(id);
+            return true;
         }
-        catch (Exception error) { ShowInfo(L10n.Get("CouldntSaveListOrder"), L10n.Error(error), InfoBarSeverity.Error); }
+        catch (Exception error)
+        {
+            if (!_windowClosed && accountEpoch == _accountEpoch)
+                ShowInfo(L10n.Get("CouldntSaveListOrder"), L10n.Error(error), InfoBarSeverity.Error);
+            return false;
+        }
+        finally { _sidebarOrderBusy = false; }
     }
 
     private async Task CustomizeListAsync(ReminderList list)

@@ -10,10 +10,12 @@ namespace Reminders.Windows;
 
 public sealed partial class MainWindow
 {
-    private async void BrowserSignIn_Click(object sender, RoutedEventArgs args)
+    private async void BrowserSignIn_Click(object sender, RoutedEventArgs args) =>
+        await OpenAppleSignInAsync(ChinaMainlandSignIn.IsChecked == true);
+
+    private async Task OpenAppleSignInAsync(bool chinaMainland, bool renewSession = false)
     {
         if (_dialogOpen || _verificationBusy) return;
-        var chinaMainland = ChinaMainlandSignIn.IsChecked == true;
         _dialogOpen = true;
         using var lifetime = new CancellationTokenSource();
         var host = new Grid { Width = Math.Clamp(Root.ActualWidth - 100, 320, 850), Height = Math.Clamp(Root.ActualHeight - 210, 300, 620) };
@@ -23,7 +25,8 @@ public sealed partial class MainWindow
         var pendingPopups = new List<Task>();
         var message = new TextBlock { Text = L10n.Get("AppleSignInInstructions"), TextWrapping = TextWrapping.Wrap };
         var panel = new StackPanel { Spacing = 12 }; panel.Children.Add(message); panel.Children.Add(host);
-        var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, Title = L10n.Get("AppleSignInDialogTitle"), Content = panel,
+        var dialog = new ContentDialog { XamlRoot = Root.XamlRoot, RequestedTheme = Root.RequestedTheme,
+            Title = L10n.Get(renewSession ? "Relogin" : "AppleSignInDialogTitle"), Content = panel,
             CloseButtonText = L10n.Get("Cancel"), PrimaryButtonText = L10n.Get("ContinueInApp"), IsPrimaryButtonEnabled = false,
             SecondaryButtonText = L10n.Get("Reload"), IsSecondaryButtonEnabled = false };
         dialog.Resources["ContentDialogMaxWidth"] = 1000d;
@@ -192,7 +195,7 @@ public sealed partial class MainWindow
                     ["cookies"] = JsonSerializerNode(cookies, chinaMainland)
                 };
                 if (closed) return;
-                await _sync.CallAsync("browser_login", new { apple_id = account, state }, lifetime.Token);
+                await _sync.CallAsync("browser_login", new { apple_id = account, state, renew_session = renewSession }, lifetime.Token);
                 finished = true;
                 AppLog.Info("apple sign-in: stage=import completed");
                 PasswordBox.Password = ""; CodeBox.Text = "";

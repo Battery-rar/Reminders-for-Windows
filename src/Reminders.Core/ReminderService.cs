@@ -287,12 +287,15 @@ public sealed partial class ReminderService : IAsyncDisposable
             case "browser_login":
                 var browserAccount = p.Optional("apple_id", 320)?.Trim().ToLowerInvariant();
                 var browserState = p["state"] as JsonObject ?? throw CoreException.Bad("Missing Apple session.").WithPresentation("ErrorMissingAppleSession");
+                var renewSession = p.Flag("renew_session");
                 var browserLogin = await WithSignIn(async () =>
                 {
+                    if (renewSession && cache.Meta("signed_out") == "1")
+                        throw new CoreException("AUTH_REQUIRED", "No Apple ID provided").WithPresentation("ErrorNoAppleIDProvided");
                     var chinaMainland = browserState.Flag("china_mainland");
                     var authenticated = await client.ImportBrowserSession(browserAccount, browserState, token, account =>
                         cache.EnsureCanSwitchAccount(client.IsSwitchingAccount(account, chinaMainland)),
-                        (account, saveCredentials) => cache.SaveAccount(account, chinaMainland, client.IsSwitchingAccount(account, chinaMainland), saveCredentials));
+                        (account, saveCredentials) => cache.SaveAccount(account, chinaMainland, client.IsSwitchingAccount(account, chinaMainland), saveCredentials), renewSession);
                     cache.SetMeta("signed_out", null); return authenticated;
                 }, token);
                 QueueSync(cache.Lists.Count == 0); return browserLogin;
@@ -337,6 +340,27 @@ public sealed partial class ReminderService : IAsyncDisposable
                     if (!lifetime.IsCancellationRequested) await StartAsync(lifetime.Token);
                 }
             case "lists": return cache.Lists;
+            case "create_list":
+                var listToCreate = ListCreation.FromRequest(p);
+                if (IsLocalDemo)
+                {
+                    return cache.Transaction(() =>
+                    {
+                        var existing = cache.Lists.SingleOrDefault(list => list.Text("id") == listToCreate.Id);
+                        if (existing is not null)
+                            return existing.Text("title") == listToCreate.Title && existing.Text("color_hex") == listToCreate.Color &&
+                                existing.Text("badge_emblem") == listToCreate.Badge ? existing : throw ListCreation.Conflict();
+                        var listRecord = new JsonObject { ["recordName"] = listToCreate.Id, ["recordType"] = "List", ["fields"] = listToCreate.Fields() };
+                        cache.ApplyRecordsInTransaction(new JsonArray(listRecord));
+                        return cache.Lists.Single(list => list.Text("id") == listToCreate.Id);
+                    });
+                }
+                return await WithClient(async () =>
+                {
+                    var created = await client.CreateList(listToCreate, token);
+                    cache.ApplyRecords(new JsonArray(created.DeepClone()));
+                    return cache.Lists.Single(list => list.Text("id") == listToCreate.Id);
+                }, token);
             case "reminders": return cache.Reminders(p);
             case "reminder": return cache.Reminder(cache.ResolveId(p.Required("id")));
             case "tags": return cache.Tags;

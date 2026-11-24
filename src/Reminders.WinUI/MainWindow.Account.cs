@@ -6,6 +6,37 @@ namespace Reminders.Windows;
 
 public sealed partial class MainWindow
 {
+    private async Task ReloginAsync()
+    {
+        if (_windowClosed || _accountBusy || _dialogOpen || _updateBusy || _verificationBusy || _savingDetail
+            || _demo || _sync.IsLocalDemo || !_sync.IsRunning) return;
+        try
+        {
+            var status = await _sync.CallAsync("auth_status", new { });
+            if (_windowClosed || _accountBusy || _dialogOpen || _verificationBusy || _savingDetail) return;
+            if (status.Flag("needs_2fa"))
+            {
+                await ShowCodeEntryAsync(status.Property("two_factor"));
+                return;
+            }
+            if (status.Flag("signed_out") || string.IsNullOrWhiteSpace(status.Text("apple_id")))
+            {
+                ShowLogin();
+                return;
+            }
+            // Keep the editor and cache open while Apple's sign-in replaces only the session.
+            await OpenAppleSignInAsync(status.Flag("china_mainland"), renewSession: true);
+        }
+        catch (Exception error) { ShowInfo(L10n.Get("CouldntRelogin"), L10n.Error(error), InfoBarSeverity.Error); }
+    }
+
+    private Button CreateReloginButton()
+    {
+        var button = new Button { Content = L10n.Get("Relogin") };
+        button.Click += async (_, _) => await ReloginAsync();
+        return button;
+    }
+
     private async Task SignOutAsync()
     {
         if (_accountBusy || _dialogOpen || _updateBusy || _savingDetail) return;

@@ -1078,9 +1078,6 @@ Any subtasks will also be deleted.</value>
   <data name="MyListsNavigationViewItemHeader.Content" xml:space="preserve">
     <value>My lists</value>
   </data>
-  <data name="Navigation.PaneTitle" xml:space="preserve">
-    <value>Apple Reminders on Windows</value>
-  </data>
   <data name="Never" xml:space="preserve">
     <value>Never</value>
   </data>
@@ -1939,7 +1936,7 @@ Accept any updated terms, then check that your lists appear.</value>
     <value>Your iCloud reminders, at home on Windows.</value>
   </data>
   <data name="ChinaMainlandSignIn.Content" xml:space="preserve">
-    <value>iCloud China mainland (GCBD)</value>
+    <value>iCloud China mainland (云上贵州)</value>
   </data>
   <data name="ErrorCacheInUse" xml:space="preserve">
     <value>Reminders is already open. Close the other instance and try again.</value>
@@ -2003,5 +2000,122 @@ Accept any updated terms, then check that your lists appear.</value>
   </data>
   <data name="ErrorMoveReminderChanged" xml:space="preserve">
     <value>The reminder changed lists or was deleted before the move.</value>
+  </data>
+  <data name="PrintListButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>Print reminder list</value>
+  </data>
+  <data name="PrintListButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>Print reminder list</value>
+  </data>
+  <data name="PrintListFailed" xml:space="preserve">
+    <value>Couldn't print reminders</value>
+  </data>
+  <data name="PrintListUnavailable" xml:space="preserve">
+    <value>Windows printing is unavailable right now.</value>
+  </data>
+  <data name="PrintListJobFailed" xml:space="preserve">
+    <value>Windows couldn't complete the print job.</value>
+  </data>
+  <data name="PrintListSearch" xml:space="preserve">
+    <value>Search: {0}</value>
+  </data>
+  <data name="PrintListDue" xml:space="preserve">
+    <value>Due: {0}</value>
+  </data>
+  <data name="PrivacyPolicyResource" xml:space="preserve">
+    <value>Reminders.Windows.Privacy.md</value>
+  </data>
+  <data name="NewListNavigationItem.Content" xml:space="preserve">
+    <value>New list</value>
+  </data>
+  <data name="NewList" xml:space="preserve">
+    <value>New list</value>
+  </data>
+  <data name="NewListName" xml:space="preserve">
+    <value>List name</value>
+  </data>
+  <data name="CreateList" xml:space="preserve">
+    <value>Create list</value>
+  </data>
+  <data name="CouldntCreateList" xml:space="preserve">
+    <value>Couldn't create the list</value>
+  </data>
+  <data name="NewListNameTooLong" xml:space="preserve">
+    <value>The list name is too long.</value>
+  </data>
+  <data name="ErrorInvalidNewList" xml:space="preserve">
+    <value>Enter a valid list name and choose a supported color and icon.</value>
+  </data>
+  <data name="ErrorListOrderingUnavailable" xml:space="preserve">
+    <value>Windows couldn’t update this iCloud list order. Create the list in Apple Reminders, then sync it to Windows.</value>
+  </data>
+  <data name="ErrorListCreateConflict" xml:space="preserve">
+    <value>iCloud may have saved this list already. Sync to check before creating it again.</value>
+  </data>
+  <data name="NewListBookmark" xml:space="preserve">
+    <value>Bookmark</value>
+  </data>
+  <data name="NewListGift" xml:space="preserve">
+    <value>Gift</value>
+  </data>
+  <data name="NewListFinance" xml:space="preserve">
+    <value>Finance</value>
+  </data>
+  <data name="NewListFood" xml:space="preserve">
+    <value>Food</value>
+  </data>
+  <data name="NewListHealth" xml:space="preserve">
+    <value>Health</value>
+  </data>
+  <data name="NewListLocation" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="NewListMusic" xml:space="preserve">
+    <value>Music</value>
+  </data>
+  <data name="NewListNature" xml:space="preserve">
+    <value>Nature</value>
+  </data>
+  <data name="NewListPet" xml:space="preserve">
+    <value>Pets</value>
+  </data>
+  <data name="NewListYellow" xml:space="preserve">
+    <value>Yellow</value>
+  </data>
+  <data name="NewListLightBlue" xml:space="preserve">
+    <value>Light blue</value>
+  </data>
+  <data name="NewListIndigo" xml:space="preserve">
+    <value>Indigo</value>
+  </data>
+  <data name="NewListBrown" xml:space="preserve">
+    <value>Brown</value>
+  </data>
+  <data name="NewListRose" xml:space="preserve">
+    <value>Rose</value>
+  </data>
+  <data name="AppLanguage" xml:space="preserve">
+    <value>App language</value>
+  </data>
+  <data name="AppLanguageDescription" xml:space="preserve">
+    <value>Restart the app after saving to apply the language.</value>
+  </data>
+  <data name="ICloudSession" xml:space="preserve">
+    <value>iCloud session</value>
+  </data>
+  <data name="Relogin" xml:space="preserve">
+    <value>Sign in again</value>
+  </data>
+  <data name="ReloginDescription" xml:space="preserve">
+    <value>Renew the iCloud session for this account. Reminders on this PC and unsynced changes are kept.</value>
+  </data>
+  <data name="CouldntRelogin" xml:space="preserve">
+    <value>Couldn't reopen iCloud sign-in</value>
+  </data>
+  <data name="NewListWindowsSymbols" xml:space="preserve">
+    <value>Windows symbols</value>
+  </data>
+  <data name="NewListEmoji" xml:space="preserve">
+    <value>Emoji</value>
   </data>
 </root>

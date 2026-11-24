@@ -26,6 +26,7 @@ public sealed partial class MainWindow : Window
     private long _accountEpoch;
     private readonly Microsoft.UI.Xaml.Data.CollectionViewSource _sectionView = new() { IsSourceGrouped = true };
     private (NavKind Kind, string Key, string Search, string Sort, bool Completed)? _renderedQuery;
+    private string? _renderedReminderTitle;
     private bool _usingGroupedReminderSource;
     private bool _regrouping;
     private DateTime _reminderDate = DateTime.Today;
@@ -182,7 +183,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 #endif
-        if (Environment.GetCommandLineArgs().Contains("--demo", StringComparer.OrdinalIgnoreCase) || Environment.GetEnvironmentVariable("REMINDERS_DEMO") == "1")
+        if (App.IsDemoLaunch)
         {
             LoadDemo();
             return;
@@ -387,6 +388,7 @@ public sealed partial class MainWindow : Window
     {
         var presentation = CurrentReminderQuery;
         var sameQuery = _renderedQuery == presentation;
+        _renderedReminderTitle = _view.Label;
         var selected = _selected;
         var projectSavedDetail = selected is not null && ReferenceEquals(_savedDetailPendingProjection, selected);
         var preserveEditor = selected is not null && (projectSavedDetail || preserveDetail || _detailDirty || fromSync && (_savingDetail || IsEditorFocused()));
@@ -571,10 +573,15 @@ public sealed partial class MainWindow : Window
 
     private async Task RequestAutoSyncAsync(bool manual = false)
     {
-        if (_demo || _accountBusy || _needsSignIn || AuthGate.Visibility != Visibility.Collapsed || !_sync.IsRunning) return;
+        if (_demo || _accountBusy || AuthGate.Visibility != Visibility.Collapsed || !_sync.IsRunning) return;
+        if (_needsSignIn)
+        {
+            if (manual) ShowCachedSignInNotice();
+            return;
+        }
         _lastSyncRequest = DateTimeOffset.UtcNow;
         try { await _sync.CallAsync("sync", new { automatic = !manual }); }
-        catch (Exception error) { ShowInfo(L10n.Get("SyncFailed"), L10n.Error(error), InfoBarSeverity.Error); }
+        catch (Exception error) { ShowSyncFailure(L10n.Error(error)); }
     }
 
     private async void SignIn_Click(object sender, RoutedEventArgs e)
@@ -926,7 +933,7 @@ public sealed partial class MainWindow : Window
                 DetailTime.Time = local.TimeOfDay;
             }
             else { DetailDate.Date = null; DetailTime.Time = TimeSpan.FromHours(9); }
-            DetailAllDay.IsOn = reminder.AllDay; DetailTime.IsEnabled = !reminder.AllDay; DetailFlagged.IsOn = reminder.Flagged;
+            DetailAllDay.IsOn = reminder.AllDay; DetailFlagged.IsOn = reminder.Flagged;
             var customRepeat = reminder.Recurrence?.Supported == false;
             DetailRepeatChoice.IsEnabled = !customRepeat;
             DetailRepeatChoice.SelectedIndex = customRepeat ? -1 : (int)(reminder.Recurrence?.Frequency ?? 0);
@@ -955,19 +962,24 @@ public sealed partial class MainWindow : Window
     private void UpdateRepeatControls()
     {
         if (DetailRepeatChoice is null || DetailRepeatInterval is null || DetailRepeatHint is null) return;
+        var hasDate = DetailDate.Date is not null;
+        var hasTime = hasDate && !DetailAllDay.IsOn;
+        var canEditRepeat = _selected?.Recurrence?.Supported != false;
         var repeats = DetailRepeatChoice.SelectedIndex > 0;
-        DetailRepeatInterval.IsEnabled = DetailRepeatChoice.IsEnabled && repeats;
+        // Saving disables the enclosing editor while it refreshes. Inherited
+        // control state must not change which schedule fields are displayed.
+        DetailRepeatInterval.IsEnabled = canEditRepeat && repeats;
         DetailRepeatInterval.Visibility = repeats ? Visibility.Visible : Visibility.Collapsed;
         DetailRepeatInterval.Header = DetailRepeatChoice.SelectedIndex switch { 1 => L10n.Get("EveryDays"), 2 => L10n.Get("EveryWeeks"), 3 => L10n.Get("EveryMonths"), 4 => L10n.Get("EveryYears"), _ => L10n.Get("Every") };
-        DetailAllDayRow.Visibility = DetailDate.Date is not null ? Visibility.Visible : Visibility.Collapsed;
+        DetailAllDayRow.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
         DetailAddToToday.IsEnabled = _selected is { Deleted: false } && DetailDate.Date?.Date != DateTime.Today;
-        DetailTime.IsEnabled = DetailDate.Date is not null && !DetailAllDay.IsOn;
-        DetailTime.Visibility = DetailTime.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
-        DetailClearSchedule.Visibility = DetailDate.Date is not null ? Visibility.Visible : Visibility.Collapsed;
-        DetailClearSchedule.IsEnabled = DetailRepeatChoice.IsEnabled;
+        DetailTime.IsEnabled = hasTime;
+        DetailTime.Visibility = hasTime ? Visibility.Visible : Visibility.Collapsed;
+        DetailClearSchedule.Visibility = hasDate ? Visibility.Visible : Visibility.Collapsed;
+        DetailClearSchedule.IsEnabled = canEditRepeat;
         DetailClearSchedule.Content = L10n.Get(repeats ? "ClearDueDateAndRepeat" : "ClearDueDate");
-        var hint = !DetailRepeatChoice.IsEnabled ? L10n.Get("EditCustomRepeatOnAppleDevice")
-            : repeats && DetailDate.Date is null ? L10n.Get("RepeatNeedsDueDate") : "";
+        var hint = !canEditRepeat ? L10n.Get("EditCustomRepeatOnAppleDevice")
+            : repeats && !hasDate ? L10n.Get("RepeatNeedsDueDate") : "";
         DetailRepeatHint.Text = hint;
         DetailRepeatHint.Visibility = hint.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdatePaneLayout();
@@ -1182,8 +1194,7 @@ public sealed partial class MainWindow : Window
                 await CompleteSyncRefreshAsync();
                 break;
             case "sync_error":
-                if (!_needsSignIn)
-                    ShowInfo(L10n.Get("SyncFailed"), L10n.EventMessage(e.Data, L10n.Get("TryAgainShortly")), InfoBarSeverity.Error);
+                ShowSyncFailure(L10n.EventMessage(e.Data, L10n.Get("TryAgainShortly")));
                 await CompleteSyncRefreshAsync();
                 break;
             case "sync_cancelled":
@@ -1228,7 +1239,7 @@ public sealed partial class MainWindow : Window
             var status = await _sync.CallAsync("auth_status", new { });
             if (!_windowClosed && !_accountBusy) await ApplyAuthStatusAsync(status);
         }
-        catch (Exception error) { ShowInfo(L10n.Get("SyncFailed"), L10n.Error(error), InfoBarSeverity.Error); }
+        catch (Exception error) { ShowSyncFailure(L10n.Error(error)); }
     }
 
     private async Task ApplyAuthStatusAsync(JsonElement status)
@@ -1245,27 +1256,29 @@ public sealed partial class MainWindow : Window
         _needsSignIn = needsCode || !status.Flag("restore_retryable");
         if (AuthGate.Visibility == Visibility.Collapsed)
         {
-            if (_needsSignIn) ShowCachedSignInNotice(needsCode ? status.Property("two_factor") : default);
+            if (_needsSignIn) ShowCachedSignInNotice();
         }
         else if (needsCode) await ShowCodeEntryAsync(status.Property("two_factor"));
         else ShowLogin();
     }
 
-    private void ShowCachedSignInNotice(JsonElement twoFactor = default)
+    private void ShowSyncFailure(string message)
+    {
+        ShowInfo(L10n.Get("SyncFailed"), message, InfoBarSeverity.Error);
+        if (!_demo && !_sync.IsLocalDemo && AuthGate.Visibility == Visibility.Collapsed)
+            AppInfoBar.ActionButton = CreateReloginButton();
+    }
+
+    private void ShowCachedSignInNotice()
     {
         ShowInfo(L10n.Get("SignInToResumeSyncing"), L10n.Get("CachedRemindersAvailable"), InfoBarSeverity.Warning);
-        var action = new Button { Content = L10n.Get("SignIn") };
-        action.Click += async (_, _) =>
-        {
-            if (_accountBusy || _savingDetail || _detailDirty && !await ConfirmLeaveDetailAsync()) return;
-            if (twoFactor.ValueKind == JsonValueKind.Object) await ShowCodeEntryAsync(twoFactor);
-            else ShowLogin();
-        };
-        AppInfoBar.ActionButton = action;
+        AppInfoBar.ActionButton = CreateReloginButton();
     }
     private async void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         _windowClosed = true; _accountEpoch++; _searchTimer.Stop(); _reminderLoads.Invalidate(); _navigationLoads.Invalidate();
+        _printJob?.Dispose();
+        _printJob = null;
         _statusTimer.Stop(); _notificationTimer.Stop(); _syncTimer.Stop(); _paneHoverOpenTimer.Stop(); _paneHoverCloseTimer.Stop();
         _updateTimer.Stop(); _updateLifetime.Cancel();
         if (_notificationsRegistered) { try { AppNotificationManager.Default.Unregister(); } catch { } }

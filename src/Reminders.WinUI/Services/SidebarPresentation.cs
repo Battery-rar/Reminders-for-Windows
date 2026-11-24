@@ -1,6 +1,5 @@
-using System.Globalization;
-using System.Text;
 using System.Text.Json;
+using Reminders.Core;
 
 namespace Reminders.Windows.Services;
 
@@ -42,6 +41,19 @@ internal static class SidebarPresentation
         return lists.OrderBy(list => positions.GetValueOrDefault(id(list), int.MaxValue));
     }
 
+    public static List<string>? Reorder(IEnumerable<string> ids, string moving, string anchor, bool after)
+    {
+        if (moving == anchor) return null;
+        var order = ids.ToList();
+        var previous = order.IndexOf(moving);
+        if (previous < 0 || !order.Contains(anchor)) return null;
+        order.RemoveAt(previous);
+        var destination = order.IndexOf(anchor) + (after ? 1 : 0);
+        if (destination == previous) return null;
+        order.Insert(destination, moving);
+        return order;
+    }
+
     public static SidebarIcon ResolveIcon(string? badge)
     {
         var value = badge?.Trim();
@@ -53,31 +65,19 @@ internal static class SidebarPresentation
                 using var document = JsonDocument.Parse(value);
                 var icon = document.RootElement;
                 if (icon.TryGetProperty("Emoji", out var emoji))
-                    return emoji.ValueKind == JsonValueKind.String && IsEmoji(emoji.GetString()!)
+                    return emoji.ValueKind == JsonValueKind.String && EmojiGlyph.IsValid(emoji.GetString())
                         ? new(emoji.GetString()!, true) : DefaultIcon;
                 value = icon.TryGetProperty("SymbolName", out var symbol) && symbol.ValueKind == JsonValueKind.String ? symbol.GetString()! : "";
             }
             catch (Exception error) when (error is JsonException or InvalidOperationException) { return DefaultIcon; }
         }
-        if (IsEmoji(value)) return new(value, true);
+        if (EmojiGlyph.IsValid(value)) return new(value, true);
         if (value.Length == 1 && WindowsGlyphs.ContainsValue(value)) return new(value);
         value = value.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
         while (value.EndsWith(".fill", StringComparison.OrdinalIgnoreCase) ||
                value.EndsWith(".circle", StringComparison.OrdinalIgnoreCase) ||
                value.EndsWith(".square", StringComparison.OrdinalIgnoreCase))
             value = value[..value.LastIndexOf('.')];
-        return WindowsGlyphs.TryGetValue(value, out var glyph) ? new(glyph, IsEmoji(glyph)) : DefaultIcon;
-    }
-
-    public static bool IsEmoji(string text)
-    {
-        if (text.Length is 0 or > 64 || StringInfo.GetNextTextElementLength(text) != text.Length ||
-            !Rune.TryGetRuneAt(text, 0, out var first) || Rune.GetUnicodeCategory(first) == UnicodeCategory.OtherNotAssigned) return false;
-        if (first.Value is '#' or '*' or (>= '0' and <= '9')) return text.EndsWith('\u20E3');
-        return first.Value is >= 0x1F000 and <= 0x1FAFF or >= 0x2600 and <= 0x27BF
-            or >= 0x23E9 and <= 0x23FA or >= 0x2194 and <= 0x2199 or >= 0x2B05 and <= 0x2B07
-            or 0x00A9 or 0x00AE or 0x203C or 0x2049 or 0x2122 or 0x2139 or 0x21A9 or 0x21AA
-            or 0x231A or 0x231B or 0x2328 or 0x23CF or 0x24C2 or 0x2934 or 0x2935 or 0x2B1B
-            or 0x2B1C or 0x2B50 or 0x2B55 or 0x3030 or 0x303D or 0x3297 or 0x3299;
+        return WindowsGlyphs.TryGetValue(value, out var glyph) ? new(glyph, EmojiGlyph.IsValid(glyph)) : DefaultIcon;
     }
 }

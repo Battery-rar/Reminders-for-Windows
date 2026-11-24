@@ -32,6 +32,7 @@ Equal<string?>(null, AppleDocument.Decode("not base64!"), "malformed document");
 // Saved fixture from the previous connector, independent of this encoder.
 Equal("Hello", AppleDocument.Decode("EgkaBxIFSGVsbG8="), "uncompressed protobuf fixture");
 AppleDocumentEditingChecks.Run(Check);
+AppStorageChecks.Run(Check);
 var ny = TimeUtil.Zone("America/New_York");
 var nearMidnight = TimeUtil.Parse("2026-03-07T23:30:00-05:00");
 var quickTomorrow = Reminders.Windows.Services.ReminderSchedule.FromToday(nearMidnight, ny, 1);
@@ -336,6 +337,8 @@ AppleSignInPolicyChecks.Run(Check);
 RecurrenceWireFormatChecks.Run(Check);
 await RecurrenceAndSyncChecks.RunAsync(Check);
 await NativeReminderWriteChecks.RunAsync(Check);
+await ListCreationChecks.RunAsync(Check);
+await NativeScheduleWriteChecks.RunAsync(Check);
 await RecurrenceEditingChecks.RunAsync(Check);
 await ReadOnlyTagChecks.RunAsync(Check);
 await DemoAccountChecks.RunAsync(Check);

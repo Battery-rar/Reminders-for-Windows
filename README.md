@@ -30,9 +30,9 @@ project before deploying; no signing key is committed to this repository.
 The solution contains the WinUI app, its C# backend library, the MSIX packaging
 project, and account-free backend/updater tests. The fork has an independent
 installer identity, local data directory, and Credential Manager namespace.
-Install it in its default folder for side-by-side use. Sign in again to populate
-the new cache from iCloud. Sync any queued changes in the previous installation
-before switching if you want those changes on the new copy.
+Use the default folder, **Apple Reminders on Windows**, to install alongside the
+upstream app. Upgrading from an earlier Battery-rar build reuses its cache and
+saved sign-in.
 
 ## Repository layout
 
@@ -61,6 +61,9 @@ Demo mode uses in-memory sample data, without opening the real cache or connecti
 to iCloud. For a normal unpackaged development launch, omit `-Demo`.
 
 ## Before signing in
+
+The app follows Windows language preferences and includes Simplified Chinese.
+For China mainland accounts, select **iCloud（云上贵州）** on the sign-in screen.
 
 On first launch, a five-screen guide explains this version's account setup:
 iCloud Reminders enabled, two-factor authentication using an Apple device or a
@@ -98,9 +101,9 @@ same checked-in manifest and assets. For Microsoft Store distribution, associate
 the packaging project with the assigned Store identity. Package versions must
 increase for upgrades. See [Getting started](docs/getting-started.md).
 
-Portable builds remain available through `scripts/build-windows.ps1`; the optional
-Inno Setup installer remains available through `scripts/build-installer.ps1` for
-existing users. The fork uses an independent development MSIX identity. Store
+Portable builds are available through `scripts/build-windows.ps1`. Use
+`scripts/build-installer.ps1 -Architecture Universal` to produce an offline
+installer with native x64 and ARM64 payloads. The fork uses an independent development MSIX identity. Store
 distribution requires an identity assigned to this fork in Partner Center.
 
 ## App updates
@@ -177,7 +180,7 @@ upload acknowledgments preserve and rebase newer queued edits. Sync has bounded
 responses, pagination and a ten-minute deadline. Due dates preserve Apple's
 floating wall-clock representation and daylight-saving behavior.
 
-Unpackaged data is under `%LOCALAPPDATA%\RemindersForWindowsGCBD`; Windows may virtualize
+Unpackaged data is under `%LOCALAPPDATA%\Apple Reminders on Windows`; Windows may virtualize
 LocalAppData for packaged installations. Passwords and session tokens remain in
 Windows Credential Manager, never SQLite. Review logs before sharing. See
 [the frontend notes](docs/native-windows-frontend.md).

@@ -90,7 +90,24 @@ replacing a production installation. Credential Manager target names remain stab
 
 Keep the publish folder together; it contains the WinUI and .NET runtimes, SQLite
 native library, resources and `Reminders.Core.dll`. ARM64 output is under
-`dist-windows-arm64`. The Inno installer supports existing installations/updaters.
+`dist-windows-arm64`. For a single installer with both architectures, pass
+`-Architecture Universal` to the installer script.
+
+The default per-user install path is `%LOCALAPPDATA%\Programs\Apple Reminders on Windows`.
+An upgrade from this fork's previous default path uses the new folder and updates
+the Windows uninstall registration and shortcuts. Setup leaves recovery copies
+of the old binaries and retires the old app and uninstaller entry points.
+A previously chosen custom path is reused.
+
+## Language and printing
+
+The interface includes Simplified Chinese and follows Windows language
+preferences. Choose **iCloud（云上贵州）** when signing in to a China mainland account.
+
+Use the printer button on a reminder view or press **Ctrl+P**. The Windows
+preview uses the reminders currently shown in that view, including its search,
+completion and expanded-subtask state. Windows handles printer selection and
+printing to a file.
 
 ## Verification and troubleshooting
 
@@ -123,6 +140,6 @@ Existing iCloud tags are visible and filterable; create and edit them in Apple
 Reminders. Daily, weekly, monthly and yearly repeats can be created and changed in
 the native reminder editor; unsupported custom schedules remain protected.
 
-Unpackaged logs are under `%LOCALAPPDATA%\RemindersForWindowsGCBD\logs\app.log`; packaged
+Unpackaged logs are under `%LOCALAPPDATA%\Apple Reminders on Windows\logs\app.log`; packaged
 installations may have a virtualized location. Include the app version and relevant
 error when reporting issues. Review logs before sharing them.

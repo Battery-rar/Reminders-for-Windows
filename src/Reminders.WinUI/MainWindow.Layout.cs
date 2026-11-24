@@ -36,11 +36,27 @@ public sealed partial class MainWindow
             DetailsHost.Visibility = (sizes.Compact ? _selected is not null : sizes.Details > 0) ? Visibility.Visible : Visibility.Collapsed;
             PaneDivider.Visibility = sizes.Compact ? Visibility.Collapsed : Visibility.Visible;
             BackToReminders.Visibility = sizes.Compact ? Visibility.Visible : Visibility.Collapsed;
-            AddLabel.Visibility = sizes.List < 400 ? Visibility.Collapsed : Visibility.Visible;
             ArrangeDetailPair(DetailRecurrence, DetailRepeatInterval);
             ArrangeDetailPair(DetailOptions, DetailFlagged);
         }
         finally { _updatingLayout = false; }
+    }
+
+    private void ReminderHost_SizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        var width = args.NewSize.Width;
+        var stackCount = width < 280;
+        Grid.SetRow(RowCount, stackCount ? 1 : 0);
+        Grid.SetColumn(RowCount, stackCount ? 0 : 1);
+        Grid.SetColumnSpan(RowCount, stackCount ? 2 : 1);
+        RowCount.Margin = stackCount ? new Thickness(0, 2, 0, 0) : new Thickness(10, 0, 0, 4);
+        Grid.SetRow(ViewSubtitle, stackCount ? 2 : 1);
+
+        var stackFooter = width < 230;
+        Grid.SetRow(AddButton, stackFooter ? 1 : 0);
+        ReminderFooter.RowSpacing = stackFooter ? 4 : 0;
+        ReminderFooter.Padding = stackFooter ? new Thickness(12, 12, 12, 16) : new Thickness(24, 12, 24, 16);
+        AddLabel.Visibility = width < 400 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private static void ArrangeDetailPair(Grid grid, FrameworkElement second)

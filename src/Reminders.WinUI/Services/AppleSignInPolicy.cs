@@ -74,6 +74,7 @@ internal static class AppleSignInPolicy
             "NETWORK" => "AppleSignInImportNetwork",
             "TERMS_REQUIRED" => "AppleSignInImportTerms",
             "2FA_REQUIRED" => "AppleSignInImportPending",
+            "AUTH_REQUIRED" when exception.GetPresentation()?.Key == "ErrorAppleAccountMismatch" => "ErrorAppleAccountMismatch",
             "AUTH_REQUIRED" => "AppleSignInImportRejected",
             _ => "AppleSignInImportFailed"
         };

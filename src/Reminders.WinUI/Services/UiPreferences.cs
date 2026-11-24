@@ -42,12 +42,9 @@ internal static class UiPreferences
         {
             lock (Gate)
             {
-                Directory.CreateDirectory(DirectoryPath);
-                var temporary = filePath + ".tmp";
                 var settings = Load(localDemo);
                 settings.NavigationPaneOpen = isOpen;
-                File.WriteAllText(temporary, JsonSerializer.Serialize(settings));
-                File.Move(temporary, filePath, true);
+                Write(filePath, settings);
             }
         }
         catch (Exception error) { AppLog.Error("Could not save UI preferences", error); }
@@ -66,18 +63,29 @@ internal static class UiPreferences
 
     public static void Save(UiPreferenceData settings, bool localDemo = false)
     {
-        var filePath = FilePath(localDemo);
         try
         {
-            lock (Gate)
-            {
-                Directory.CreateDirectory(DirectoryPath);
-                var temporary = filePath + ".tmp";
-                File.WriteAllText(temporary, JsonSerializer.Serialize(settings));
-                File.Move(temporary, filePath, true);
-            }
+            lock (Gate) Write(FilePath(localDemo), settings);
         }
         catch (Exception error) { AppLog.Error("Could not save UI preferences", error); }
+    }
+
+    public static void SaveLanguage(string language)
+    {
+        lock (Gate)
+        {
+            var settings = Load();
+            settings.Language = language;
+            Write(FilePath(localDemo: false), settings);
+        }
+    }
+
+    private static void Write(string path, UiPreferenceData settings)
+    {
+        Directory.CreateDirectory(DirectoryPath);
+        var temporary = path + ".tmp";
+        File.WriteAllText(temporary, JsonSerializer.Serialize(settings));
+        File.Move(temporary, path, true);
     }
 }
 
@@ -91,6 +99,7 @@ internal sealed class UiPreferenceData
     public double? DetailPaneFraction { get; set; }
     public bool CompletionAnimation { get; set; } = true;
     public bool ICloudSetupCompleted { get; set; }
+    public string Language { get; set; } = "";
 }
 
 internal sealed class ListAppearance

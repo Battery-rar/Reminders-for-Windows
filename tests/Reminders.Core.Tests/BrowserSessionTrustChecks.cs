@@ -11,17 +11,18 @@ internal static class BrowserSessionTrustChecks
         {
             new { name = "X-APPLE-WEBAUTH-TOKEN", value = "test-cookie", domain = ".icloud.com", path = "/", expires = 0L }
         } }).AsObject();
+        var validatedDsid = "1"; var verifiedEmail = "test@example.com";
         JsonNode Account(bool challenge = false, string account = "test@example.com") => J.Node(new
         {
-            dsInfo = new { dsid = "1", appleId = account, hsaVersion = 2 },
+            dsInfo = new { dsid = validatedDsid, appleId = account, hsaVersion = 2 },
             hsaTrustedBrowser = false, hsaChallengeRequired = challenge,
             webservices = new { ckdatabasews = new { url = "https://p01-ckdatabasews.icloud.com" } }
         });
-        var secrets = new SecretStore(new MemorySecrets()); var reads = 0;
+        var secrets = new SecretStore(new MemorySecrets()); var reads = 0; var validations = 0;
         HttpMessageHandler Handler() => new ScriptHandler(async request =>
         {
             JsonNode response;
-            if (request.RequestUri!.AbsolutePath.EndsWith("/validate")) response = Account();
+            if (request.RequestUri!.AbsolutePath.EndsWith("/validate")) { validations++; response = Account(account: verifiedEmail); }
             else
             {
                 check(request.RequestUri.AbsolutePath.EndsWith("/records/query"), "unremembered browser verification uses a read-only Reminders request");
@@ -39,7 +40,39 @@ internal static class BrowserSessionTrustChecks
             check(secrets.Session("test@example.com") is not null && reads == 1, "session is saved only after Reminders access succeeds");
         }
         using (var restarted = new ICloudClient("test@example.com", secrets, Handler))
+        {
             check(await restarted.Restore(default) && reads == 2, "restart revalidates the usable session and Reminders access without a password handshake");
+            var result = await restarted.ImportBrowserSession(null, state, default, renewSession: true);
+            check(result.Flag("authenticated") && restarted.Account == "test@example.com" && reads == 3,
+                "relogin refreshes the same verified account in place");
+            var savedSession = secrets.Session("test@example.com");
+            var mainlandState = state.DeepClone().AsObject(); mainlandState["china_mainland"] = true;
+            var before = validations;
+            try { await restarted.ImportBrowserSession(null, mainlandState, default, renewSession: true); check(false, "relogin rejects a different region"); }
+            catch (CoreException error)
+            {
+                check(error.GetPresentation()?.Key == "ErrorAppleAccountMismatch" && validations == before,
+                    "relogin rejects a different region before sending its session");
+            }
+            validatedDsid = "2";
+            try { await restarted.ImportBrowserSession(null, state, default, renewSession: true); check(false, "relogin rejects a changed DSID"); }
+            catch (CoreException error)
+            {
+                check(error.GetPresentation()?.Key == "ErrorAppleAccountMismatch" && reads == 3,
+                    "relogin rejects a changed DSID even when the account email matches");
+                check(restarted.Connected && secrets.Session("test@example.com") == savedSession,
+                    "a rejected relogin preserves the previous working session");
+            }
+            finally { validatedDsid = "1"; }
+            verifiedEmail = "alias@example.com";
+            try
+            {
+                check((await restarted.ImportBrowserSession(null, state, default, renewSession: true)).Flag("authenticated") &&
+                    restarted.Account == "test@example.com" && secrets.Session(verifiedEmail) is null,
+                    "a verified Apple alias keeps the existing account storage key");
+            }
+            finally { verifiedEmail = "test@example.com"; }
+        }
         using (var discovered = new ICloudClient("", secrets, Handler))
         {
             var result = await discovered.ImportBrowserSession(null, state, default);
@@ -78,6 +111,16 @@ internal static class BrowserSessionTrustChecks
             var serviceVault = new MemorySecrets(); var before = reads;
             await using (var service = new ReminderService(root, serviceVault, Handler))
             {
+                try
+                {
+                    await service.CallAsync("browser_login", JsonSerializer.SerializeToElement(new { state, renew_session = true }));
+                    check(false, "relogin must refuse a different Apple account");
+                }
+                catch (CoreException error)
+                {
+                    check(error.GetPresentation()?.Key == "ErrorAppleAccountMismatch" && reads == before,
+                        "relogin rejects another account before making Reminders requests");
+                }
                 try
                 {
                     await service.CallAsync("browser_login", JsonSerializer.SerializeToElement(new { state }));

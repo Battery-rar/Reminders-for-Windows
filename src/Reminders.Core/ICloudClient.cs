@@ -115,8 +115,10 @@ internal sealed partial class ICloudClient : IDisposable
         finally { Persist(); }
     }
     public async Task<JsonNode> ImportBrowserSession(string? expectedAccount, JsonObject state, CancellationToken token, Action<string>? validateAccount = null,
-        Action<string, Action>? commitAccount = null)
+        Action<string, Action>? commitAccount = null, bool renewSession = false)
     {
+        if (renewSession && (Account.Length == 0 || state.Flag("china_mainland") != ChinaMainland))
+            throw AppleAccountMismatch();
         if (!state.Flag("browser_cookie_session") || state.Array("cookies").Count == 0) state.Required("session_token", 16384);
         var candidate = new AppleAuth((JsonObject)state.DeepClone(), handlerFactory);
         candidate.Diagnostic += message => Diagnostic?.Invoke(message);
@@ -124,8 +126,15 @@ internal sealed partial class ICloudClient : IDisposable
         {
             if (!await candidate.Resume(token)) throw new CoreException("2FA_REQUIRED", "Finish verification in Apple's sign-in window.").WithPresentation("ErrorFinishVerificationInAppleWindow");
             var account = candidate.State.Required("apple_id", 320).Trim().ToLowerInvariant();
-            if (expectedAccount is not null && !string.Equals(expectedAccount, account, StringComparison.OrdinalIgnoreCase))
-                throw new CoreException("AUTH_REQUIRED", "Apple returned a different account. Please sign in again.").WithPresentation("ErrorAppleAccountMismatch");
+            if (renewSession)
+            {
+                RequireVerifiedIdentity(candidate, allowUnbound: false);
+                // Apple's canonical email can differ from the stored sign-in
+                // alias. Keep the cache and credential key bound to this account.
+                account = Account;
+            }
+            else if (expectedAccount is not null && !string.Equals(expectedAccount, account, StringComparison.OrdinalIgnoreCase))
+                throw AppleAccountMismatch();
             // Cookie-only handoff learns the identity from iCloud's validation,
             // never from page text. Check queued edits before saving or switching.
             validateAccount?.Invoke(account);
@@ -164,8 +173,10 @@ internal sealed partial class ICloudClient : IDisposable
             : (allowUnbound && verifiedAppleId is null) ||
                 string.Equals(candidate.State.Text("apple_id"), verifiedAppleId ?? Account, StringComparison.OrdinalIgnoreCase);
         if (!sameAccount)
-            throw new CoreException("AUTH_REQUIRED", "Apple returned a different account. Please sign in again.").WithPresentation("ErrorAppleAccountMismatch");
+            throw AppleAccountMismatch();
     }
+    private static CoreException AppleAccountMismatch() =>
+        new CoreException("AUTH_REQUIRED", "Apple returned a different account. Please sign in again.").WithPresentation("ErrorAppleAccountMismatch");
     private static Task CheckBrowserAccess(AppleAuth session, CancellationToken token) =>
         session.State.Flag("browser_cookie_session") && !session.State.Flag("trusted_session")
             ? new CloudKit(session).CheckAccess(token) : Task.CompletedTask;
@@ -302,6 +313,7 @@ internal sealed partial class ICloudClient : IDisposable
                 || CloudKit.Field(parent, "List").Text("recordName") != payload.Text("list_id"))
                 throw CoreException.Bad("The parent task is no longer available in this list. Refresh before adding a subtask.").WithPresentation("ErrorSubtaskParentUnavailable");
         }
+        await AddScheduleOperations(id, new JsonObject(), payload, fields, operations, token);
         var result = await Cloud.Modify(operations, token);
         return MergeResult(new JsonObject { ["recordName"] = id, ["fields"] = fields.DeepClone() }, result);
     }
@@ -311,8 +323,19 @@ internal sealed partial class ICloudClient : IDisposable
         if (patch.ContainsKey("recurrence")) return await ChangeRecurrence(original, patch, baseTag, token);
         if (patch.Flag("completed") && CloudKit.Field(original, "RecurrenceRuleIDs") is JsonArray { Count: > 0 })
             return await CompleteRecurring(original, patch, baseTag, token);
+        if (ScheduleIdentity(patch) is { } schedule && DueDateToken(original).Text("replicaID") == schedule)
+            return Snapshot(original);
         if (baseTag is not null && baseTag != remoteTag) throw new CoreException("CONFLICT", "This reminder changed on another device while you were editing it.", ToReminder(original)?.ToJsonString() ?? "{}").WithPresentation("ErrorReminderEditConflict");
-        var fields = UpdateFields(original, patch, setMissingTimeZone: true); var result = await Cloud.Modify(CloudKit.Operation("update", id, remoteTag, (JsonObject)fields.DeepClone()), token);
+        var fields = UpdateFields(original, patch, setMissingTimeZone: true);
+        var operations = new JsonArray();
+        await AddScheduleOperations(id, original, patch, fields, operations, token);
+        operations.Insert(0, CloudKit.Operation("update", id, remoteTag, (JsonObject)fields.DeepClone()));
+        JsonArray result;
+        try { result = await Cloud.Modify(operations, token); }
+        catch (CoreException error) when (error.Code == "CONFLICT" && operations.Count > 1)
+        {
+            throw new CoreException("CONFLICT", "This reminder or its date alarm changed on another device.", ToReminder(original)!.ToJsonString()).WithPresentation("ErrorReminderEditConflict");
+        }
         var target = original["fields"] as JsonObject ?? new(); original["fields"] = null; original["fields"] = target;
         foreach (var p in fields) target[p.Key] = p.Value?.DeepClone();
         return MergeResult(original, result);
