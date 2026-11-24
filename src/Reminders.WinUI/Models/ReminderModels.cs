@@ -15,7 +15,7 @@ public sealed class ReminderList
     [JsonPropertyName("is_group")] public bool IsGroup { get; set; }
 }
 
-public enum ReminderTodayAction { None, Add, Undo }
+public enum ReminderTodayAction { None, Add, Undo, Clear }
 
 public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchicalReminder
 {
@@ -70,7 +70,8 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
             if (!CanMarkComplete) return ReminderTodayAction.None;
             if (!ReminderSchedule.IsToday(DueDate, AllDay, DateTimeOffset.Now, TimeZoneInfo.Local))
                 return ReminderTodayAction.Add;
-            return CanUndoToday ? ReminderTodayAction.Undo : ReminderTodayAction.None;
+            if (CanUndoToday) return ReminderTodayAction.Undo;
+            return Recurrence is null ? ReminderTodayAction.Clear : ReminderTodayAction.None;
         }
     }
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility MetadataVisibility => IsOverdue || string.IsNullOrWhiteSpace(Metadata)

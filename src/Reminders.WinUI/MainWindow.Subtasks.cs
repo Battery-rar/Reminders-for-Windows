@@ -39,7 +39,7 @@ public sealed partial class MainWindow
             icon.RotationTransition ??= new ScalarTransition { Duration = TimeSpan.FromMilliseconds(140) };
     }
 
-    private List<ReminderItem> DemoDescendants(string id)
+    private List<ReminderItem> DemoDescendants(string id, bool completedOnly = false)
     {
         var root = _demoRows.FirstOrDefault(row => row.Id == id);
         if (root is null) return [];
@@ -48,7 +48,8 @@ public sealed partial class MainWindow
         pending.Enqueue(id);
         while (pending.TryDequeue(out var parent))
             foreach (var child in children.GetValueOrDefault(parent) ?? [])
-                if (child.ListId == root.ListId && child.Deleted == root.Deleted && seen.Add(child.Id)) { result.Add(child); pending.Enqueue(child.Id); }
+                if ((!completedOnly || child.Completed) && child.ListId == root.ListId && child.Deleted == root.Deleted && seen.Add(child.Id))
+                { result.Add(child); pending.Enqueue(child.Id); }
         return result;
     }
 
@@ -81,13 +82,14 @@ public sealed partial class MainWindow
 
     private List<ReminderItem> IncludeDemoFamily(List<ReminderItem> matches)
     {
+        var completedOnly = _view.Kind == NavKind.Smart && _view.Key == "completed";
+        var includeCompleted = completedOnly || _view.Kind == NavKind.Smart && _view.Key == "deleted" || IncludesCompleted;
         var rows = new List<ReminderItem>(matches); var included = matches.Select(row => row.Id).ToHashSet();
         foreach (var match in matches)
-            foreach (var child in DemoDescendants(match.Id))
+            foreach (var child in DemoDescendants(match.Id, completedOnly))
             {
                 if (child.Deleted != match.Deleted || child.ListId != match.ListId || !included.Add(child.Id)) continue;
-                if (_view.Kind == NavKind.Smart && _view.Key == "completed" ? !child.Completed :
-                    !(_view.Kind == NavKind.Smart && _view.Key == "deleted") && !IncludesCompleted && child.Completed) continue;
+                if (!includeCompleted && child.Completed) continue;
                 child.ContextOnly = true; rows.Add(child);
             }
         var pending = new Queue<ReminderItem>(rows);
@@ -95,7 +97,7 @@ public sealed partial class MainWindow
         {
             if (child.ParentId is not { } parentId || !included.Add(parentId)) continue;
             var parent = _demoRows.FirstOrDefault(row => row.Id == parentId && row.Deleted == child.Deleted && row.ListId == child.ListId);
-            if (parent is null) continue;
+            if (parent is null || completedOnly && !parent.Completed) continue;
             parent.ContextOnly = true; rows.Add(parent); pending.Enqueue(parent);
         }
         return rows;

@@ -4,7 +4,9 @@ namespace Reminders.Core;
 
 public sealed partial class ReminderService
 {
-    private JsonNode ChangeTodaySchedule(JsonObject request, bool undo)
+    private enum TodayScheduleChange { Add, Restore, Clear }
+
+    private JsonNode ChangeTodaySchedule(JsonObject request, TodayScheduleChange action)
     {
         var requestedId = request.Required("id");
         var expectedTag = request.Optional("edit_base_tag", 2048);
@@ -16,14 +18,25 @@ public sealed partial class ReminderService
                 (expectedTag is not null && expectedTag != current.Text("change_tag")))
                 return (current, false);
 
-            var schedule = undo
-                ? current.Flag("can_undo_today") ? cache.BeforeTodayMove(id) : null
-                : TodaySchedule(current);
+            var zone = TimeUtil.Zone();
+            var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).Date;
+            var allDay = current.Flag("all_day");
+            var previous = TimeUtil.LocalDue(current.Text("due_date"), allDay, zone);
+            var scheduledToday = previous?.Date == today;
+            var canRestore = current.Flag("can_undo_today");
+            var schedule = action switch
+            {
+                TodayScheduleChange.Add when !scheduledToday => TodaySchedule(previous, allDay, today, zone),
+                TodayScheduleChange.Restore when canRestore => cache.BeforeTodayMove(id),
+                TodayScheduleChange.Clear when scheduledToday && !canRestore && current["recurrence"] is null =>
+                    new JsonObject { ["due_date"] = null, ["all_day"] = false },
+                _ => null
+            };
             if (schedule is null) return (current, false);
             schedule["id"] = id;
             schedule["edit_base_tag"] = expectedTag;
             var saved = LocalChangeOne(schedule, "update").AsObject();
-            if (!undo) cache.RememberTodayMove(id, current, saved);
+            if (action == TodayScheduleChange.Add) cache.RememberTodayMove(id, current, saved);
             // A changed schedule invalidates its history in the same SQLite transaction.
             return (cache.Reminder(id)!, true);
         });
@@ -31,13 +44,8 @@ public sealed partial class ReminderService
         return reminder;
     }
 
-    private static JsonObject? TodaySchedule(JsonObject reminder)
+    private static JsonObject TodaySchedule(DateTime? previous, bool allDay, DateTime today, TimeZoneInfo zone)
     {
-        var zone = TimeUtil.Zone();
-        var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).Date;
-        var allDay = reminder.Flag("all_day");
-        var previous = TimeUtil.LocalDue(reminder.Text("due_date"), allDay, zone);
-        if (previous?.Date == today) return null;
         if (previous is null || allDay)
             return new JsonObject { ["due_date"] = TimeUtil.CalendarDate(today), ["all_day"] = true };
         // Use the same wall time on today's date, resolving a daylight-saving

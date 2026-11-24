@@ -59,8 +59,22 @@ internal static class SubtaskChecks
                 var dueSearch = (await Today("preflight")).AsArray();
                 check(dueSearch.Count == 1 && dueSearch[0].Text("id") == overdueChild && !dueSearch[0].Flag("context_only"),
                     "Today search matches overdue subtasks without inserting family context");
+                Task<JsonNode> Completed(string? search = null, int limit = 50) =>
+                    Call(service, "reminders", new { scope = "completed", search, limit, include_parents = true });
+                await Call(service, "update_reminder", new { id = grandchildId, completed = true });
+                var completedChild = (await Completed()).AsArray();
+                check(completedChild.Count == 1 && completedChild[0].Text("id") == grandchildId && completedChild[0].Text("parent_id") == childId,
+                    "Completed keeps an independently completed child at the top level without changing its parent link");
+                var completedChildSearch = (await Completed("Grandchild")).AsArray();
+                check(completedChildSearch.Count == 1 && completedChildSearch[0].Text("id") == grandchildId,
+                    "searching Completed cannot reveal an incomplete parent");
                 await Call(service, "update_reminder", new { id = parentId, completed = true });
                 check((await Call(service, "reminders", new { scope = "completed" })).AsArray().Count == 3, "completing a parent completes all descendants");
+                var completedTree = (await Completed("Grandchild", limit: 1)).AsArray();
+                var treeInput = completedTree.OfType<JsonObject>().Select(row => new Row(row.Required("id"), row.Text("parent_id"), row.Required("list_id")));
+                var tree = ReminderHierarchy.Build(treeInput, new HashSet<string>());
+                check(tree.Count == 1 && tree[0].Rows.Select(row => (row.Item.Id, row.Depth)).SequenceEqual(new[] { (parentId, 0), (childId, 1), (grandchildId, 2) }),
+                    "Completed keeps completed ancestors as hierarchy context beyond the filtered result limit");
                 await Bad(() => Create("Invalid", parentId), "completed parent cannot gain new subtasks");
                 await Call(service, "update_reminder", new { id = grandchildId, completed = false });
                 check((await Call(service, "reminders", new { scope = "completed" })).AsArray().Count == 0, "reopening a child reopens its ancestors");
@@ -106,6 +120,18 @@ internal static class SubtaskChecks
                 { List = new { value = new { recordName = "List/a" } }, ParentReminder = new { value = new { recordName = "Reminder/parent" } } } })));
                 old.Execute("DROP INDEX idx_reminders_parent");
                 old.Execute("ALTER TABLE reminders DROP COLUMN parent_id");
+            }
+            using (var cache = new Cache(Path.Combine(root, "completed-chain.db")))
+            {
+                cache.Upsert(J.Node(new { id = "completed-root", list_id = "List/a", title = "Finished root", completed = true }));
+                cache.Upsert(J.Node(new { id = "incomplete-middle", list_id = "List/a", parent_id = "completed-root", title = "Open middle" }));
+                cache.Upsert(J.Node(new { id = "completed-leaf", list_id = "List/a", parent_id = "incomplete-middle", title = "Finished leaf", completed = true }));
+                var isolatedLeaf = cache.Reminders(J.Node(new { scope = "completed", search = "Finished leaf", include_parents = true }));
+                check(isolatedLeaf.Count == 1 && isolatedLeaf[0].Text("id") == "completed-leaf",
+                    "Completed ancestor lookup stops at the first incomplete parent");
+                var isolatedRoot = cache.Reminders(J.Node(new { scope = "completed", search = "Finished root", include_parents = true }));
+                check(isolatedRoot.Count == 1 && isolatedRoot[0].Text("id") == "completed-root",
+                    "Completed descendant lookup stops at the first incomplete child");
             }
             using (var migrated = new Cache(Path.Combine(root, "migration.db")))
                 check(migrated.Reminder("Reminder/child").Text("parent_id") == "Reminder/parent", "existing caches recover parent links without resetting data");
