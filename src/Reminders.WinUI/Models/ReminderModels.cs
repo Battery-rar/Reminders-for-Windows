@@ -21,6 +21,8 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
 {
     private string _title = "";
     private string _description = "";
+    private long _priority;
+    private bool _flagged;
     private bool _completed;
     private bool _deleted;
     [JsonPropertyName("id")] public string Id { get; set; } = "";
@@ -30,9 +32,9 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonPropertyName("title")] public string Title { get => _title; set => Set(ref _title, value); }
     [JsonPropertyName("description")] public string Description { get => _description; set => Set(ref _description, value); }
     [JsonPropertyName("due_date")] public string? DueDate { get; set; }
-    [JsonPropertyName("priority")] public long Priority { get; set; }
+    [JsonPropertyName("priority")] public long Priority { get => _priority; set => Set(ref _priority, value); }
     [JsonPropertyName("completed")] public bool Completed { get => _completed; set => Set(ref _completed, value); }
-    [JsonPropertyName("flagged")] public bool Flagged { get; set; }
+    [JsonPropertyName("flagged")] public bool Flagged { get => _flagged; set => Set(ref _flagged, value); }
     [JsonPropertyName("all_day")] public bool AllDay { get; set; }
     [JsonPropertyName("deleted")] public bool Deleted { get => _deleted; set => Set(ref _deleted, value); }
     [JsonPropertyName("tags")] public List<string> Tags { get; set; } = [];
@@ -61,6 +63,15 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     }
 
     [JsonIgnore] public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? L10n.Get("UntitledReminder") : Title;
+    [JsonIgnore] public string PriorityMarks => Priority switch { 9 => "!", 5 => "!!", 1 => "!!!", _ => "" };
+    [JsonIgnore] public string PriorityLabel => Priority switch
+    {
+        9 => L10n.Get("LowPriority"), 5 => L10n.Get("MediumPriority"), 1 => L10n.Get("HighPriority"), _ => ""
+    };
+    [JsonIgnore] public Microsoft.UI.Xaml.Visibility PriorityVisibility => PriorityMarks.Length == 0
+        ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+    [JsonIgnore] public Microsoft.UI.Xaml.Visibility FlagVisibility => Flagged
+        ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
     [JsonIgnore] public bool CanEditRow => !Deleted;
     [JsonIgnore] public bool CanMarkComplete => CanEditRow && !Completed;
     [JsonIgnore] public ReminderTodayAction TodayAction
@@ -102,7 +113,6 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
             if (IsOverdue) parts.Add(L10n.Get("Overdue"));
             if (DueText.Length > 0) parts.Add(DueText);
             if (Recurrence is not null) parts.Add(Recurrence.Label);
-            if (Priority is 1 or 5 or 9) parts.Add(Priority switch { 1 => L10n.Get("HighPriority"), 5 => L10n.Get("MediumPriority"), _ => L10n.Get("LowPriority") });
             if (Tags.Count > 0) parts.Add(string.Join("  ", Tags.Select(t => "#" + t)));
             if (Dirty != 0) parts.Add(L10n.Get("WaitingToSync"));
             return string.Join(L10n.Get("ReminderMetadataSeparator"), parts);
@@ -152,6 +162,13 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value; PropertyChanged?.Invoke(this, new(name)); PropertyChanged?.Invoke(this, new(nameof(DisplayTitle)));
+        if (name == nameof(Priority))
+        {
+            PropertyChanged?.Invoke(this, new(nameof(PriorityMarks)));
+            PropertyChanged?.Invoke(this, new(nameof(PriorityLabel)));
+            PropertyChanged?.Invoke(this, new(nameof(PriorityVisibility)));
+        }
+        if (name == nameof(Flagged)) PropertyChanged?.Invoke(this, new(nameof(FlagVisibility)));
         if (name is nameof(Completed) or nameof(Deleted))
         {
             PropertyChanged?.Invoke(this, new(nameof(CanEditRow)));
