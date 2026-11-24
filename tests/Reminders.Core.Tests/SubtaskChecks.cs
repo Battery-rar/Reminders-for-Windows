@@ -36,13 +36,29 @@ internal static class SubtaskChecks
                 var searched = (await Call(service, "reminders", new { search = "Grandchild", include_parents = true })).AsArray();
                 check(searched.Count == 3 && searched.Count(row => row.Flag("context_only")) == 2, "search includes ancestors as context without losing the matching child");
                 check((await Call(service, "reminders", new { search = "Parent", include_parents = true })).AsArray().Count == 3, "matching parents reveal undated subtasks");
-                await Call(service, "update_reminder", new { id = grandchildId, due_date = DateTimeOffset.Now.ToString("O") });
-                check((await Call(service, "reminders", new { scope = "today", include_parents = true })).AsArray().Count == 3, "a due child brings its undated ancestors into Today");
-                var dueParent = (await Call(service, "create_reminder", new { list_id = "List/a", title = "Due family", due_date = DateTimeOffset.Now.ToString("O") })).Required("id");
+                var localDay = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, TimeUtil.Zone()).Date;
+                var today = TimeUtil.CalendarDate(localDay);
+                Task<JsonNode> Today(string? search = null) => Call(service, "reminders", new { scope = "today", search, include_parents = true });
+                await Call(service, "update_reminder", new { id = grandchildId, due_date = today, all_day = true });
+                var solo = (await Today()).AsArray();
+                check(solo.Count == 1 && solo[0].Text("id") == grandchildId && solo[0].Text("parent_id") == childId,
+                    "Today shows a due subtask on its own while retaining its stored parent link");
+                var dueParent = (await Create("Due family")).Required("id");
                 var undatedChild = (await Create("Undated preflight", dueParent)).Required("id");
-                var dueSearch = (await Call(service, "reminders", new { scope = "today", search = "preflight", include_parents = true })).AsArray();
-                check(dueSearch.Any(row => row.Text("id") == undatedChild && !row.Flag("context_only"))
-                    && dueSearch.Any(row => row.Text("id") == dueParent && row.Flag("context_only")), "Today search can find an undated child already visible beneath its due parent");
+                var overdueChild = (await Create("Overdue preflight", dueParent)).Required("id");
+                var futureChild = (await Create("Future preflight", dueParent)).Required("id");
+                await Call(service, "update_reminder", new { id = overdueChild, due_date = TimeUtil.CalendarDate(localDay.AddDays(-2)), all_day = true });
+                await Call(service, "update_reminder", new { id = futureChild, due_date = TimeUtil.CalendarDate(localDay.AddDays(2)), all_day = true });
+                await Call(service, "update_reminder", new { id = dueParent, due_date = today, all_day = true });
+                check((await Call(service, "reminder", new { id = undatedChild }))["due_date"] is null,
+                    "moving a parent to Today leaves its subtasks' schedules unchanged");
+                var dueFamily = (await Today()).AsArray();
+                check(dueFamily.Count == 3 && dueFamily.Any(row => row.Text("id") == dueParent && !row.Flag("context_only"))
+                    && dueFamily.Any(row => row.Text("id") == overdueChild && row.Text("parent_id") == dueParent && !row.Flag("context_only")),
+                    "Today retains the hierarchy between qualifying rows and leaves future and undated subtasks out");
+                var dueSearch = (await Today("preflight")).AsArray();
+                check(dueSearch.Count == 1 && dueSearch[0].Text("id") == overdueChild && !dueSearch[0].Flag("context_only"),
+                    "Today search matches overdue subtasks without inserting family context");
                 await Call(service, "update_reminder", new { id = parentId, completed = true });
                 check((await Call(service, "reminders", new { scope = "completed" })).AsArray().Count == 3, "completing a parent completes all descendants");
                 await Bad(() => Create("Invalid", parentId), "completed parent cannot gain new subtasks");

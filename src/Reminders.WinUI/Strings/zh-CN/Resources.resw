@@ -365,9 +365,6 @@
 
 其子任务也会一并删除。</value>
   </data>
-  <data name="DeleteTaskMenuFlyoutItem.Text" xml:space="preserve">
-    <value>删除任务</value>
-  </data>
   <data name="DemoMode" xml:space="preserve">
     <value>演示模式</value>
   </data>
@@ -1785,11 +1782,11 @@
   <data name="TagsTextBlock.Text" xml:space="preserve">
     <value>标签</value>
   </data>
-  <data name="TaskActionsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
-    <value>任务操作</value>
+  <data name="DetailDeleteButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>删除提醒事项</value>
   </data>
-  <data name="TaskActionsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
-    <value>任务操作</value>
+  <data name="DetailDeleteButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve">
+    <value>删除提醒事项</value>
   </data>
   <data name="TaskDetailsTextBlock.Text" xml:space="preserve">
     <value>任务详情</value>
@@ -2107,6 +2104,18 @@
     <value>Windows 符号</value>
   </data>
   <data name="NewListEmoji" xml:space="preserve">
-    <value>表情符号（Emoji）</value>
+    <value>表情符号</value>
+  </data>
+  <data name="RowMarkComplete" xml:space="preserve">
+    <value>完成</value>
+  </data>
+  <data name="RowAddToToday" xml:space="preserve">
+    <value>添加到“今天”</value>
+  </data>
+  <data name="SwipeToTodayItem.Text" xml:space="preserve">
+    <value>添加到“今天”</value>
+  </data>
+  <data name="SwipeToCompleteItem.Text" xml:space="preserve">
+    <value>完成</value>
   </data>
 </root>

@@ -20,6 +20,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     private string _title = "";
     private string _description = "";
     private bool _completed;
+    private bool _deleted;
     [JsonPropertyName("id")] public string Id { get; set; } = "";
     [JsonPropertyName("list_id")] public string ListId { get; set; } = "";
     [JsonPropertyName("parent_id")] public string? ParentId { get; set; }
@@ -31,7 +32,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonPropertyName("completed")] public bool Completed { get => _completed; set => Set(ref _completed, value); }
     [JsonPropertyName("flagged")] public bool Flagged { get; set; }
     [JsonPropertyName("all_day")] public bool AllDay { get; set; }
-    [JsonPropertyName("deleted")] public bool Deleted { get; set; }
+    [JsonPropertyName("deleted")] public bool Deleted { get => _deleted; set => Set(ref _deleted, value); }
     [JsonPropertyName("tags")] public List<string> Tags { get; set; } = [];
     [JsonPropertyName("dirty")] public long Dirty { get; set; }
     [JsonPropertyName("change_tag")] public string? ChangeTag { get; set; }
@@ -56,6 +57,9 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     }
 
     [JsonIgnore] public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? L10n.Get("UntitledReminder") : Title;
+    [JsonIgnore] public bool CanEditRow => !Deleted;
+    [JsonIgnore] public bool CanMarkComplete => CanEditRow && !Completed;
+    [JsonIgnore] public bool CanAddToToday => CanMarkComplete && !ReminderSchedule.IsToday(DueDate, AllDay, DateTimeOffset.Now, TimeZoneInfo.Local);
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility MetadataVisibility => IsOverdue || string.IsNullOrWhiteSpace(Metadata)
         ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility OverdueMetadataVisibility => IsOverdue
@@ -92,6 +96,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     }
     public void RefreshTimeMetadata()
     {
+        PropertyChanged?.Invoke(this, new(nameof(CanAddToToday)));
         PropertyChanged?.Invoke(this, new(nameof(Metadata)));
         PropertyChanged?.Invoke(this, new(nameof(MetadataVisibility)));
         PropertyChanged?.Invoke(this, new(nameof(OverdueMetadataVisibility)));
@@ -131,6 +136,12 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value; PropertyChanged?.Invoke(this, new(name)); PropertyChanged?.Invoke(this, new(nameof(DisplayTitle)));
+        if (name is nameof(Completed) or nameof(Deleted))
+        {
+            PropertyChanged?.Invoke(this, new(nameof(CanEditRow)));
+            PropertyChanged?.Invoke(this, new(nameof(CanMarkComplete)));
+            PropertyChanged?.Invoke(this, new(nameof(CanAddToToday)));
+        }
         PropertyChanged?.Invoke(this, new(nameof(SubtaskToggleLabel)));
         PropertyChanged?.Invoke(this, new(nameof(Metadata))); PropertyChanged?.Invoke(this, new(nameof(OverdueMetadataVisibility)));
         PropertyChanged?.Invoke(this, new(nameof(MetadataVisibility))); PropertyChanged?.Invoke(this, new(nameof(DescriptionVisibility)));
