@@ -73,39 +73,12 @@
        <Button x:Uid="SortButton" x:Name="ReminderSortButton" Grid.Column="1" Width="40" Height="40" ToolTipService.Placement="Bottom"><Button.Flyout><MenuFlyout><RadioMenuFlyoutItem x:Uid="ManualRadioMenuFlyoutItem" Tag="manual" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="DueDateRadioMenuFlyoutItem" Tag="due" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="PriorityRadioMenuFlyoutItem" Tag="priority" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="TitleRadioMenuFlyoutItem" Tag="title" GroupName="sort" Click="Sort_Click"/></MenuFlyout></Button.Flyout><FontIcon Glyph="&#xE8CB;" FontSize="18"/></Button>
       </Grid>
       <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0">
-       <ListView.Resources>
-        <DataTemplate x:Key="ReminderBodyTemplate" x:DataType="local:ReminderItem">
-         <Grid Padding="{x:Bind RowPadding, Mode=OneWay}" Margin="{x:Bind HierarchyIndent, Mode=OneWay}" MinHeight="40">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <CheckBox x:Uid="MarkReminderCompleteCheckBox" IsChecked="{x:Bind Completed, Mode=OneWay}" IsEnabled="{x:Bind CanEditRow, Mode=OneWay}" Click="Complete_Click" VerticalAlignment="Top"/>
-          <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-           <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBlock Text="{x:Bind PriorityMarks, Mode=OneWay}" Visibility="{x:Bind PriorityVisibility, Mode=OneWay}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center"
-                       AutomationProperties.Name="{x:Bind PriorityLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind PriorityLabel, Mode=OneWay}"/>
-            <TextBlock Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}" FontWeight="{x:Bind RowTitleWeight, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
-            <TextBlock x:Uid="ReminderRowFlag" Grid.Column="2" Text="🚩" FontFamily="Segoe UI Emoji" Margin="8,0,0,0" VerticalAlignment="Center"
-                       Visibility="{x:Bind FlagVisibility, Mode=OneWay}"/>
-           </Grid>
-           <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind MetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
-           <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind OverdueMetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
-           <TextBlock Text="{x:Bind Description, Mode=OneWay}" Visibility="{x:Bind DescriptionVisibility, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
-          </StackPanel>
-          <Button Grid.Column="2" Style="{ThemeResource SubtleButtonStyle}" Width="32" Height="32" MinWidth="0" Padding="0" Margin="4,-4,0,0" VerticalAlignment="Top"
-                  Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="{x:Bind SubtaskToggleVisibility, Mode=OneWay}"
-                  AutomationProperties.Name="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.Placement="Top" Click="ToggleSubtasks_Click">
-           <FontIcon Glyph="&#xE70D;" FontSize="12" Width="16" Height="16" Rotation="{x:Bind SubtaskChevronRotation, Mode=OneWay}" Loaded="SubtaskChevron_Loaded"/>
-          </Button>
-         </Grid>
-        </DataTemplate>
-       </ListView.Resources>
        <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView"/></ItemsPanelTemplate></ListView.ItemsPanel>
        <ListView.GroupStyle><GroupStyle HidesIfEmpty="True">
         <GroupStyle.HeaderContainerStyle><Style TargetType="ListViewHeaderItem"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,2"/></Style></GroupStyle.HeaderContainerStyle>
         <GroupStyle.HeaderTemplate><DataTemplate x:DataType="local:ReminderSection"><TextBlock Text="{x:Bind Title}" Style="{ThemeResource BodyStrongTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="14,10,14,2"/></DataTemplate></GroupStyle.HeaderTemplate>
        </GroupStyle></ListView.GroupStyle>
-       <ListView.ItemContainerTransitions><TransitionCollection><AddDeleteThemeTransition/><ReorderThemeTransition/></TransitionCollection></ListView.ItemContainerTransitions>
+       <ListView.ItemContainerTransitions><TransitionCollection><AddDeleteThemeTransition/></TransitionCollection></ListView.ItemContainerTransitions>
        <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="4,1"/><Setter Property="MinHeight" Value="0"/><Setter Property="CornerRadius" Value="6"/></Style></ListView.ItemContainerStyle>
        <ListView.ItemTemplate>
         <DataTemplate x:DataType="local:ReminderItem">
@@ -138,11 +111,33 @@
            </Button>
           </Grid>
           <Grid x:Name="ReminderRowViewport" SizeChanged="ReminderRow_SizeChanged">
-           <ContentPresenter x:Name="ReminderRowBody" Content="{Binding}" ContentTemplate="{StaticResource ReminderBodyTemplate}"
-                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-            <ContentPresenter.RenderTransform><TranslateTransform/></ContentPresenter.RenderTransform>
-           </ContentPresenter>
+           <Grid x:Name="ReminderRowBody" Padding="{x:Bind RowPadding, Mode=OneWay}" Margin="{x:Bind HierarchyIndent, Mode=OneWay}" MinHeight="40">
+            <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <CheckBox x:Uid="MarkReminderCompleteCheckBox" IsChecked="{x:Bind Completed, Mode=OneWay}" IsEnabled="{x:Bind CanEditRow, Mode=OneWay}" Click="Complete_Click" VerticalAlignment="Top"/>
+            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+             <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBlock Text="{x:Bind PriorityMarks, Mode=OneWay}" Visibility="{x:Bind PriorityVisibility, Mode=OneWay}"
+                         Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center"
+                         AutomationProperties.Name="{x:Bind PriorityLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind PriorityLabel, Mode=OneWay}"/>
+              <TextBlock Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}" FontWeight="{x:Bind RowTitleWeight, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Uid="ReminderRowFlag" Grid.Column="2" Text="🚩" FontFamily="Segoe UI Emoji" Margin="8,0,0,0" VerticalAlignment="Center"
+                         Visibility="{x:Bind FlagVisibility, Mode=OneWay}"/>
+             </Grid>
+             <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind MetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
+             <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind OverdueMetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
+             <TextBlock Text="{x:Bind Description, Mode=OneWay}" Visibility="{x:Bind DescriptionVisibility, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+            <Button Grid.Column="2" Style="{ThemeResource SubtleButtonStyle}" Width="32" Height="32" MinWidth="0" Padding="0" Margin="4,-4,0,0" VerticalAlignment="Top"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="{x:Bind SubtaskToggleVisibility, Mode=OneWay}"
+                    AutomationProperties.Name="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.Placement="Top" Click="ToggleSubtasks_Click">
+             <FontIcon Glyph="&#xE70D;" FontSize="12" Width="16" Height="16" Rotation="{x:Bind SubtaskChevronRotation, Mode=OneWay}" Loaded="SubtaskChevron_Loaded"/>
+            </Button>
+           </Grid>
           </Grid>
+          <Border x:Name="ReminderDropLine" Height="2" VerticalAlignment="Top" IsHitTestVisible="False"
+                  Background="{ThemeResource AccentFillColorDefaultBrush}" Visibility="Collapsed"/>
          </Grid>
         </DataTemplate>
        </ListView.ItemTemplate>

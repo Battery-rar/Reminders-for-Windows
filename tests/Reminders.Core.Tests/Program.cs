@@ -328,6 +328,7 @@ await ChinaMainlandChecks.RunAsync(Check);
 await PhaseOneSecurityChecks.RunAsync(Check);
 await PhaseTwoSyncChecks.RunAsync(Check);
 SidebarChecks.Run(Check);
+ReminderOrderPlanChecks.Run(Check);
 ReminderTouchGestureChecks.Run(Check);
 await BrowserSessionTrustChecks.RunAsync(Check);
 await SignOutChecks.RunAsync(Check);

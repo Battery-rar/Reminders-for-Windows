@@ -9,7 +9,8 @@ namespace Reminders.Windows;
 public sealed partial class MainWindow
 {
     private readonly Dictionary<(NavKind Kind, string Key), List<string>> _demoReminderOrder = [];
-    private ListViewItem? _reminderDropTarget;
+    private Grid? _reminderDropRow;
+    private bool _reminderDropAfter;
     private bool _reminderOrderBusy;
 
     private string ReminderSort => _uiPreferences.ReminderSort is "manual" or "priority" or "title"
@@ -49,7 +50,8 @@ public sealed partial class MainWindow
     private IEnumerable<ReminderItem> ApplyDemoReminderOrder(IEnumerable<ReminderItem> rows)
     {
         if (!_demoReminderOrder.TryGetValue((_view.Kind, _view.Key), out var order)) return rows;
-        var ranks = order.Select((id, rank) => (id, rank)).ToDictionary(entry => entry.id, entry => entry.rank);
+        var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var index = 0; index < order.Count; index++) ranks.TryAdd(order[index], index);
         return rows.OrderBy(row => ranks.GetValueOrDefault(row.Id, int.MaxValue));
     }
 
@@ -64,20 +66,17 @@ public sealed partial class MainWindow
     private async Task<bool> MoveReminderRelativeAsync(ReminderItem reminder, ReminderItem anchor, bool after)
     {
         if (!CanReorderReminders || !_reminders.Contains(reminder) || !_reminders.Contains(anchor)) return false;
-        var siblings = ReminderHierarchy.Siblings(_reminders, reminder).Select(row => row.Id).ToHashSet();
-        var adjusted = SidebarPresentation.Reorder(_reminders.Where(row => siblings.Contains(row.Id)).Select(row => row.Id),
-            reminder.Id, anchor.Id, after);
-        if (adjusted is null) return false;
-
-        var ids = new List<string>(_reminders.Count);
-        var index = 0;
-        foreach (var row in _reminders) ids.Add(siblings.Contains(row.Id) ? adjusted[index++] : row.Id);
+        if (ReminderOrderPlan.Place(_reminders, reminder, anchor, after) is not { } ids) return false;
         var query = CurrentReminderQuery;
         var account = _accountEpoch;
         _reminderOrderBusy = true;
         try
         {
-            if (_demo) _demoReminderOrder[(query.Kind, query.Key)] = ids;
+            if (_demo)
+            {
+                var key = (query.Kind, query.Key);
+                _demoReminderOrder[key] = ReminderOrderPlan.Merge(_demoReminderOrder.GetValueOrDefault(key) ?? [], ids);
+            }
             else
             {
                 var saved = await _sync.CallAsync("save_reminder_order", new Dictionary<string, object>
@@ -87,8 +86,13 @@ public sealed partial class MainWindow
                 });
                 if (!saved.Flag("saved")) return false;
             }
+            AppLog.Info($"[order] moved {reminder.Id} after={after} anchor={anchor.Id} rows={ids.Count} demo={_demo} view={ReminderScopeParameter}:{query.Key}");
             if (!_windowClosed && account == _accountEpoch && query == CurrentReminderQuery)
+            {
                 await LoadRemindersAsync();
+                var index = _reminders.FindIndex(row => row.Id == reminder.Id);
+                AppLog.Info($"[order] {reminder.Id} is at {index} of {_reminders.Count} after the reload");
+            }
             return true;
         }
         catch (Exception error)
@@ -115,21 +119,27 @@ public sealed partial class MainWindow
         if (!e.DataView.Contains(ReminderDragFormat)) return;
         e.Handled = true;
         e.AcceptedOperation = DataPackageOperation.None;
-        if (_reminderDrag is not { } drag || sender is not FrameworkElement { DataContext: ReminderItem target } row ||
-            !CanDropReminder(drag, target) || ReminderList.ContainerFromItem(target) is not ListViewItem container)
+        if (_reminderDrag is not { } drag || sender is not Grid { DataContext: ReminderItem target } row ||
+            !CanDropReminder(drag, target))
         {
             ClearReminderDropTarget();
             return;
         }
-        if (!ReferenceEquals(_reminderDropTarget, container))
+        var after = e.GetPosition(row).Y >= row.ActualHeight / 2;
+        // The insert line is drawn over the row. Changing the container's border thickness instead
+        // resized the row under the pointer, which moved rows that were not being dragged and made
+        // the drop position flip while the pointer hovered near the midpoint.
+        if (!ReferenceEquals(row, _reminderDropRow) || after != _reminderDropAfter)
         {
             ClearReminderDropTarget();
-            _reminderDropTarget = container;
-            if (Application.Current.Resources.TryGetValue("AccentFillColorDefaultBrush", out var brush))
-                container.BorderBrush = brush as Brush;
+            _reminderDropRow = row;
+            _reminderDropAfter = after;
+            if (row.FindName("ReminderDropLine") is Border line)
+            {
+                line.VerticalAlignment = after ? VerticalAlignment.Bottom : VerticalAlignment.Top;
+                line.Visibility = Visibility.Visible;
+            }
         }
-        var after = e.GetPosition(row).Y >= row.ActualHeight / 2;
-        container.BorderThickness = after ? new Thickness(0, 0, 0, 2) : new Thickness(0, 2, 0, 0);
         e.AcceptedOperation = DataPackageOperation.Move;
         e.DragUIOverride.IsCaptionVisible = false;
         e.DragUIOverride.IsContentVisible = true;
@@ -137,9 +147,7 @@ public sealed partial class MainWindow
 
     private void ReminderRow_DragLeave(object sender, DragEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: ReminderItem target } &&
-            ReferenceEquals(ReminderList.ContainerFromItem(target), _reminderDropTarget))
-            ClearReminderDropTarget();
+        if (ReferenceEquals(sender, _reminderDropRow)) ClearReminderDropTarget();
     }
 
     private async void ReminderRow_Drop(object sender, DragEventArgs e)
@@ -147,9 +155,10 @@ public sealed partial class MainWindow
         if (!e.DataView.Contains(ReminderDragFormat)) return;
         e.Handled = true;
         e.AcceptedOperation = DataPackageOperation.None;
-        if (_reminderDrag is not { } drag || sender is not FrameworkElement { DataContext: ReminderItem target } row
+        if (_reminderDrag is not { } drag || sender is not Grid { DataContext: ReminderItem target } row
             || !CanDropReminder(drag, target)) return;
         var after = e.GetPosition(row).Y >= row.ActualHeight / 2;
+        AppLog.Info($"[order] drop target={target.Id} after={after} moving={drag.Reminder.Id}");
         var deferral = e.GetDeferral();
         try
         {
@@ -168,8 +177,7 @@ public sealed partial class MainWindow
 
     private void ClearReminderDropTarget()
     {
-        _reminderDropTarget?.ClearValue(Control.BorderBrushProperty);
-        _reminderDropTarget?.ClearValue(Control.BorderThicknessProperty);
-        _reminderDropTarget = null;
+        if (_reminderDropRow?.FindName("ReminderDropLine") is Border line) line.Visibility = Visibility.Collapsed;
+        _reminderDropRow = null;
     }
 }

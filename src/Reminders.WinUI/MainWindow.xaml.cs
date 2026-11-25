@@ -411,6 +411,7 @@ public sealed partial class MainWindow : Window
         var priorRows = _reminders.ToDictionary(row => row.Id);
         if (selected is not null) priorRows[selected.Id] = selected;
         var updatedRows = new List<ReminderItem>();
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
         var changed = false;
         var editorChanged = false;
 
@@ -426,6 +427,11 @@ public sealed partial class MainWindow : Window
 
         foreach (var row in rows)
         {
+            if (!seenIds.Add(row.Id))
+            {
+                AppLog.Info($"[order] the service returned {row.Id} twice");
+                continue;
+            }
             if (preservedIndex >= 0 && row.Id == selected!.Id) continue;
             var previous = priorRows.GetValueOrDefault(row.Id);
             if (previous is not null)
