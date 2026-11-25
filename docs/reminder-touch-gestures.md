@@ -64,7 +64,12 @@ accept:
   id order in `ReminderOrderPlan.Place` and reloads the view. Rows that are
   hidden in the current view keep their stored slot, so a completed reminder
   does not jump to the end when it comes back;
-- a sidebar list: reuses the existing move-to-list path.
+- a sidebar list: reuses the existing move-to-list path, which moves the whole
+  subtask family.
+
+The insert line is an overlay inside the row, because changing the item's
+border thickness grew the row under the pointer; that moved rows that were not
+being dragged and made the drop position flip near the midpoint.
 
 Both targets validate the token, account epoch, current query and view before
 touching data, and an invalid drop or a cancelled drag changes nothing.

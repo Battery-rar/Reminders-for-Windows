@@ -20,7 +20,7 @@
     <NuGetLockFilePath>packages.$(RuntimeIdentifier).lock.json</NuGetLockFilePath>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.22</Version>
+    <Version>1.1.23</Version>
     <Product>Apple Reminders on Windows</Product>
     <Authors>Paul Savvas</Authors>
     <Company>Battery-rar</Company>

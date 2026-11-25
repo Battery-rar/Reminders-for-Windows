@@ -9,7 +9,8 @@ namespace Reminders.Windows;
 public sealed partial class MainWindow
 {
     private readonly Dictionary<(NavKind Kind, string Key), List<string>> _demoReminderOrder = [];
-    private ListViewItem? _reminderDropTarget;
+    private Grid? _reminderDropRow;
+    private bool _reminderDropAfter;
     private bool _reminderOrderBusy;
 
     private string ReminderSort => _uiPreferences.ReminderSort is "manual" or "priority" or "title"
@@ -118,21 +119,27 @@ public sealed partial class MainWindow
         if (!e.DataView.Contains(ReminderDragFormat)) return;
         e.Handled = true;
         e.AcceptedOperation = DataPackageOperation.None;
-        if (_reminderDrag is not { } drag || sender is not FrameworkElement { DataContext: ReminderItem target } row ||
-            !CanDropReminder(drag, target) || ReminderList.ContainerFromItem(target) is not ListViewItem container)
+        if (_reminderDrag is not { } drag || sender is not Grid { DataContext: ReminderItem target } row ||
+            !CanDropReminder(drag, target))
         {
             ClearReminderDropTarget();
             return;
         }
-        if (!ReferenceEquals(_reminderDropTarget, container))
+        var after = e.GetPosition(row).Y >= row.ActualHeight / 2;
+        // The insert line is drawn over the row. Changing the container's border thickness instead
+        // resized the row under the pointer, which moved rows that were not being dragged and made
+        // the drop position flip while the pointer hovered near the midpoint.
+        if (!ReferenceEquals(row, _reminderDropRow) || after != _reminderDropAfter)
         {
             ClearReminderDropTarget();
-            _reminderDropTarget = container;
-            if (Application.Current.Resources.TryGetValue("AccentFillColorDefaultBrush", out var brush))
-                container.BorderBrush = brush as Brush;
+            _reminderDropRow = row;
+            _reminderDropAfter = after;
+            if (row.FindName("ReminderDropLine") is Border line)
+            {
+                line.VerticalAlignment = after ? VerticalAlignment.Bottom : VerticalAlignment.Top;
+                line.Visibility = Visibility.Visible;
+            }
         }
-        var after = e.GetPosition(row).Y >= row.ActualHeight / 2;
-        container.BorderThickness = after ? new Thickness(0, 0, 0, 2) : new Thickness(0, 2, 0, 0);
         e.AcceptedOperation = DataPackageOperation.Move;
         e.DragUIOverride.IsCaptionVisible = false;
         e.DragUIOverride.IsContentVisible = true;
@@ -140,9 +147,7 @@ public sealed partial class MainWindow
 
     private void ReminderRow_DragLeave(object sender, DragEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: ReminderItem target } &&
-            ReferenceEquals(ReminderList.ContainerFromItem(target), _reminderDropTarget))
-            ClearReminderDropTarget();
+        if (ReferenceEquals(sender, _reminderDropRow)) ClearReminderDropTarget();
     }
 
     private async void ReminderRow_Drop(object sender, DragEventArgs e)
@@ -150,7 +155,7 @@ public sealed partial class MainWindow
         if (!e.DataView.Contains(ReminderDragFormat)) return;
         e.Handled = true;
         e.AcceptedOperation = DataPackageOperation.None;
-        if (_reminderDrag is not { } drag || sender is not FrameworkElement { DataContext: ReminderItem target } row
+        if (_reminderDrag is not { } drag || sender is not Grid { DataContext: ReminderItem target } row
             || !CanDropReminder(drag, target)) return;
         var after = e.GetPosition(row).Y >= row.ActualHeight / 2;
         AppLog.Info($"[order] drop target={target.Id} after={after} moving={drag.Reminder.Id}");
@@ -172,8 +177,7 @@ public sealed partial class MainWindow
 
     private void ClearReminderDropTarget()
     {
-        _reminderDropTarget?.ClearValue(Control.BorderBrushProperty);
-        _reminderDropTarget?.ClearValue(Control.BorderThicknessProperty);
-        _reminderDropTarget = null;
+        if (_reminderDropRow?.FindName("ReminderDropLine") is Border line) line.Visibility = Visibility.Collapsed;
+        _reminderDropRow = null;
     }
 }

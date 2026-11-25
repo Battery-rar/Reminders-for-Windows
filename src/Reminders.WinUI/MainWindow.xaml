@@ -143,6 +143,8 @@
             <ContentPresenter.RenderTransform><TranslateTransform/></ContentPresenter.RenderTransform>
            </ContentPresenter>
           </Grid>
+          <Border x:Name="ReminderDropLine" Height="2" VerticalAlignment="Top" IsHitTestVisible="False"
+                  Background="{ThemeResource AccentFillColorDefaultBrush}" Visibility="Collapsed"/>
          </Grid>
         </DataTemplate>
        </ListView.ItemTemplate>
