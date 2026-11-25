@@ -60,8 +60,10 @@ move, and for the mouse after 6 px of movement. `DragStarting` publishes one
 internal token (`Battery-rar.Reminders.reminder-drag`) that both drop targets
 accept:
 
-- another reminder row: manual sort only, same visible parent, reuses
-  `MoveReminderRelativeAsync` and the local order store;
+- another reminder row: manual sort only, same visible parent, builds the new
+  id order in `ReminderOrderPlan.Place` and reloads the view. Rows that are
+  hidden in the current view keep their stored slot, so a completed reminder
+  does not jump to the end when it comes back;
 - a sidebar list: reuses the existing move-to-list path.
 
 Both targets validate the token, account epoch, current query and view before

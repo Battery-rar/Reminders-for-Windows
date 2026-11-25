@@ -49,7 +49,8 @@ public sealed partial class MainWindow
     private IEnumerable<ReminderItem> ApplyDemoReminderOrder(IEnumerable<ReminderItem> rows)
     {
         if (!_demoReminderOrder.TryGetValue((_view.Kind, _view.Key), out var order)) return rows;
-        var ranks = order.Select((id, rank) => (id, rank)).ToDictionary(entry => entry.id, entry => entry.rank);
+        var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var index = 0; index < order.Count; index++) ranks.TryAdd(order[index], index);
         return rows.OrderBy(row => ranks.GetValueOrDefault(row.Id, int.MaxValue));
     }
 
@@ -64,20 +65,17 @@ public sealed partial class MainWindow
     private async Task<bool> MoveReminderRelativeAsync(ReminderItem reminder, ReminderItem anchor, bool after)
     {
         if (!CanReorderReminders || !_reminders.Contains(reminder) || !_reminders.Contains(anchor)) return false;
-        var siblings = ReminderHierarchy.Siblings(_reminders, reminder).Select(row => row.Id).ToHashSet();
-        var adjusted = SidebarPresentation.Reorder(_reminders.Where(row => siblings.Contains(row.Id)).Select(row => row.Id),
-            reminder.Id, anchor.Id, after);
-        if (adjusted is null) return false;
-
-        var ids = new List<string>(_reminders.Count);
-        var index = 0;
-        foreach (var row in _reminders) ids.Add(siblings.Contains(row.Id) ? adjusted[index++] : row.Id);
+        if (ReminderOrderPlan.Place(_reminders, reminder, anchor, after) is not { } ids) return false;
         var query = CurrentReminderQuery;
         var account = _accountEpoch;
         _reminderOrderBusy = true;
         try
         {
-            if (_demo) _demoReminderOrder[(query.Kind, query.Key)] = ids;
+            if (_demo)
+            {
+                var key = (query.Kind, query.Key);
+                _demoReminderOrder[key] = ReminderOrderPlan.Merge(_demoReminderOrder.GetValueOrDefault(key) ?? [], ids);
+            }
             else
             {
                 var saved = await _sync.CallAsync("save_reminder_order", new Dictionary<string, object>
@@ -87,8 +85,13 @@ public sealed partial class MainWindow
                 });
                 if (!saved.Flag("saved")) return false;
             }
+            AppLog.Info($"[order] moved {reminder.Id} after={after} anchor={anchor.Id} rows={ids.Count} demo={_demo}");
             if (!_windowClosed && account == _accountEpoch && query == CurrentReminderQuery)
+            {
                 await LoadRemindersAsync();
+                var index = _reminders.FindIndex(row => row.Id == reminder.Id);
+                AppLog.Info($"[order] {reminder.Id} is at {index} of {_reminders.Count} after the reload");
+            }
             return true;
         }
         catch (Exception error)
@@ -150,6 +153,7 @@ public sealed partial class MainWindow
         if (_reminderDrag is not { } drag || sender is not FrameworkElement { DataContext: ReminderItem target } row
             || !CanDropReminder(drag, target)) return;
         var after = e.GetPosition(row).Y >= row.ActualHeight / 2;
+        AppLog.Info($"[order] drop target={target.Id} after={after} moving={drag.Reminder.Id}");
         var deferral = e.GetDeferral();
         try
         {
