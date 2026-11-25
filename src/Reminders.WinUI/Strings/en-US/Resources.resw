@@ -1981,13 +1981,19 @@ Accept any updated terms, then check that your lists appear.</value>
     <value>Use iCloud list icon</value>
   </data>
   <data name="CustomListSymbol" xml:space="preserve">
-    <value>SF Symbol or emoji</value>
+    <value>Custom SF Symbol</value>
   </data>
   <data name="ListSymbolPlaceholder" xml:space="preserve">
-    <value>cart.fill or 🛒</value>
+    <value>cart.fill</value>
   </data>
   <data name="ListSymbolFallback" xml:space="preserve">
     <value>This symbol uses the default list icon on Windows.</value>
+  </data>
+  <data name="CustomListEmoji" xml:space="preserve">
+    <value>Custom emoji</value>
+  </data>
+  <data name="InvalidListEmoji" xml:space="preserve">
+    <value>Enter a single emoji for the list icon.</value>
   </data>
   <data name="MoveReminderToList" xml:space="preserve">
     <value>Move to {0}</value>
@@ -2112,10 +2118,10 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="CouldntRelogin" xml:space="preserve">
     <value>Couldn't reopen iCloud sign-in</value>
   </data>
-  <data name="NewListWindowsSymbols" xml:space="preserve">
-    <value>Windows symbols</value>
+  <data name="ListSFSymbols" xml:space="preserve">
+    <value>SF Symbols</value>
   </data>
-  <data name="NewListEmoji" xml:space="preserve">
+  <data name="ListEmoji" xml:space="preserve">
     <value>Emoji</value>
   </data>
   <data name="RowMarkComplete" xml:space="preserve">
@@ -2124,22 +2130,16 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="RowAddToToday" xml:space="preserve">
     <value>Add to Today</value>
   </data>
-  <data name="SwipeToTodayItem.Text" xml:space="preserve">
-    <value>Add to Today</value>
-  </data>
   <data name="RowUndoToday" xml:space="preserve">
-    <value>Undo Add to Today</value>
-  </data>
-  <data name="SwipeUndoTodayItem.Text" xml:space="preserve">
     <value>Undo Add to Today</value>
   </data>
   <data name="RowMoveOutOfToday" xml:space="preserve">
     <value>Move out of Today</value>
   </data>
-  <data name="SwipeMoveOutOfTodayItem.Text" xml:space="preserve">
-    <value>Move out of Today</value>
+  <data name="CouldntReorderReminders" xml:space="preserve">
+    <value>Couldn’t reorder reminders</value>
   </data>
-  <data name="SwipeToCompleteItem.Text" xml:space="preserve">
-    <value>Complete</value>
+  <data name="ErrorInvalidReminderOrder" xml:space="preserve">
+    <value>Refresh the list and try reordering the reminders again.</value>
   </data>
 </root>

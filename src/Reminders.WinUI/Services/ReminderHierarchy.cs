@@ -25,12 +25,24 @@ public sealed class ReminderFamily<T>(T root, IReadOnlyList<HierarchyRow<T>> row
 
 public static class ReminderHierarchy
 {
+    public static bool IsParent(IHierarchicalReminder child, IHierarchicalReminder parent) =>
+        child.ParentId == parent.Id && child.Id != parent.Id && child.ListId == parent.ListId && child.Deleted == parent.Deleted;
+
+    public static IReadOnlyList<T> Siblings<T>(IReadOnlyList<T> source, T item) where T : class, IHierarchicalReminder
+    {
+        var items = source.DistinctBy(row => row.Id).ToDictionary(row => row.Id);
+        var parent = VisibleParentId(item, items);
+        return source.Where(row => VisibleParentId(row, items) == parent).ToArray();
+    }
+
+    private static string? VisibleParentId<T>(T item, IReadOnlyDictionary<string, T> items) where T : IHierarchicalReminder =>
+        item.ParentId is { } id && items.TryGetValue(id, out var parent) && IsParent(item, parent) ? id : null;
+
     public static IReadOnlyList<ReminderFamily<T>> Build<T>(IEnumerable<T> source, IReadOnlySet<string> collapsed) where T : class, IHierarchicalReminder
     {
         var items = source.DistinctBy(item => item.Id).ToArray();
         var byId = items.ToDictionary(item => item.Id);
-        bool HasParent(T item) => item.ParentId is { } id && id != item.Id && byId.TryGetValue(id, out var parent)
-            && parent.ListId == item.ListId && parent.Deleted == item.Deleted;
+        bool HasParent(T item) => VisibleParentId(item, byId) is not null;
         var children = items.Where(HasParent).GroupBy(item => item.ParentId!).ToDictionary(group => group.Key, group => group.ToArray());
         var seen = new HashSet<string>(); var families = new List<ReminderFamily<T>>();
         // A cycle or a missing parent must never hide a task or recurse forever.

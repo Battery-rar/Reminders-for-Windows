@@ -15,8 +15,45 @@ internal static class EnglishUiResourceChecks
     internal static void Run(Action<bool, string> check)
     {
         const string xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var uids = Load("MainWindow.xaml").Root!.DescendantsAndSelf().Attributes(XName.Get("Uid", xaml))
+        var window = Load("MainWindow.xaml").Root!;
+        var uids = window.DescendantsAndSelf().Attributes(XName.Get("Uid", xaml))
             .Select(attribute => attribute.Value).ToHashSet(StringComparer.Ordinal);
+        var row = window.Descendants().SingleOrDefault(element =>
+            (string?)element.Attribute(XName.Get("Name", xaml)) == "ReminderRowSurface");
+        check(row is not null, "the reminder row has one gesture surface");
+        check(!window.Descendants().Any(element => element.Name.LocalName is "SwipeControl" or "SwipeItems"),
+            "the reminder row no longer hands its touch contact to the native swipe control");
+        check(!row!.Descendants().Any(element =>
+                (string?)element.Attribute(XName.Get("Name", xaml)) == "ReminderOrderHandle"),
+            "the whole row is the drag surface and no order handle is left");
+        check(new[] { "PointerPressed", "PointerMoved", "PointerReleased", "PointerCanceled", "PointerCaptureLost" }
+            .All(name => row.Attribute(name) is not null),
+            "the row receives the whole touch contact itself");
+        check(row.Attribute("ContextRequested") is not null && row.Attribute("DragStarting") is not null &&
+            row.Attribute("Holding") is not null,
+            "the row keeps its context menu, long-press diagnostics and starts its own drag");
+        check((string?)row.Attribute("ManipulationMode") == "TranslateX,System" &&
+            row.Attribute("ManipulationStarted") is not null && row.Attribute("ManipulationDelta") is not null &&
+            row.Attribute("ManipulationCompleted") is not null,
+            "the row claims horizontal pans through the manipulation router instead of raw pointer moves");
+        var rowButtons = row.Descendants().Where(element => element.Name.LocalName == "Button")
+            .Select(button => (string?)button.Attribute("Click")).ToArray();
+        check(rowButtons.Contains("ReminderRowTodayAction_Click") && rowButtons.Contains("ReminderRowCompleteAction_Click"),
+            "revealed swipe actions only run when their own button is pressed");
+        check(row.Descendants().Where(element => element.Name.LocalName == "Button")
+            .Where(button => (string?)button.Attribute("Click") is "ReminderRowTodayAction_Click" or "ReminderRowCompleteAction_Click")
+            .All(button => double.TryParse((string?)button.Attribute("Width"), out var width) &&
+                Math.Abs(width - ReminderTouchGesture.ActionWidth) < 0.001),
+            "the revealed action strip matches the width the gesture reveals");
+        var list = window.Descendants().Single(element =>
+            (string?)element.Attribute(XName.Get("Name", xaml)) == "ReminderList");
+        check((string?)list.Attribute("CanDragItems") is null or "False" && list.Attribute("DragItemsStarting") is null,
+            "the list does not start touch drags of its own");
+        var newShortcut = window.Descendants().Single(element =>
+            element.Name.LocalName == "KeyboardAccelerator" && (string?)element.Attribute("Key") == "N");
+        check((string?)newShortcut.Attribute("Modifiers") == "Control" &&
+            (string?)newShortcut.Parent?.Parent?.Attribute("KeyboardAcceleratorPlacementMode") == "Hidden",
+            "Ctrl+N remains available with its automatic hover tooltip hidden");
         foreach (var uid in uids)
             check(Strings.Keys.Any(key => key.StartsWith(uid + ".", StringComparison.Ordinal)), $"XAML resource for {uid}");
         foreach (var key in Strings.Keys.Where(key => key.Contains('.')))

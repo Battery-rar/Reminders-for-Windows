@@ -95,6 +95,7 @@ internal sealed class UiPreferenceData
     public bool NavigationPaneOpen { get; set; } = true;
     public List<string> ListOrder { get; set; } = [];
     public string ListSort { get; set; } = "manual";
+    public string ReminderSort { get; set; } = "due";
     public Dictionary<string, ListAppearance> Lists { get; set; } = [];
     public double? DetailPaneFraction { get; set; }
     public bool CompletionAnimation { get; set; } = true;

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Reminders.Windows.Services;
 
 public interface IScheduledReminder
@@ -20,6 +22,20 @@ public sealed record ReminderGroup<T>(ReminderSectionId Section, IReadOnlyList<T
 public static class ReminderGrouping
 {
     private sealed record Section(int Order, ReminderSectionId Id);
+
+    public static IEnumerable<T> ByDue<T>(IEnumerable<T> reminders) where T : IScheduledReminder =>
+        reminders.OrderBy(DueSortKey).ThenBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase);
+
+    public static IEnumerable<T> ByPriority<T>(IEnumerable<T> reminders) where T : IScheduledReminder =>
+        reminders.OrderBy(item => item.Priority is 1 or 5 or 9 ? item.Priority : 10)
+            .ThenBy(DueSortKey).ThenBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase);
+
+    private static (bool Missing, DateTimeOffset? Due) DueSortKey<T>(T item) where T : IScheduledReminder
+    {
+        if (!DateTimeOffset.TryParse(item.DueDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out var due))
+            return (true, null);
+        return (false, item.AllDay ? new DateTimeOffset(due.Date) : due);
+    }
 
     public static IReadOnlyList<ReminderGroup<T>> Group<T>(IEnumerable<T> reminders, string scope, string sort, DateTimeOffset now)
         where T : IScheduledReminder

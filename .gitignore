@@ -33,3 +33,4 @@ dist-store/
 node_modules/
 build/
 *.spec
+dist-*/

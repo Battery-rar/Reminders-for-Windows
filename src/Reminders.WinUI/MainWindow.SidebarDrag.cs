@@ -12,11 +12,12 @@ namespace Reminders.Windows;
 
 public sealed partial class MainWindow
 {
-    private const string ReminderDragFormat = "Battery-rar.Reminders.sidebar-move";
+    private const string ReminderDragFormat = "Battery-rar.Reminders.reminder-drag";
     private const string SidebarReorderFormat = "Battery-rar.Reminders.sidebar-reorder";
     private static readonly TimeSpan SidebarHoldDelay = TimeSpan.FromMilliseconds(450);
     private const double SidebarDragSlop = 6;
-    private sealed record ReminderDrag(ReminderItem Reminder, string SourceList, long AccountEpoch, string Token);
+    private sealed record ReminderDrag(ReminderItem Reminder, string SourceList, long AccountEpoch, string Token,
+        (NavKind Kind, string Key, string Search, string Sort, bool Completed) Query);
     private sealed record SidebarPress(NavigationViewItem Item, uint PointerId, Point Origin, long Started, long AccountEpoch);
     private sealed record SidebarReorder(NavigationViewItem Item, string ListId, long AccountEpoch, string Token);
     private ReminderDrag? _reminderDrag;
@@ -31,24 +32,22 @@ public sealed partial class MainWindow
     private bool CanReorderSidebar => !_windowClosed && !_accountBusy && !_dialogOpen && !_savingDetail
         && !_sidebarMoveBusy && !_sidebarOrderBusy && SidebarSort == SidebarPresentation.Manual;
 
-    private void ReminderList_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+    private void BeginReminderDrag(ReminderItem reminder, DataPackage data)
     {
-        if (_windowClosed || _accountBusy || _dialogOpen || _savingDetail || _sidebarMoveBusy ||
-            e.Items.Count != 1 || e.Items[0] is not ReminderItem { Deleted: false } reminder)
-        {
-            e.Cancel = true;
-            return;
-        }
-
-        _reminderDrag = new(reminder, reminder.ListId, _accountEpoch, Guid.NewGuid().ToString("N"));
+        var drag = new ReminderDrag(reminder, reminder.ListId, _accountEpoch, Guid.NewGuid().ToString("N"), CurrentReminderQuery);
+        _reminderDrag = drag;
+        AppLog.Info($"[touch] dragging row={reminder.Id} list={reminder.ListId}");
+        if (ReminderList.ContainerFromItem(reminder) is ListViewItem { ContentTemplateRoot: Grid row })
+            ResetRowGesture(row);
         // Keep titles, account identifiers and reminder IDs inside the app.
-        e.Data.SetData(ReminderDragFormat, _reminderDrag.Token);
-        e.Data.RequestedOperation = DataPackageOperation.Move;
+        data.SetData(ReminderDragFormat, drag.Token);
+        data.RequestedOperation = DataPackageOperation.Move;
     }
 
-    private void ReminderList_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+    private void EndReminderDrag()
     {
         _reminderDrag = null;
+        ClearReminderDropTarget();
         ClearSidebarDropTarget();
         if (_hoverExpanded) _paneHoverCloseTimer.Start();
     }
@@ -192,7 +191,8 @@ public sealed partial class MainWindow
 
     private ReminderList? GetDropList(object sender, ReminderDrag? drag)
     {
-        if (drag is null || drag.AccountEpoch != _accountEpoch || _accountBusy || _windowClosed ||
+        if (drag is null || drag.Reminder.Deleted ||
+            drag.AccountEpoch != _accountEpoch || _accountBusy || _windowClosed ||
             sender is not NavigationViewItem { Tag: string tag } item || !Navigation.MenuItems.Contains(item) ||
             !tag.StartsWith("list:", StringComparison.Ordinal) || tag[5..] == drag.SourceList) return null;
         return _lists.FirstOrDefault(list => !list.IsGroup && list.Id == tag[5..]);

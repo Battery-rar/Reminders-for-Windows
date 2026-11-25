@@ -362,6 +362,7 @@ public sealed partial class ReminderService : IAsyncDisposable
                     return cache.Lists.Single(list => list.Text("id") == listToCreate.Id);
                 }, token);
             case "reminders": return cache.Reminders(p);
+            case "save_reminder_order": return cache.SaveReminderOrder(p);
             case "reminder": return cache.Reminder(cache.ResolveId(p.Required("id")));
             case "tags": return cache.Tags;
             case "create_tag": throw new CoreException("UNSUPPORTED", "Tag editing is unavailable. Manage tags in Apple Reminders.").WithPresentation("ErrorTagEditingUnavailable");

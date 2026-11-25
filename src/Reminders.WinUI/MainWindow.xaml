@@ -3,7 +3,8 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:local="using:Reminders.Windows"
  xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives">
- <Grid x:Name="Root" SizeChanged="Root_SizeChanged" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+ <Grid x:Name="Root" SizeChanged="Root_SizeChanged" KeyboardAcceleratorPlacementMode="Hidden"
+       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Grid.KeyboardAccelerators>
    <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewAccelerator_Invoked"/>
@@ -69,70 +70,75 @@
          </Style>
         </AutoSuggestBox.TextBoxStyle>
        </AutoSuggestBox>
-       <Button x:Uid="SortButton" Grid.Column="1" Width="40" Height="40" ToolTipService.Placement="Bottom"><Button.Flyout><MenuFlyout><RadioMenuFlyoutItem x:Uid="ManualRadioMenuFlyoutItem" Tag="manual" GroupName="sort" IsChecked="True" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="DueDateRadioMenuFlyoutItem" Tag="due" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="PriorityRadioMenuFlyoutItem" Tag="priority" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="TitleRadioMenuFlyoutItem" Tag="title" GroupName="sort" Click="Sort_Click"/></MenuFlyout></Button.Flyout><FontIcon Glyph="&#xE8CB;" FontSize="18"/></Button>
+       <Button x:Uid="SortButton" x:Name="ReminderSortButton" Grid.Column="1" Width="40" Height="40" ToolTipService.Placement="Bottom"><Button.Flyout><MenuFlyout><RadioMenuFlyoutItem x:Uid="ManualRadioMenuFlyoutItem" Tag="manual" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="DueDateRadioMenuFlyoutItem" Tag="due" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="PriorityRadioMenuFlyoutItem" Tag="priority" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="TitleRadioMenuFlyoutItem" Tag="title" GroupName="sort" Click="Sort_Click"/></MenuFlyout></Button.Flyout><FontIcon Glyph="&#xE8CB;" FontSize="18"/></Button>
       </Grid>
-      <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0"
-                CanDragItems="True" DragItemsStarting="ReminderList_DragItemsStarting" DragItemsCompleted="ReminderList_DragItemsCompleted">
-       <ListView.Resources>
-        <local:AvailableSwipeItemsConverter x:Key="AvailableSwipeItems"/>
-        <SwipeItems x:Key="SwipeToToday" Mode="Execute">
-         <SwipeItem x:Uid="SwipeToTodayItem" Invoked="SwipeToToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
-          <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
-         </SwipeItem>
-        </SwipeItems>
-        <SwipeItems x:Key="SwipeUndoToday" Mode="Execute">
-         <SwipeItem x:Uid="SwipeUndoTodayItem" Invoked="SwipeUndoToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
-          <SwipeItem.IconSource><FontIconSource Glyph="&#xE7A7;"/></SwipeItem.IconSource>
-         </SwipeItem>
-        </SwipeItems>
-        <SwipeItems x:Key="SwipeMoveOutOfToday" Mode="Execute">
-         <SwipeItem x:Uid="SwipeMoveOutOfTodayItem" Invoked="SwipeMoveOutOfToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
-          <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
-         </SwipeItem>
-        </SwipeItems>
-        <local:TodaySwipeItemsConverter x:Key="TodaySwipeItems" AddItems="{StaticResource SwipeToToday}" UndoItems="{StaticResource SwipeUndoToday}" ClearItems="{StaticResource SwipeMoveOutOfToday}"/>
-        <SwipeItems x:Key="SwipeToComplete" Mode="Execute">
-         <SwipeItem x:Uid="SwipeToCompleteItem" Invoked="SwipeToComplete_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
-          <SwipeItem.IconSource><FontIconSource Glyph="&#xE73E;"/></SwipeItem.IconSource>
-         </SwipeItem>
-        </SwipeItems>
-       </ListView.Resources>
+      <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0">
        <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView"/></ItemsPanelTemplate></ListView.ItemsPanel>
        <ListView.GroupStyle><GroupStyle HidesIfEmpty="True">
         <GroupStyle.HeaderContainerStyle><Style TargetType="ListViewHeaderItem"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,2"/></Style></GroupStyle.HeaderContainerStyle>
         <GroupStyle.HeaderTemplate><DataTemplate x:DataType="local:ReminderSection"><TextBlock Text="{x:Bind Title}" Style="{ThemeResource BodyStrongTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="14,10,14,2"/></DataTemplate></GroupStyle.HeaderTemplate>
        </GroupStyle></ListView.GroupStyle>
-       <ListView.ItemContainerTransitions><TransitionCollection><AddDeleteThemeTransition/><ReorderThemeTransition/></TransitionCollection></ListView.ItemContainerTransitions>
+       <ListView.ItemContainerTransitions><TransitionCollection><AddDeleteThemeTransition/></TransitionCollection></ListView.ItemContainerTransitions>
        <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="4,1"/><Setter Property="MinHeight" Value="0"/><Setter Property="CornerRadius" Value="6"/></Style></ListView.ItemContainerStyle>
        <ListView.ItemTemplate>
         <DataTemplate x:DataType="local:ReminderItem">
-         <SwipeControl HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent" ContextRequested="ReminderRow_ContextRequested"
-                       LeftItems="{Binding TodayAction, Converter={StaticResource TodaySwipeItems}}"
-                       RightItems="{Binding CanMarkComplete, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToComplete}}">
-         <Grid Padding="{x:Bind RowPadding, Mode=OneWay}" Margin="{x:Bind HierarchyIndent, Mode=OneWay}" MinHeight="40">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <CheckBox x:Uid="MarkReminderCompleteCheckBox" IsChecked="{x:Bind Completed, Mode=OneWay}" IsEnabled="{x:Bind CanEditRow, Mode=OneWay}" Click="Complete_Click" VerticalAlignment="Top"/>
-          <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-           <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBlock Text="{x:Bind PriorityMarks, Mode=OneWay}" Visibility="{x:Bind PriorityVisibility, Mode=OneWay}"
-                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center"
-                       AutomationProperties.Name="{x:Bind PriorityLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind PriorityLabel, Mode=OneWay}"/>
-            <TextBlock Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}" FontWeight="{x:Bind RowTitleWeight, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
-            <TextBlock x:Uid="ReminderRowFlag" Grid.Column="2" Text="🚩" FontFamily="Segoe UI Emoji" Margin="8,0,0,0" VerticalAlignment="Center"
-                       Visibility="{x:Bind FlagVisibility, Mode=OneWay}"/>
+         <Grid x:Name="ReminderRowSurface" AllowDrop="True" Background="Transparent"
+               ManipulationMode="TranslateX,System"
+               ManipulationStarted="ReminderRow_ManipulationStarted" ManipulationDelta="ReminderRow_ManipulationDelta"
+               ManipulationCompleted="ReminderRow_ManipulationCompleted"
+               DragStarting="ReminderRow_DragStarting" DragOver="ReminderRow_DragOver" DragLeave="ReminderRow_DragLeave" Drop="ReminderRow_Drop"
+               ContextRequested="ReminderRow_ContextRequested" Holding="ReminderRow_Holding"
+               PointerPressed="ReminderRow_PointerPressed" PointerMoved="ReminderRow_PointerMoved"
+               PointerReleased="ReminderRow_PointerReleased" PointerCanceled="ReminderRow_PointerCanceled"
+               PointerCaptureLost="ReminderRow_PointerCaptureLost"
+               DataContextChanged="ReminderRow_DataContextChanged" Unloaded="ReminderRow_Unloaded" Loaded="ReminderRow_Loaded">
+          <Grid x:Name="ReminderRowActions" IsHitTestVisible="False">
+           <Button x:Name="ReminderRowTodayAction" IsTabStop="False" HorizontalAlignment="Left" Width="144" MinWidth="0"
+                   Padding="8,0" VerticalAlignment="Stretch" CornerRadius="6" Click="ReminderRowTodayAction_Click"
+                   Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+             <FontIcon x:Name="ReminderRowTodayGlyph" Glyph="&#xE787;" FontSize="14"/>
+             <TextBlock x:Name="ReminderRowTodayLabel" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </StackPanel>
+           </Button>
+           <Button x:Name="ReminderRowCompleteAction" IsTabStop="False" HorizontalAlignment="Right" Width="144" MinWidth="0"
+                   Padding="8,0" VerticalAlignment="Stretch" CornerRadius="6" Click="ReminderRowCompleteAction_Click"
+                   Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+             <FontIcon Glyph="&#xE73E;" FontSize="14"/>
+             <TextBlock x:Name="ReminderRowCompleteLabel" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </StackPanel>
+           </Button>
+          </Grid>
+          <Grid x:Name="ReminderRowViewport" SizeChanged="ReminderRow_SizeChanged">
+           <Grid x:Name="ReminderRowBody" Padding="{x:Bind RowPadding, Mode=OneWay}" Margin="{x:Bind HierarchyIndent, Mode=OneWay}" MinHeight="40">
+            <Grid.RenderTransform><TranslateTransform/></Grid.RenderTransform>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <CheckBox x:Uid="MarkReminderCompleteCheckBox" IsChecked="{x:Bind Completed, Mode=OneWay}" IsEnabled="{x:Bind CanEditRow, Mode=OneWay}" Click="Complete_Click" VerticalAlignment="Top"/>
+            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+             <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBlock Text="{x:Bind PriorityMarks, Mode=OneWay}" Visibility="{x:Bind PriorityVisibility, Mode=OneWay}"
+                         Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center"
+                         AutomationProperties.Name="{x:Bind PriorityLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind PriorityLabel, Mode=OneWay}"/>
+              <TextBlock Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}" FontWeight="{x:Bind RowTitleWeight, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Uid="ReminderRowFlag" Grid.Column="2" Text="🚩" FontFamily="Segoe UI Emoji" Margin="8,0,0,0" VerticalAlignment="Center"
+                         Visibility="{x:Bind FlagVisibility, Mode=OneWay}"/>
+             </Grid>
+             <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind MetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
+             <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind OverdueMetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
+             <TextBlock Text="{x:Bind Description, Mode=OneWay}" Visibility="{x:Bind DescriptionVisibility, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+            <Button Grid.Column="2" Style="{ThemeResource SubtleButtonStyle}" Width="32" Height="32" MinWidth="0" Padding="0" Margin="4,-4,0,0" VerticalAlignment="Top"
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="{x:Bind SubtaskToggleVisibility, Mode=OneWay}"
+                    AutomationProperties.Name="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.Placement="Top" Click="ToggleSubtasks_Click">
+             <FontIcon Glyph="&#xE70D;" FontSize="12" Width="16" Height="16" Rotation="{x:Bind SubtaskChevronRotation, Mode=OneWay}" Loaded="SubtaskChevron_Loaded"/>
+            </Button>
            </Grid>
-           <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind MetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
-           <TextBlock Text="{x:Bind Metadata, Mode=OneWay}" Visibility="{x:Bind OverdueMetadataVisibility, Mode=OneWay}" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
-           <TextBlock Text="{x:Bind Description, Mode=OneWay}" Visibility="{x:Bind DescriptionVisibility, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Style="{ThemeResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
-          </StackPanel>
-          <Button Grid.Column="2" Style="{ThemeResource SubtleButtonStyle}" Width="32" Height="32" MinWidth="0" Padding="0" Margin="4,-4,0,0" VerticalAlignment="Top"
-                  Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="{x:Bind SubtaskToggleVisibility, Mode=OneWay}"
-                  AutomationProperties.Name="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.ToolTip="{x:Bind SubtaskToggleLabel, Mode=OneWay}" ToolTipService.Placement="Top" Click="ToggleSubtasks_Click">
-           <FontIcon Glyph="&#xE70D;" FontSize="12" Width="16" Height="16" Rotation="{x:Bind SubtaskChevronRotation, Mode=OneWay}" Loaded="SubtaskChevron_Loaded"/>
-          </Button>
+          </Grid>
+          <Border x:Name="ReminderDropLine" Height="2" VerticalAlignment="Top" IsHitTestVisible="False"
+                  Background="{ThemeResource AccentFillColorDefaultBrush}" Visibility="Collapsed"/>
          </Grid>
-         </SwipeControl>
         </DataTemplate>
        </ListView.ItemTemplate>
       </ListView>

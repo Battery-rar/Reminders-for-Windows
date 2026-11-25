@@ -1,4 +1,4 @@
-# Rebuild the Reminders for Windows task-card artwork and Windows icon sizes.
+# Rebuild the Apple Reminders on Windows artwork and Windows icon sizes.
 # Run on Windows; System.Drawing supplies the vector drawing and PNG encoding.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
@@ -23,35 +23,39 @@ function New-TaskCardIcon([int]$size) {
     $graphics.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $graphics.Clear([Drawing.Color]::Transparent)
     $graphics.ScaleTransform(2, 2)
-    # Draw the approved concept from geometry: flat colors and a transparent
-    # surround keep every shell size free of generated-image edge artifacts.
-    # Equal insets and sides give the card a square footprint in the taskbar.
-    $card = New-RoundedRectangle 24 24 464 464 32
-    $white = [Drawing.SolidBrush]::new([Drawing.Color]::White)
-    $edge = [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml('#D8DEE8'), 1)
-    $graphics.FillPath($white, $card)
+    # Flat shapes with generous weights remain legible in the 16 px shell frame.
+    $card = New-RoundedRectangle 24 24 464 464 88
+    $cardBrush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#192B46'))
+    $edge = [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml('#3E5A7C'), 5)
+    $graphics.FillPath($cardBrush, $card)
     $graphics.DrawPath($edge, $card)
-    $lineBrush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#BAC2CF'))
-    $check = [Drawing.Pen]::new([Drawing.Color]::White, 14)
-    $check.StartCap = $check.EndCap = [Drawing.Drawing2D.LineCap]::Round
-    $check.LineJoin = [Drawing.Drawing2D.LineJoin]::Round
-    $colors = @('#1686F7', '#FF8C28', '#FF535C')
-    for ($row = 0; $row -lt $colors.Count; $row++) {
-        $centerY = 140 + 116 * $row
-        $marker = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml($colors[$row]))
-        $graphics.FillEllipse($marker, 72, $centerY - 48, 96, 96)
-        $checkPoints = [Drawing.PointF[]]@(
-            [Drawing.PointF]::new(99, $centerY),
-            [Drawing.PointF]::new(116, $centerY + 17),
-            [Drawing.PointF]::new(143, $centerY - 15))
-        $graphics.DrawLines($check, $checkPoints)
-        $line = New-RoundedRectangle 200 ($centerY - 16) 232 32 16
-        $graphics.FillPath($lineBrush, $line)
-        $line.Dispose()
-        $marker.Dispose()
+    $start = [Drawing.PointF]::new(103, 237)
+    $bend = [Drawing.PointF]::new(212, 351)
+    $tip = [Drawing.PointF]::new(406, 149)
+    $stroke = [Drawing.Pen]::new([Drawing.Color]::White, 68)
+    $stroke.StartCap = $stroke.EndCap = [Drawing.Drawing2D.LineCap]::Round
+    $stroke.LineJoin = [Drawing.Drawing2D.LineJoin]::Round
+    $graphics.DrawLines($stroke, [Drawing.PointF[]]@($start, $bend, $tip))
+
+    # Stripe the short arm perpendicular to its stroke, leaving the bend and long arm white.
+    $shortArm = [Drawing.Drawing2D.GraphicsPath]::new()
+    $shortArm.AddLine($start, $bend)
+    $shortArm.Widen($stroke)
+    $state = $graphics.Save()
+    $graphics.SetClip($shortArm, [Drawing.Drawing2D.CombineMode]::Intersect)
+    $graphics.TranslateTransform($start.X, $start.Y)
+    $angle = [Math]::Atan2($bend.Y - $start.Y, $bend.X - $start.X)
+    $graphics.RotateTransform([single]($angle * 180 / [Math]::PI))
+    $cuts = @(-35, 22, 65, 110)
+    $colors = @('#FF453A', '#FFD60A', '#409CFF')
+    for ($band = 0; $band -lt $colors.Count; $band++) {
+        $brush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml($colors[$band]))
+        $graphics.FillRectangle($brush, $cuts[$band], -35, ($cuts[$band + 1] - $cuts[$band]), 70)
+        $brush.Dispose()
     }
-    $card.Dispose(); $white.Dispose(); $edge.Dispose()
-    $check.Dispose(); $lineBrush.Dispose()
+    $graphics.Restore($state)
+    $shortArm.Dispose(); $stroke.Dispose()
+    $card.Dispose(); $cardBrush.Dispose(); $edge.Dispose()
     $result = [Drawing.Bitmap]::new($size, $size)
     $output = [Drawing.Graphics]::FromImage($result)
     $output.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic

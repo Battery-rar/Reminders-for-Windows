@@ -1,7 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Reminders.Windows.Services;
 
@@ -17,22 +16,38 @@ public sealed partial class MainWindow
 
     private void ReminderRow_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
     {
-        if (sender is not SwipeControl { DataContext: ReminderItem reminder } row || !CanChangeReminderRow(reminder)) return;
-        var actions = new MenuFlyout();
-        if (reminder.CanMarkComplete)
-            AddAction(L10n.Get("RowMarkComplete"), "\uE73E", () => SetReminderCompletionAsync(reminder, true));
-        if (reminder.TodayAction == ReminderTodayAction.Add)
-            AddAction(L10n.Get("RowAddToToday"), "\uE787", () => AddReminderToTodayAsync(reminder));
-        else if (reminder.TodayAction == ReminderTodayAction.Undo)
-            AddAction(L10n.Get("RowUndoToday"), "\uE7A7", () => UndoReminderTodayAsync(reminder));
-        else if (reminder.TodayAction == ReminderTodayAction.Clear)
-            AddAction(L10n.Get("RowMoveOutOfToday"), "\uE787", () => MoveReminderOutOfTodayAsync(reminder));
-        if (actions.Items.Count > 0) actions.Items.Add(new MenuFlyoutSeparator());
-        AddAction(L10n.Get("DeleteReminder"), "\uE74D", () => DeleteReminderAsync(reminder));
-
+        if (sender is not Grid { DataContext: ReminderItem reminder } row) return;
+        // Releasing a long press also raises this event right after our own menu opened.
+        if (Environment.TickCount64 - State(row).MenuShownAt < 600) { args.Handled = true; return; }
+        if (BuildReminderMenu(reminder) is not { } actions) return;
         args.Handled = true;
+        ResetRowGesture(row);
         if (args.TryGetPosition(row, out var position)) actions.ShowAt(row, new FlyoutShowOptions { Position = position });
         else actions.ShowAt(row);
+    }
+
+    private MenuFlyout? BuildReminderMenu(ReminderItem reminder)
+    {
+        var actions = new MenuFlyout();
+        if (ReminderMoveNeighbor(reminder, -1) is { } above)
+            AddAction(L10n.Get("MoveUp"), "\uE74A", () => MoveReminderRelativeAsync(reminder, above, false));
+        if (ReminderMoveNeighbor(reminder, 1) is { } below)
+            AddAction(L10n.Get("MoveDown"), "\uE74B", () => MoveReminderRelativeAsync(reminder, below, true));
+        if (CanChangeReminderRow(reminder))
+        {
+            if (actions.Items.Count > 0) actions.Items.Add(new MenuFlyoutSeparator());
+            if (reminder.CanMarkComplete)
+                AddAction(L10n.Get("RowMarkComplete"), "\uE73E", () => SetReminderCompletionAsync(reminder, true));
+            if (reminder.TodayAction == ReminderTodayAction.Add)
+                AddAction(L10n.Get("RowAddToToday"), "\uE787", () => AddReminderToTodayAsync(reminder));
+            else if (reminder.TodayAction == ReminderTodayAction.Undo)
+                AddAction(L10n.Get("RowUndoToday"), "\uE7A7", () => UndoReminderTodayAsync(reminder));
+            else if (reminder.TodayAction == ReminderTodayAction.Clear)
+                AddAction(L10n.Get("RowMoveOutOfToday"), "\uE787", () => MoveReminderOutOfTodayAsync(reminder));
+            if (reminder.CanMarkComplete) actions.Items.Add(new MenuFlyoutSeparator());
+            AddAction(L10n.Get("DeleteReminder"), "\uE74D", () => DeleteReminderAsync(reminder));
+        }
+        return actions.Items.Count == 0 ? null : actions;
 
         void AddAction(string text, string glyph, Func<Task> run)
         {
@@ -42,25 +57,26 @@ public sealed partial class MainWindow
         }
     }
 
-    private async void SwipeToComplete_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
+    private async void ReminderRowCompleteAction_Click(object sender, RoutedEventArgs e)
     {
-        if (args.SwipeControl.DataContext is ReminderItem { CanMarkComplete: true } reminder)
-            await SetReminderCompletionAsync(reminder, true);
+        if (sender is not FrameworkElement { DataContext: ReminderItem reminder } action) return;
+        CloseRowForAction(action);
+        if (reminder.CanMarkComplete) await SetReminderCompletionAsync(reminder, true);
     }
 
-    private async void SwipeToToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
+    private async void ReminderRowTodayAction_Click(object sender, RoutedEventArgs e)
     {
-        if (args.SwipeControl.DataContext is ReminderItem reminder) await AddReminderToTodayAsync(reminder);
+        if (sender is not FrameworkElement { DataContext: ReminderItem reminder } action) return;
+        CloseRowForAction(action);
+        if (reminder.TodayAction != ReminderTodayAction.None)
+            await ChangeReminderTodayAsync(reminder, reminder.TodayAction);
     }
 
-    private async void SwipeUndoToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
+    private void CloseRowForAction(FrameworkElement action)
     {
-        if (args.SwipeControl.DataContext is ReminderItem reminder) await UndoReminderTodayAsync(reminder);
-    }
-
-    private async void SwipeMoveOutOfToday_Invoked(SwipeItem sender, SwipeItemInvokedEventArgs args)
-    {
-        if (args.SwipeControl.DataContext is ReminderItem reminder) await MoveReminderOutOfTodayAsync(reminder);
+        if (action.DataContext is not ReminderItem reminder ||
+            ReminderList.ContainerFromItem(reminder) is not ListViewItem { ContentTemplateRoot: Grid row }) return;
+        ResetRowGesture(row);
     }
 
     private async void Complete_Click(object sender, RoutedEventArgs e)
@@ -196,28 +212,4 @@ public sealed partial class MainWindow
             if (id == reminder.Id) return true;
         return false;
     }
-}
-
-public sealed partial class AvailableSwipeItemsConverter : IValueConverter
-{
-    public object? Convert(object value, Type targetType, object parameter, string language) => value is true ? parameter : null;
-
-    public object ConvertBack(object value, Type targetType, object parameter, string language) => throw new NotSupportedException();
-}
-
-public sealed partial class TodaySwipeItemsConverter : IValueConverter
-{
-    public SwipeItems? AddItems { get; set; }
-    public SwipeItems? UndoItems { get; set; }
-    public SwipeItems? ClearItems { get; set; }
-
-    public object? Convert(object value, Type targetType, object parameter, string language) => value switch
-    {
-        ReminderTodayAction.Add => AddItems,
-        ReminderTodayAction.Undo => UndoItems,
-        ReminderTodayAction.Clear => ClearItems,
-        _ => null
-    };
-
-    public object ConvertBack(object value, Type targetType, object parameter, string language) => throw new NotSupportedException();
 }
