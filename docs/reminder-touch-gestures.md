@@ -41,9 +41,12 @@ into one. A side without an action cannot be revealed, and a second finger
 cannot restart an active contact. Cancellation, capture loss, recycling and
 list refreshes reset the state and restore the reveal the contact started from.
 
-At the 450 ms mark the row dims its body and captures the pointer. The dim is
-the feedback that the hold was accepted; the capture keeps the rest of that
-contact away from the list so a move in any direction can start the drag.
+At the 450 ms mark the row dims its body and takes the contact for itself: it switches
+`ManipulationMode` to `TranslateX,TranslateY`, cancels the pending direct
+manipulation and disables the list's vertical scrolling for the rest of that
+contact. All three are undone when the contact ends. The dim is the feedback
+that the hold was accepted; taking the axis is what lets a vertical move start
+the drag instead of scrolling the list.
 
 Revealed actions call the same commands as the context menu
 (`SetReminderCompletionAsync`, `ChangeReminderTodayAsync`), so Today undo,
@@ -103,8 +106,10 @@ What the lines prove:
   horizontal pan to the row, so the swipe path is live;
 - **`manipulation started` missing but a swipe still follows the finger**: the
   raw-move fallback captured the contact before Direct Manipulation took it;
-- **`hold ... captured=False`**: the list kept the contact, so a drag may not
-  follow the long press;
+- **`hold ... captured=True mode=both scroll=True`**: the row took both axes and
+  paused list scrolling for the rest of the contact;
+- **`hold moved x=... y=...`**: a vertical or diagonal move after the hold
+  reached the row, which starts the drag at 14 px;
 - **`release Hold ... menu=True` with `offset=0`**: a stationary hold neither
   moved the row nor revealed an action;
 - **`drag start` followed by `dragging`**: the OS accepted the drag and the

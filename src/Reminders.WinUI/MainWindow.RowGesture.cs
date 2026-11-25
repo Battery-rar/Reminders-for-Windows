@@ -16,6 +16,10 @@ namespace Reminders.Windows;
 public sealed partial class MainWindow
 {
     private const double MouseDragSlop = 6;
+    /// <summary>Horizontal pans belong to the row, vertical panning stays with the list.</summary>
+    private const ManipulationModes RowSwipeMode = ManipulationModes.TranslateX | ManipulationModes.System;
+    /// <summary>While a long press is held the row also needs vertical movement for the drag.</summary>
+    private const ManipulationModes RowHoldMode = ManipulationModes.TranslateX | ManipulationModes.TranslateY;
 
     private readonly ConditionalWeakTable<Grid, RowGesture> _rowGestures = new();
     private Grid? _activeGestureRow;
@@ -37,6 +41,9 @@ public sealed partial class MainWindow
         internal double LastY;
         internal double VelocityY;
         internal long LastMovedAt;
+        internal PointerPoint? LastPoint;
+        internal bool HoldMoveLogged;
+        internal ScrollMode? PausedScrollMode;
         internal ContentPresenter? Body;
         internal TranslateTransform? Shift;
         internal Grid? Actions;
@@ -88,6 +95,8 @@ public sealed partial class MainWindow
         state.LastY = point.Position.Y;
         state.VelocityY = 0;
         state.LastMovedAt = Environment.TickCount64;
+        state.LastPoint = point;
+        state.HoldMoveLogged = false;
         var today = state.TodayAction?.Visibility == Visibility.Visible ? ReminderTouchGesture.ActionWidth : 0;
         var complete = state.CompleteAction?.Visibility == Visibility.Visible ? ReminderTouchGesture.ActionWidth : 0;
         state.Gesture.Press(point.Position.X, point.Position.Y, Environment.TickCount64, today, complete);
@@ -124,6 +133,7 @@ public sealed partial class MainWindow
         if (state.PointerId != e.Pointer.PointerId) return;
         var point = e.GetCurrentPoint(row);
         if (!point.IsInContact) return;
+        state.LastPoint = point;
         var before = state.Gesture.Phase;
         var drag = state.Gesture.Move(point.Position.X, point.Position.Y, Environment.TickCount64);
         if (state.Gesture.Phase != before)
@@ -190,6 +200,21 @@ public sealed partial class MainWindow
     {
         if (sender is not Grid row || e.PointerDeviceType != PointerDeviceType.Touch) return;
         var state = State(row);
+        if (state.Gesture.Phase == ReminderGesturePhase.Hold)
+        {
+            var x = e.Cumulative.Translation.X;
+            var y = e.Cumulative.Translation.Y;
+            if (!state.HoldMoveLogged)
+            {
+                state.HoldMoveLogged = true;
+                AppLog.Info($"[touch] hold moved x={x:F0} y={y:F0}");
+            }
+            if (Math.Max(Math.Abs(x), Math.Abs(y)) < ReminderTouchGesture.DragSlop) return;
+            if (row.DataContext is not ReminderItem reminder) return;
+            if (state.LastPoint is { IsInContact: true } pointer) BeginRowDrag(row, reminder, pointer);
+            else AppLog.Info("[touch] hold moved without a live pointer point");
+            return;
+        }
         if (state.Gesture.Phase != ReminderGesturePhase.Swipe) return;
         state.Gesture.SwipeTo(e.Cumulative.Translation.X);
         ApplyRowOffset(row, animate: false);
@@ -238,11 +263,28 @@ public sealed partial class MainWindow
         }
         if (!state.Gesture.TryBeginHold(Environment.TickCount64)) return;
         _rowHoldTimer?.Stop();
-        // Claim the contact now that the finger is confirmed still, so a move in any direction
-        // reaches the row instead of scrolling the list.
+        // The list owns vertical panning through the System flag, so the row claims both axes and
+        // pauses the list's own scrolling for the rest of this contact. Both changes are undone
+        // when the contact ends; without them a held finger still scrolls instead of dragging.
+        row.ManipulationMode = RowHoldMode;
+        row.CancelDirectManipulations();
+        if (FindReminderScrollViewer() is { } scroll)
+        {
+            state.PausedScrollMode = scroll.VerticalScrollMode;
+            scroll.VerticalScrollMode = ScrollMode.Disabled;
+        }
         state.Captured = state.Pointer is { } pointer && row.CapturePointer(pointer);
         ShowHeldRow(row, state, held: true);
-        AppLog.Info($"[touch] hold row={ReminderName(row)} captured={state.Captured}");
+        AppLog.Info($"[touch] hold row={ReminderName(row)} captured={state.Captured} mode=both scroll={state.PausedScrollMode is not null}");
+    }
+
+    /// <summary>Puts the row and the list back the way they were before a long press.</summary>
+    private void RestoreRowManipulation(Grid row)
+    {
+        row.ManipulationMode = RowSwipeMode;
+        if (!_rowGestures.TryGetValue(row, out var state) || state.PausedScrollMode is not { } mode) return;
+        state.PausedScrollMode = null;
+        if (FindReminderScrollViewer() is { } scroll) scroll.VerticalScrollMode = mode;
     }
 
     private static void ShowHeldRow(Grid row, RowGesture state, bool held)
@@ -504,6 +546,7 @@ public sealed partial class MainWindow
     private void ClearActiveGesture(Grid row)
     {
         if (ReferenceEquals(_activeGestureRow, row)) _activeGestureRow = null;
+        RestoreRowManipulation(row);
         if (!_rowGestures.TryGetValue(row, out var state)) return;
         state.PointerId = 0;
         if (!state.Captured) return;
@@ -519,6 +562,7 @@ public sealed partial class MainWindow
         if (_mouseRowPress?.Row == row) _mouseRowPress = null;
         if (!_rowGestures.TryGetValue(row, out var state)) return;
         state.Gesture.Reset();
+        RestoreRowManipulation(row);
         state.Animation?.Stop();
         state.Animation = null;
         state.PointerId = 0;
