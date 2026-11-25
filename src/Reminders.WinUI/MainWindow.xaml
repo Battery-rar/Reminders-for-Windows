@@ -105,7 +105,7 @@
         <GroupStyle.HeaderContainerStyle><Style TargetType="ListViewHeaderItem"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,2"/></Style></GroupStyle.HeaderContainerStyle>
         <GroupStyle.HeaderTemplate><DataTemplate x:DataType="local:ReminderSection"><TextBlock Text="{x:Bind Title}" Style="{ThemeResource BodyStrongTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="14,10,14,2"/></DataTemplate></GroupStyle.HeaderTemplate>
        </GroupStyle></ListView.GroupStyle>
-       <ListView.ItemContainerTransitions><TransitionCollection><AddDeleteThemeTransition/><ReorderThemeTransition/></TransitionCollection></ListView.ItemContainerTransitions>
+       <ListView.ItemContainerTransitions><TransitionCollection><AddDeleteThemeTransition/></TransitionCollection></ListView.ItemContainerTransitions>
        <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="4,1"/><Setter Property="MinHeight" Value="0"/><Setter Property="CornerRadius" Value="6"/></Style></ListView.ItemContainerStyle>
        <ListView.ItemTemplate>
         <DataTemplate x:DataType="local:ReminderItem">
