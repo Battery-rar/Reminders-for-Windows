@@ -57,8 +57,8 @@ public sealed partial class MainWindow
 
     private ReminderItem? ReminderMoveNeighbor(ReminderItem reminder, int step)
     {
-        if (!CanReorderReminders || !_visibleReminders.Contains(reminder)) return null;
-        var siblings = ReminderHierarchy.Siblings(_visibleReminders, reminder).ToList();
+        if (!CanReorderReminders || !_reminders.Contains(reminder)) return null;
+        var siblings = ReminderHierarchy.Siblings(_reminders, reminder).ToList();
         var destination = siblings.IndexOf(reminder) + step;
         return destination >= 0 && destination < siblings.Count ? siblings[destination] : null;
     }
@@ -66,7 +66,7 @@ public sealed partial class MainWindow
     private async Task<bool> MoveReminderRelativeAsync(ReminderItem reminder, ReminderItem anchor, bool after)
     {
         if (!CanReorderReminders || !_reminders.Contains(reminder) || !_reminders.Contains(anchor)) return false;
-        if (ReminderOrderPlan.Place(_visibleReminders, reminder, anchor, after) is not { } ids) return false;
+        if (ReminderOrderPlan.Place(_reminders, reminder, anchor, after) is not { } ids) return false;
         var query = CurrentReminderQuery;
         var account = _accountEpoch;
         _reminderOrderBusy = true;
@@ -104,15 +104,15 @@ public sealed partial class MainWindow
         finally { _reminderOrderBusy = false; }
     }
 
-    private static string? ReminderVisibleParent(ReminderItem reminder, IReadOnlyList<ReminderItem> rows) =>
-        reminder.ParentId is { } id && rows.FirstOrDefault(row => row.Id == id) is { } parent
+    private static string? ReminderVisibleParent(ReminderItem reminder, List<ReminderItem> rows) =>
+        reminder.ParentId is { } id && rows.Find(row => row.Id == id) is { } parent
             && ReminderHierarchy.IsParent(reminder, parent) ? id : null;
 
     private bool CanDropReminder(ReminderDrag drag, ReminderItem target) =>
         CanReorderReminders
         && drag.AccountEpoch == _accountEpoch && drag.Query == CurrentReminderQuery
-        && !ReferenceEquals(drag.Reminder, target) && _visibleReminders.Contains(drag.Reminder) && _visibleReminders.Contains(target)
-        && ReminderVisibleParent(drag.Reminder, _visibleReminders) == ReminderVisibleParent(target, _visibleReminders);
+        && !ReferenceEquals(drag.Reminder, target) && _reminders.Contains(drag.Reminder) && _reminders.Contains(target)
+        && ReminderVisibleParent(drag.Reminder, _reminders) == ReminderVisibleParent(target, _reminders);
 
     private void ReminderRow_DragOver(object sender, DragEventArgs e)
     {

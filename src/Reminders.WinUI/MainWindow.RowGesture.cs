@@ -44,7 +44,7 @@ public sealed partial class MainWindow
         internal PointerPoint? LastPoint;
         internal bool HoldMoveLogged;
         internal ScrollMode? PausedScrollMode;
-        internal ContentPresenter? Body;
+        internal Grid? Body;
         internal TranslateTransform? Shift;
         internal Grid? Actions;
         internal Button? TodayAction;
@@ -448,7 +448,7 @@ public sealed partial class MainWindow
         var state = _rowGestures.GetValue(row, _ => new RowGesture());
         if (state.Body is null)
         {
-            state.Body = row.FindName("ReminderRowBody") as ContentPresenter;
+            state.Body = row.FindName("ReminderRowBody") as Grid;
             state.Shift = state.Body?.RenderTransform as TranslateTransform;
             state.Actions = row.FindName("ReminderRowActions") as Grid;
             state.TodayAction = row.FindName("ReminderRowTodayAction") as Button;
