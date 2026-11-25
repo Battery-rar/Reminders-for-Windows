@@ -63,9 +63,6 @@
   <data name="AllDay" xml:space="preserve">
     <value>All day</value>
   </data>
-  <data name="AllDayTextBlock.Text" xml:space="preserve">
-    <value>All day</value>
-  </data>
   <data name="AllNavigationViewItem.Content" xml:space="preserve">
     <value>All</value>
   </data>
@@ -377,6 +374,9 @@ Any subtasks will also be deleted.</value>
     <value>Sample reminders do not sync with iCloud.</value>
   </data>
   <data name="DetailAllDay.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>All day</value>
+  </data>
+  <data name="DetailAllDay.Content" xml:space="preserve">
     <value>All day</value>
   </data>
   <data name="DetailDate.Header" xml:space="preserve">
@@ -896,6 +896,9 @@ Any subtasks will also be deleted.</value>
     <value>First list in sidebar</value>
   </data>
   <data name="Flagged" xml:space="preserve">
+    <value>Flagged</value>
+  </data>
+  <data name="ReminderRowFlag.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>Flagged</value>
   </data>
   <data name="GateStatus.Text" xml:space="preserve">
@@ -2123,6 +2126,18 @@ Accept any updated terms, then check that your lists appear.</value>
   </data>
   <data name="SwipeToTodayItem.Text" xml:space="preserve">
     <value>Add to Today</value>
+  </data>
+  <data name="RowUndoToday" xml:space="preserve">
+    <value>Undo Add to Today</value>
+  </data>
+  <data name="SwipeUndoTodayItem.Text" xml:space="preserve">
+    <value>Undo Add to Today</value>
+  </data>
+  <data name="RowMoveOutOfToday" xml:space="preserve">
+    <value>Move out of Today</value>
+  </data>
+  <data name="SwipeMoveOutOfTodayItem.Text" xml:space="preserve">
+    <value>Move out of Today</value>
   </data>
   <data name="SwipeToCompleteItem.Text" xml:space="preserve">
     <value>Complete</value>

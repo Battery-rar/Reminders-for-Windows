@@ -15,10 +15,14 @@ public sealed class ReminderList
     [JsonPropertyName("is_group")] public bool IsGroup { get; set; }
 }
 
+public enum ReminderTodayAction { None, Add, Undo, Clear }
+
 public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchicalReminder
 {
     private string _title = "";
     private string _description = "";
+    private long _priority;
+    private bool _flagged;
     private bool _completed;
     private bool _deleted;
     [JsonPropertyName("id")] public string Id { get; set; } = "";
@@ -28,15 +32,17 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     [JsonPropertyName("title")] public string Title { get => _title; set => Set(ref _title, value); }
     [JsonPropertyName("description")] public string Description { get => _description; set => Set(ref _description, value); }
     [JsonPropertyName("due_date")] public string? DueDate { get; set; }
-    [JsonPropertyName("priority")] public long Priority { get; set; }
+    [JsonPropertyName("priority")] public long Priority { get => _priority; set => Set(ref _priority, value); }
     [JsonPropertyName("completed")] public bool Completed { get => _completed; set => Set(ref _completed, value); }
-    [JsonPropertyName("flagged")] public bool Flagged { get; set; }
+    [JsonPropertyName("flagged")] public bool Flagged { get => _flagged; set => Set(ref _flagged, value); }
     [JsonPropertyName("all_day")] public bool AllDay { get; set; }
     [JsonPropertyName("deleted")] public bool Deleted { get => _deleted; set => Set(ref _deleted, value); }
     [JsonPropertyName("tags")] public List<string> Tags { get; set; } = [];
     [JsonPropertyName("dirty")] public long Dirty { get; set; }
     [JsonPropertyName("change_tag")] public string? ChangeTag { get; set; }
+    [JsonPropertyName("can_undo_today")] public bool CanUndoToday { get; set; }
     [JsonPropertyName("recurrence")] public RepeatSchedule? Recurrence { get; set; }
+    [JsonIgnore] internal (string? DueDate, bool AllDay)? DemoPreviousSchedule { get; set; }
 
     private int _depth;
     private bool _hasChildren;
@@ -57,9 +63,28 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     }
 
     [JsonIgnore] public string DisplayTitle => string.IsNullOrWhiteSpace(Title) ? L10n.Get("UntitledReminder") : Title;
+    [JsonIgnore] public string PriorityMarks => Priority switch { 9 => "!", 5 => "!!", 1 => "!!!", _ => "" };
+    [JsonIgnore] public string PriorityLabel => Priority switch
+    {
+        9 => L10n.Get("LowPriority"), 5 => L10n.Get("MediumPriority"), 1 => L10n.Get("HighPriority"), _ => ""
+    };
+    [JsonIgnore] public Microsoft.UI.Xaml.Visibility PriorityVisibility => PriorityMarks.Length == 0
+        ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
+    [JsonIgnore] public Microsoft.UI.Xaml.Visibility FlagVisibility => Flagged
+        ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
     [JsonIgnore] public bool CanEditRow => !Deleted;
     [JsonIgnore] public bool CanMarkComplete => CanEditRow && !Completed;
-    [JsonIgnore] public bool CanAddToToday => CanMarkComplete && !ReminderSchedule.IsToday(DueDate, AllDay, DateTimeOffset.Now, TimeZoneInfo.Local);
+    [JsonIgnore] public ReminderTodayAction TodayAction
+    {
+        get
+        {
+            if (!CanMarkComplete) return ReminderTodayAction.None;
+            if (!ReminderSchedule.IsToday(DueDate, AllDay, DateTimeOffset.Now, TimeZoneInfo.Local))
+                return ReminderTodayAction.Add;
+            if (CanUndoToday) return ReminderTodayAction.Undo;
+            return Recurrence is null ? ReminderTodayAction.Clear : ReminderTodayAction.None;
+        }
+    }
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility MetadataVisibility => IsOverdue || string.IsNullOrWhiteSpace(Metadata)
         ? Microsoft.UI.Xaml.Visibility.Collapsed : Microsoft.UI.Xaml.Visibility.Visible;
     [JsonIgnore] public Microsoft.UI.Xaml.Visibility OverdueMetadataVisibility => IsOverdue
@@ -88,7 +113,6 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
             if (IsOverdue) parts.Add(L10n.Get("Overdue"));
             if (DueText.Length > 0) parts.Add(DueText);
             if (Recurrence is not null) parts.Add(Recurrence.Label);
-            if (Priority is 1 or 5 or 9) parts.Add(Priority switch { 1 => L10n.Get("HighPriority"), 5 => L10n.Get("MediumPriority"), _ => L10n.Get("LowPriority") });
             if (Tags.Count > 0) parts.Add(string.Join("  ", Tags.Select(t => "#" + t)));
             if (Dirty != 0) parts.Add(L10n.Get("WaitingToSync"));
             return string.Join(L10n.Get("ReminderMetadataSeparator"), parts);
@@ -96,7 +120,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     }
     public void RefreshTimeMetadata()
     {
-        PropertyChanged?.Invoke(this, new(nameof(CanAddToToday)));
+        PropertyChanged?.Invoke(this, new(nameof(TodayAction)));
         PropertyChanged?.Invoke(this, new(nameof(Metadata)));
         PropertyChanged?.Invoke(this, new(nameof(MetadataVisibility)));
         PropertyChanged?.Invoke(this, new(nameof(OverdueMetadataVisibility)));
@@ -111,7 +135,8 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
             Flagged != snapshot.Flagged || Completed != snapshot.Completed || Deleted != snapshot.Deleted ||
             repeatChanged || !Tags.SequenceEqual(snapshot.Tags);
         ChangeTag = snapshot.ChangeTag;
-        if (!editorChanged && ParentId == snapshot.ParentId && ContextOnly == snapshot.ContextOnly && Dirty == snapshot.Dirty)
+        if (!editorChanged && ParentId == snapshot.ParentId && ContextOnly == snapshot.ContextOnly &&
+            Dirty == snapshot.Dirty && CanUndoToday == snapshot.CanUndoToday)
             return false;
 
         Title = snapshot.Title;
@@ -128,6 +153,7 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
         ParentId = snapshot.ParentId;
         ContextOnly = snapshot.ContextOnly;
         Dirty = snapshot.Dirty;
+        CanUndoToday = snapshot.CanUndoToday;
         RefreshTimeMetadata();
         return true;
     }
@@ -136,11 +162,18 @@ public sealed class ReminderItem : INotifyPropertyChanged, Services.IHierarchica
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return;
         field = value; PropertyChanged?.Invoke(this, new(name)); PropertyChanged?.Invoke(this, new(nameof(DisplayTitle)));
+        if (name == nameof(Priority))
+        {
+            PropertyChanged?.Invoke(this, new(nameof(PriorityMarks)));
+            PropertyChanged?.Invoke(this, new(nameof(PriorityLabel)));
+            PropertyChanged?.Invoke(this, new(nameof(PriorityVisibility)));
+        }
+        if (name == nameof(Flagged)) PropertyChanged?.Invoke(this, new(nameof(FlagVisibility)));
         if (name is nameof(Completed) or nameof(Deleted))
         {
             PropertyChanged?.Invoke(this, new(nameof(CanEditRow)));
             PropertyChanged?.Invoke(this, new(nameof(CanMarkComplete)));
-            PropertyChanged?.Invoke(this, new(nameof(CanAddToToday)));
+            PropertyChanged?.Invoke(this, new(nameof(TodayAction)));
         }
         PropertyChanged?.Invoke(this, new(nameof(SubtaskToggleLabel)));
         PropertyChanged?.Invoke(this, new(nameof(Metadata))); PropertyChanged?.Invoke(this, new(nameof(OverdueMetadataVisibility)));

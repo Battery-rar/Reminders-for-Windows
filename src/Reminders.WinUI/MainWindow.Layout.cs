@@ -76,6 +76,19 @@ public sealed partial class MainWindow
             ArrangeDetailPair(grid, second);
     }
 
+    private void DetailScheduleInputs_SizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        // The native TimePicker flyout button needs 242 DIPs, including in a narrow details pane.
+        const double pickerMinimumWidth = 242;
+        var actionWidth = Math.Max(DetailAddToToday.DesiredSize.Width, DetailAllDay.DesiredSize.Width);
+        var compact = args.NewSize.Width < pickerMinimumWidth + DetailScheduleInputs.ColumnSpacing + actionWidth;
+        Grid.SetColumnSpan(DetailDate, compact ? 2 : 1);
+        Grid.SetColumnSpan(DetailTime, compact ? 2 : 1);
+        Grid.SetRow(DetailAddToToday, compact ? 1 : 0);
+        Grid.SetRow(DetailAllDay, compact ? 3 : 2);
+        DetailAddToToday.Margin = DetailAllDay.Margin = new Thickness(0, compact ? 6 : 0, 0, 0);
+    }
+
     private void ResizeDetails(double delta)
     {
         _uiPreferences.DetailPaneFraction = PaneSizing.Resize(ReminderLayout.ActualWidth, _uiPreferences.DetailPaneFraction, delta);

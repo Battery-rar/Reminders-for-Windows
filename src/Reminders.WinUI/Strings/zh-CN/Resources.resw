@@ -63,9 +63,6 @@
   <data name="AllDay" xml:space="preserve">
     <value>全天</value>
   </data>
-  <data name="AllDayTextBlock.Text" xml:space="preserve">
-    <value>全天</value>
-  </data>
   <data name="AllNavigationViewItem.Content" xml:space="preserve">
     <value>全部</value>
   </data>
@@ -377,6 +374,9 @@
   <data name="DetailAllDay.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>全天</value>
   </data>
+  <data name="DetailAllDay.Content" xml:space="preserve">
+    <value>全天</value>
+  </data>
   <data name="DetailDate.Header" xml:space="preserve">
     <value>到期日期</value>
   </data>
@@ -384,7 +384,7 @@
     <value>无日期</value>
   </data>
   <data name="DetailFlagged.Header" xml:space="preserve">
-    <value>标记</value>
+    <value>旗标</value>
   </data>
   <data name="DetailList.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
     <value>任务列表</value>
@@ -891,7 +891,10 @@
     <value>边栏中的首个列表</value>
   </data>
   <data name="Flagged" xml:space="preserve">
-    <value>已标记</value>
+    <value>旗标</value>
+  </data>
+  <data name="ReminderRowFlag.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve">
+    <value>已加旗标</value>
   </data>
   <data name="GateStatus.Text" xml:space="preserve">
     <value>正在启动同步服务…</value>
@@ -2114,6 +2117,18 @@
   </data>
   <data name="SwipeToTodayItem.Text" xml:space="preserve">
     <value>添加到“今天”</value>
+  </data>
+  <data name="RowUndoToday" xml:space="preserve">
+    <value>撤销添加到“今天”</value>
+  </data>
+  <data name="SwipeUndoTodayItem.Text" xml:space="preserve">
+    <value>撤销添加到“今天”</value>
+  </data>
+  <data name="RowMoveOutOfToday" xml:space="preserve">
+    <value>移出“今天”</value>
+  </data>
+  <data name="SwipeMoveOutOfTodayItem.Text" xml:space="preserve">
+    <value>移出“今天”</value>
   </data>
   <data name="SwipeToCompleteItem.Text" xml:space="preserve">
     <value>完成</value>

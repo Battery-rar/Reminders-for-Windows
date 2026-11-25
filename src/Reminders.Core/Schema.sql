@@ -19,6 +19,17 @@ CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(due_date)
   WHERE completed = 0 AND deleted = 0;
 CREATE INDEX IF NOT EXISTS idx_reminders_completed ON reminders(completed_date DESC)
   WHERE completed = 1 AND deleted = 0;
+CREATE TABLE IF NOT EXISTS today_move_history (
+  reminder_id TEXT PRIMARY KEY REFERENCES reminders(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  original_due_date TEXT, original_all_day INTEGER NOT NULL,
+  applied_due_date TEXT NOT NULL, applied_all_day INTEGER NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS invalidate_today_move_history
+  AFTER UPDATE OF due_date, all_day ON reminders
+  WHEN OLD.due_date IS NOT NEW.due_date OR OLD.all_day IS NOT NEW.all_day
+BEGIN
+  DELETE FROM today_move_history WHERE reminder_id = NEW.id;
+END;
 CREATE TABLE IF NOT EXISTS tags (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, reminder_id TEXT NOT NULL
 );

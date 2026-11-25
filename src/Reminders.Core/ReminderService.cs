@@ -387,6 +387,9 @@ public sealed partial class ReminderService : IAsyncDisposable
                     cache.Upsert(r, !IsLocalDemo); if (!IsLocalDemo) cache.Enqueue(r.Required("id"), "create", r, null); return true;
                 }); QueueSync(); return cache.Reminder(r.Required("id"));
             case "update_reminder": return LocalChange(p, "update");
+            case "move_reminder_to_today": return ChangeTodaySchedule(p, TodayScheduleChange.Add);
+            case "undo_reminder_today": return ChangeTodaySchedule(p, TodayScheduleChange.Restore);
+            case "clear_reminder_today": return ChangeTodaySchedule(p, TodayScheduleChange.Clear);
             case "delete_reminder": return LocalChange(p, "delete");
             case "restore_reminder": return LocalChange(p, "restore");
             case "sync": return J.Node(new { queued = QueueSync(p.Flag("full"), p.Flag("automatic")), local_only = IsLocalDemo });
