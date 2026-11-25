@@ -18,9 +18,37 @@ internal static class EnglishUiResourceChecks
         var window = Load("MainWindow.xaml").Root!;
         var uids = window.DescendantsAndSelf().Attributes(XName.Get("Uid", xaml))
             .Select(attribute => attribute.Value).ToHashSet(StringComparer.Ordinal);
-        var swipeMenus = window.Descendants().Where(element => element.Name.LocalName == "SwipeItems").ToArray();
-        check(swipeMenus.Length > 0 && swipeMenus.All(menu => (string?)menu.Attribute("Mode") == "Reveal"),
-            "reminder swipe commands require a separate activation after being revealed");
+        var row = window.Descendants().SingleOrDefault(element =>
+            (string?)element.Attribute(XName.Get("Name", xaml)) == "ReminderRowSurface");
+        check(row is not null, "the reminder row has one gesture surface");
+        check(!window.Descendants().Any(element => element.Name.LocalName is "SwipeControl" or "SwipeItems"),
+            "the reminder row no longer hands its touch contact to the native swipe control");
+        check(!row!.Descendants().Any(element =>
+                (string?)element.Attribute(XName.Get("Name", xaml)) == "ReminderOrderHandle"),
+            "the whole row is the drag surface and no order handle is left");
+        check(new[] { "PointerPressed", "PointerMoved", "PointerReleased", "PointerCanceled", "PointerCaptureLost" }
+            .All(name => row.Attribute(name) is not null),
+            "the row receives the whole touch contact itself");
+        check(row.Attribute("ContextRequested") is not null && row.Attribute("DragStarting") is not null &&
+            row.Attribute("Holding") is not null,
+            "the row keeps its context menu, long-press diagnostics and starts its own drag");
+        check((string?)row.Attribute("ManipulationMode") == "TranslateX,System" &&
+            row.Attribute("ManipulationStarted") is not null && row.Attribute("ManipulationDelta") is not null &&
+            row.Attribute("ManipulationCompleted") is not null,
+            "the row claims horizontal pans through the manipulation router instead of raw pointer moves");
+        var rowButtons = row.Descendants().Where(element => element.Name.LocalName == "Button")
+            .Select(button => (string?)button.Attribute("Click")).ToArray();
+        check(rowButtons.Contains("ReminderRowTodayAction_Click") && rowButtons.Contains("ReminderRowCompleteAction_Click"),
+            "revealed swipe actions only run when their own button is pressed");
+        check(row.Descendants().Where(element => element.Name.LocalName == "Button")
+            .Where(button => (string?)button.Attribute("Click") is "ReminderRowTodayAction_Click" or "ReminderRowCompleteAction_Click")
+            .All(button => double.TryParse((string?)button.Attribute("Width"), out var width) &&
+                Math.Abs(width - ReminderTouchGesture.ActionWidth) < 0.001),
+            "the revealed action strip matches the width the gesture reveals");
+        var list = window.Descendants().Single(element =>
+            (string?)element.Attribute(XName.Get("Name", xaml)) == "ReminderList");
+        check((string?)list.Attribute("CanDragItems") is null or "False" && list.Attribute("DragItemsStarting") is null,
+            "the list does not start touch drags of its own");
         var newShortcut = window.Descendants().Single(element =>
             element.Name.LocalName == "KeyboardAccelerator" && (string?)element.Attribute("Key") == "N");
         check((string?)newShortcut.Attribute("Modifiers") == "Control" &&

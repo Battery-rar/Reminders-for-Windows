@@ -88,6 +88,10 @@ public sealed partial class MainWindow : Window
         Root.KeyboardAccelerators.Add(settingsAccelerator);
         Navigation.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler(Navigation_PointerMoved), true);
         Navigation.AddHandler(UIElement.PointerExitedEvent, new PointerEventHandler(Navigation_PointerExited), true);
+        // The row owns the gesture; these only step in when a captured ancestor swallowed its moves.
+        ReminderList.AddHandler(UIElement.PointerMovedEvent, new PointerEventHandler(ReminderList_PointerMoved), true);
+        ReminderList.AddHandler(UIElement.PointerReleasedEvent, new PointerEventHandler(ReminderList_PointerReleased), true);
+        ReminderList.AddHandler(UIElement.PointerCanceledEvent, new PointerEventHandler(ReminderList_PointerCanceled), true);
         foreach (var item in Navigation.MenuItems.Concat(Navigation.FooterMenuItems).OfType<NavigationViewItem>()) AttachPaneHover(item);
         _sectionView.Source = _reminderSections;
         ReminderList.ItemsSource = _visibleReminders;
@@ -372,6 +376,7 @@ public sealed partial class MainWindow : Window
         (_view.Kind, _view.Key, SearchBox.Text, ReminderSort, IncludesCompleted);
     private void UpdateRows()
     {
+        ResetReminderGestures();
         RebuildReminderSections();
         EmptyState.Visibility = _reminders.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         var searching = !string.IsNullOrWhiteSpace(SearchBox.Text);

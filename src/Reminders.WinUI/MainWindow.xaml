@@ -72,46 +72,9 @@
        </AutoSuggestBox>
        <Button x:Uid="SortButton" x:Name="ReminderSortButton" Grid.Column="1" Width="40" Height="40" ToolTipService.Placement="Bottom"><Button.Flyout><MenuFlyout><RadioMenuFlyoutItem x:Uid="ManualRadioMenuFlyoutItem" Tag="manual" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="DueDateRadioMenuFlyoutItem" Tag="due" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="PriorityRadioMenuFlyoutItem" Tag="priority" GroupName="sort" Click="Sort_Click"/><RadioMenuFlyoutItem x:Uid="TitleRadioMenuFlyoutItem" Tag="title" GroupName="sort" Click="Sort_Click"/></MenuFlyout></Button.Flyout><FontIcon Glyph="&#xE8CB;" FontSize="18"/></Button>
       </Grid>
-      <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0"
-                CanDragItems="True" DragItemsStarting="ReminderList_DragItemsStarting" DragItemsCompleted="ReminderList_DragItemsCompleted">
+      <ListView x:Name="ReminderList" Grid.Row="2" SelectionChanged="ReminderList_SelectionChanged" IsItemClickEnabled="False" Padding="8,0">
        <ListView.Resources>
-        <local:AvailableSwipeItemsConverter x:Key="AvailableSwipeItems"/>
-        <SwipeItems x:Key="SwipeToToday" Mode="Reveal">
-         <SwipeItem x:Uid="SwipeToTodayItem" Invoked="SwipeToToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
-          <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
-         </SwipeItem>
-        </SwipeItems>
-        <SwipeItems x:Key="SwipeUndoToday" Mode="Reveal">
-         <SwipeItem x:Uid="SwipeUndoTodayItem" Invoked="SwipeUndoToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
-          <SwipeItem.IconSource><FontIconSource Glyph="&#xE7A7;"/></SwipeItem.IconSource>
-         </SwipeItem>
-        </SwipeItems>
-        <SwipeItems x:Key="SwipeMoveOutOfToday" Mode="Reveal">
-         <SwipeItem x:Uid="SwipeMoveOutOfTodayItem" Invoked="SwipeMoveOutOfToday_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
-          <SwipeItem.IconSource><FontIconSource Glyph="&#xE787;"/></SwipeItem.IconSource>
-         </SwipeItem>
-        </SwipeItems>
-        <local:TodaySwipeItemsConverter x:Key="TodaySwipeItems" AddItems="{StaticResource SwipeToToday}" UndoItems="{StaticResource SwipeUndoToday}" ClearItems="{StaticResource SwipeMoveOutOfToday}"/>
-        <SwipeItems x:Key="SwipeToComplete" Mode="Reveal">
-         <SwipeItem x:Uid="SwipeToCompleteItem" Invoked="SwipeToComplete_Invoked" Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
-          <SwipeItem.IconSource><FontIconSource Glyph="&#xE73E;"/></SwipeItem.IconSource>
-         </SwipeItem>
-        </SwipeItems>
-       </ListView.Resources>
-       <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView"/></ItemsPanelTemplate></ListView.ItemsPanel>
-       <ListView.GroupStyle><GroupStyle HidesIfEmpty="True">
-        <GroupStyle.HeaderContainerStyle><Style TargetType="ListViewHeaderItem"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,2"/></Style></GroupStyle.HeaderContainerStyle>
-        <GroupStyle.HeaderTemplate><DataTemplate x:DataType="local:ReminderSection"><TextBlock Text="{x:Bind Title}" Style="{ThemeResource BodyStrongTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="14,10,14,2"/></DataTemplate></GroupStyle.HeaderTemplate>
-       </GroupStyle></ListView.GroupStyle>
-       <ListView.ItemContainerTransitions><TransitionCollection><AddDeleteThemeTransition/><ReorderThemeTransition/></TransitionCollection></ListView.ItemContainerTransitions>
-       <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="4,1"/><Setter Property="MinHeight" Value="0"/><Setter Property="CornerRadius" Value="6"/></Style></ListView.ItemContainerStyle>
-       <ListView.ItemTemplate>
-        <DataTemplate x:DataType="local:ReminderItem">
-         <Grid AllowDrop="True" DragOver="ReminderRow_DragOver" DragLeave="ReminderRow_DragLeave" Drop="ReminderRow_Drop">
-         <SwipeControl HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="Transparent"
-                       Holding="ReminderRow_Holding" ContextRequested="ReminderRow_ContextRequested"
-                       LeftItems="{Binding TodayAction, Converter={StaticResource TodaySwipeItems}}"
-                       RightItems="{Binding CanMarkComplete, Converter={StaticResource AvailableSwipeItems}, ConverterParameter={StaticResource SwipeToComplete}}">
+        <DataTemplate x:Key="ReminderBodyTemplate" x:DataType="local:ReminderItem">
          <Grid Padding="{x:Bind RowPadding, Mode=OneWay}" Margin="{x:Bind HierarchyIndent, Mode=OneWay}" MinHeight="40">
           <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <CheckBox x:Uid="MarkReminderCompleteCheckBox" IsChecked="{x:Bind Completed, Mode=OneWay}" IsEnabled="{x:Bind CanEditRow, Mode=OneWay}" Click="Complete_Click" VerticalAlignment="Top"/>
@@ -135,7 +98,51 @@
            <FontIcon Glyph="&#xE70D;" FontSize="12" Width="16" Height="16" Rotation="{x:Bind SubtaskChevronRotation, Mode=OneWay}" Loaded="SubtaskChevron_Loaded"/>
           </Button>
          </Grid>
-         </SwipeControl>
+        </DataTemplate>
+       </ListView.Resources>
+       <ListView.ItemsPanel><ItemsPanelTemplate><ItemsStackPanel ItemsUpdatingScrollMode="KeepItemsInView"/></ItemsPanelTemplate></ListView.ItemsPanel>
+       <ListView.GroupStyle><GroupStyle HidesIfEmpty="True">
+        <GroupStyle.HeaderContainerStyle><Style TargetType="ListViewHeaderItem"><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,2"/></Style></GroupStyle.HeaderContainerStyle>
+        <GroupStyle.HeaderTemplate><DataTemplate x:DataType="local:ReminderSection"><TextBlock Text="{x:Bind Title}" Style="{ThemeResource BodyStrongTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="14,10,14,2"/></DataTemplate></GroupStyle.HeaderTemplate>
+       </GroupStyle></ListView.GroupStyle>
+       <ListView.ItemContainerTransitions><TransitionCollection><AddDeleteThemeTransition/><ReorderThemeTransition/></TransitionCollection></ListView.ItemContainerTransitions>
+       <ListView.ItemContainerStyle><Style TargetType="ListViewItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="4,1"/><Setter Property="MinHeight" Value="0"/><Setter Property="CornerRadius" Value="6"/></Style></ListView.ItemContainerStyle>
+       <ListView.ItemTemplate>
+        <DataTemplate x:DataType="local:ReminderItem">
+         <Grid x:Name="ReminderRowSurface" AllowDrop="True" Background="Transparent"
+               ManipulationMode="TranslateX,System"
+               ManipulationStarted="ReminderRow_ManipulationStarted" ManipulationDelta="ReminderRow_ManipulationDelta"
+               ManipulationCompleted="ReminderRow_ManipulationCompleted"
+               DragStarting="ReminderRow_DragStarting" DragOver="ReminderRow_DragOver" DragLeave="ReminderRow_DragLeave" Drop="ReminderRow_Drop"
+               ContextRequested="ReminderRow_ContextRequested" Holding="ReminderRow_Holding"
+               PointerPressed="ReminderRow_PointerPressed" PointerMoved="ReminderRow_PointerMoved"
+               PointerReleased="ReminderRow_PointerReleased" PointerCanceled="ReminderRow_PointerCanceled"
+               PointerCaptureLost="ReminderRow_PointerCaptureLost"
+               DataContextChanged="ReminderRow_DataContextChanged" Unloaded="ReminderRow_Unloaded" Loaded="ReminderRow_Loaded">
+          <Grid x:Name="ReminderRowActions" IsHitTestVisible="False">
+           <Button x:Name="ReminderRowTodayAction" IsTabStop="False" HorizontalAlignment="Left" Width="144" MinWidth="0"
+                   Padding="8,0" VerticalAlignment="Stretch" CornerRadius="6" Click="ReminderRowTodayAction_Click"
+                   Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+             <FontIcon x:Name="ReminderRowTodayGlyph" Glyph="&#xE787;" FontSize="14"/>
+             <TextBlock x:Name="ReminderRowTodayLabel" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </StackPanel>
+           </Button>
+           <Button x:Name="ReminderRowCompleteAction" IsTabStop="False" HorizontalAlignment="Right" Width="144" MinWidth="0"
+                   Padding="8,0" VerticalAlignment="Stretch" CornerRadius="6" Click="ReminderRowCompleteAction_Click"
+                   Background="{ThemeResource AccentFillColorDefaultBrush}" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+             <FontIcon Glyph="&#xE73E;" FontSize="14"/>
+             <TextBlock x:Name="ReminderRowCompleteLabel" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </StackPanel>
+           </Button>
+          </Grid>
+          <Grid x:Name="ReminderRowViewport" SizeChanged="ReminderRow_SizeChanged">
+           <ContentPresenter x:Name="ReminderRowBody" Content="{Binding}" ContentTemplate="{StaticResource ReminderBodyTemplate}"
+                             HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+            <ContentPresenter.RenderTransform><TranslateTransform/></ContentPresenter.RenderTransform>
+           </ContentPresenter>
+          </Grid>
          </Grid>
         </DataTemplate>
        </ListView.ItemTemplate>

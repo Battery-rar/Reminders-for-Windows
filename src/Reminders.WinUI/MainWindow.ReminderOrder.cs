@@ -105,7 +105,8 @@ public sealed partial class MainWindow
             && ReminderHierarchy.IsParent(reminder, parent) ? id : null;
 
     private bool CanDropReminder(ReminderDrag drag, ReminderItem target) =>
-        CanReorderReminders && drag.AccountEpoch == _accountEpoch && drag.Query == CurrentReminderQuery
+        CanReorderReminders
+        && drag.AccountEpoch == _accountEpoch && drag.Query == CurrentReminderQuery
         && !ReferenceEquals(drag.Reminder, target) && _reminders.Contains(drag.Reminder) && _reminders.Contains(target)
         && ReminderVisibleParent(drag.Reminder, _reminders) == ReminderVisibleParent(target, _reminders);
 

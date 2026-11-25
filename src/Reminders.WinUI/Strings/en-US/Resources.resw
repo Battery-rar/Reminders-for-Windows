@@ -2130,23 +2130,11 @@ Accept any updated terms, then check that your lists appear.</value>
   <data name="RowAddToToday" xml:space="preserve">
     <value>Add to Today</value>
   </data>
-  <data name="SwipeToTodayItem.Text" xml:space="preserve">
-    <value>Add to Today</value>
-  </data>
   <data name="RowUndoToday" xml:space="preserve">
-    <value>Undo Add to Today</value>
-  </data>
-  <data name="SwipeUndoTodayItem.Text" xml:space="preserve">
     <value>Undo Add to Today</value>
   </data>
   <data name="RowMoveOutOfToday" xml:space="preserve">
     <value>Move out of Today</value>
-  </data>
-  <data name="SwipeMoveOutOfTodayItem.Text" xml:space="preserve">
-    <value>Move out of Today</value>
-  </data>
-  <data name="SwipeToCompleteItem.Text" xml:space="preserve">
-    <value>Complete</value>
   </data>
   <data name="CouldntReorderReminders" xml:space="preserve">
     <value>Couldn’t reorder reminders</value>

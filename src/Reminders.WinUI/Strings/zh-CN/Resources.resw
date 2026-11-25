@@ -2121,23 +2121,11 @@
   <data name="RowAddToToday" xml:space="preserve">
     <value>添加到“今天”</value>
   </data>
-  <data name="SwipeToTodayItem.Text" xml:space="preserve">
-    <value>添加到“今天”</value>
-  </data>
   <data name="RowUndoToday" xml:space="preserve">
-    <value>撤销添加到“今天”</value>
-  </data>
-  <data name="SwipeUndoTodayItem.Text" xml:space="preserve">
     <value>撤销添加到“今天”</value>
   </data>
   <data name="RowMoveOutOfToday" xml:space="preserve">
     <value>移出“今天”</value>
-  </data>
-  <data name="SwipeMoveOutOfTodayItem.Text" xml:space="preserve">
-    <value>移出“今天”</value>
-  </data>
-  <data name="SwipeToCompleteItem.Text" xml:space="preserve">
-    <value>完成</value>
   </data>
   <data name="CouldntReorderReminders" xml:space="preserve">
     <value>无法重新排列提醒事项</value>
